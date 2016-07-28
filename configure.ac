@@ -233,7 +233,7 @@ AC_ARG_ENABLE([debug],
      else
 	ODP_DEBUG=0
     fi])
-ODP_CFLAGS="$ODP_CFLAGS -DODP_DEBUG=$ODP_DEBUG -DDPAA2_LOGLIB_DISABLE -DQODP_344"
+ODP_CFLAGS="$ODP_CFLAGS -DODP_DEBUG=$ODP_DEBUG -DDPAA2_LOGLIB_DISABLE -DQODP_344 -DODP_324"
 
 ##########################################################################
 # Adding - DPAA1 required USDPAA dependencies.
