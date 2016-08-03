@@ -1,0 +1,47 @@
+Copyright (c) 2014 Freescale Semiconductor, Inc. All rights reserved.
+Copyright (c) 2014, Linaro Limited
+All rights reserved.
+
+SPDX-License-Identifier:        BSD-3-Clause
+
+ODP-DPAA2:
+---------
+This effort is to port ODP on top of DPAA2 and use DPAA2 as the accelerator for
+all Freescale devices. It has been compiled on Ubuntu 14.04 3.13.0-29-generic
+kernel with Linaro gcc-linaro-aarch64-linux-gnu-4.8-2014.04_linux
+
+# To configure environment
+# set ARCH=aarch64
+# set CROSS_COMPILE=<cross compiler path>
+# set KERNEL_PATH=<linux source path> for kni compilation
+
+# To compile ODP with linux-dpaa2 platform
+$ git clone ssh://git@sw-stash.freescale.net/dpaa2/odp-dpaa2.git
+$ cd <odp-dir>
+$ git checkout -b dpaa2 remotes/origin/dpaa2
+$ ./bootstrap
+$ ./configure CC=${CROSS_COMPILE}gcc --host=aarch64-linux-gnu --with-platform=linux-dpaa2 --with-openssl-path=<OpenSSL library path> --enable-cunit-support --with-cunit-path=<Cunit Library path> --enable-debug-print="yes" --enable-ipsec-debug="yes"
+$ make
+
+Note: "with-cunit-path", "enable-ipsec-debug" and "enable-debug-print" are optional parameters. Cunit configuration is required only if validation suite is to be tested and debug print configuration is required only if debug messages need to be print. By default
+debug prints are disabled. More details related to Cunit are given in DEPENDENCIES file in ODP repository
+
+# Steps to enable IPSec debugs in yocto
+$ cd sources/meta-fsl-dataplane/recipes-extended/odp
+$ Add following line in the file "odp_git.bb"
+	* EXTRA_OECONF_append_ls2080ardb += "--enable-ipsec-debug=yes"
+
+# App commands to test
+odp_l2fwd -i dpni.6,dpni.7 -m 0 -c 2
+odp_pktio -i dpni.6,dpni.7 -m 0 -c 2
+odp_generator -i dpni.6 --srcmac 00:00:00:00:00:06  --dstmac 00:1B:21:B7:82:45 --srcip 1.1.1.1 --dstip 1.1.1.2 -m u
+
+	-i  - interface name
+	-m 0   - burst mode
+	-c 2   - number of cpus
+
+Note: Following environment variables can be used at run time:
+1. HASH_DST: To enable/disable Destination IP based flow distribution. Default is "enable".
+2. ODP_SCH_PULL_MODE to control Pull/Push mode for ODP scheduler.
+	set ODP_SCH_PULL_MODE=1 to set ODP scheduler in PULL mode.
+   By default ODP scheduler will work in PUSH mode.
