@@ -1,0 +1,23 @@
+ODP user space package is BSD-3 Licensed. The exceptions are listed in this
+file.
+
+The BSD 3-Clause License Text is available in LICENSE file. Following list
+identifies the files which are not BSD-3 licensed.
+
+Following files are GPLv2 licensed. GPLv2 license text is available in
+LICENSE.GPL file.
+List of files having GPLv2 License:
+- kern/kni_dev.h
+- kern/kni_fifo.h
+- kern/kni_misc.c
+- kern/kni_net.c
+
+
+Following files are DUAL licensed. These files are include in User space as well
+as Kernel space modules. These files can be used under BSD-3 License or GPLv2
+license. BSD-3 and GPLv2 Lincense texts are available in respective files stated
+above.
+List of files having DUAL License:
+- /platform/linux-dpaa2/include/dpaa2/kni/odpfsl_kni_common.h
+All files under the mc repository:
+- /platform/linux-dpaa2/flib/mc/
