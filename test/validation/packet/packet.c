@@ -917,9 +917,9 @@ static void _packet_compare_inflags(odp_packet_t pkt1, odp_packet_t pkt2)
 	COMPARE_HAS_INFLAG(pkt1, pkt2, flow_hash);
 	COMPARE_HAS_INFLAG(pkt1, pkt2, ts);
 
-	COMPARE_INFLAG(pkt1, pkt2, color);
-	COMPARE_INFLAG(pkt1, pkt2, drop_eligible);
-	COMPARE_INFLAG(pkt1, pkt2, shaper_len_adjust);
+//	COMPARE_INFLAG(pkt1, pkt2, color);
+//	COMPARE_INFLAG(pkt1, pkt2, drop_eligible);
+//	COMPARE_INFLAG(pkt1, pkt2, shaper_len_adjust);
 }
 
 static void _packet_compare_data(odp_packet_t pkt1, odp_packet_t pkt2)

@@ -318,7 +318,7 @@ __LIB__libodp_linux_la_SOURCES = \
 			   sdk/libevent/dpaa2_dev_notif.c \
 			   sdk/libevent/dpaa2_dev_intr_priv.c \
 			   sdk/libaiop/dpaa2_aiop.c \
-			   arch/@ARCH@/odp_cpu_cycles.c \
+			   arch/@ARCH_DIR@/odp_cpu_cycles.c \
 			   kni/odpfsl_kni.c \
 			   kni/odpfsl_kni_api.c \
 			   sdk/libcmdif/cmdif_client_flib.c \
