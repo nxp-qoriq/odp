@@ -17,3 +17,6 @@ SUBDIRS = @platform_with_platform@ \
 @DX_RULES@
 
 EXTRA_DIST = bootstrap $(DX_CONFIG) CHANGELOG config/README .scmversion
+customdir=${exec_prefix}/odp/scripts
+dist_custom_SCRIPTS = \
+	$(top_srcdir)/scripts/dpaa2/*
