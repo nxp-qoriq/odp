@@ -18,6 +18,10 @@
 #include <odp/api/random.h>
 #include <odp_packet_internal.h>
 
+#include <odp/helper/ipsec.h>
+#include <odp/helper/eth.h>
+#include <odp/helper/ip.h>
+
 #include <string.h>
 
 #include <openssl/des.h>
@@ -27,7 +31,25 @@
 
 #define MAX_SESSIONS 32
 
+#define ipv4_data_p(ip) ((uint8_t *)((odph_ipv4hdr_t *)ip + 1))
+#define ipv4_data_len(ip) (odp_be_to_cpu_16(ip->tot_len) -\
+			   sizeof(odph_ipv4hdr_t))
+#define ESP_ENCODE_LEN(x, b) ((((x) + (b - 1)) / b) * b)
+
 typedef struct odp_crypto_global_s odp_crypto_global_t;
+
+/**
+ * Dummy function that is called when proto-ipsec option is not selected.
+ */
+static void void_func(odp_crypto_op_params_t *params ODP_UNUSED,
+		      odp_crypto_generic_session_t *session ODP_UNUSED)
+{
+}
+
+static inline void ipv4_adjust_len(odph_ipv4hdr_t *ip, int adj)
+{
+	ip->tot_len = odp_cpu_to_be_16(odp_be_to_cpu_16(ip->tot_len) + adj);
+}
 
 struct odp_crypto_global_s {
 	odp_spinlock_t                lock;
@@ -61,6 +83,8 @@ static
 void free_session(odp_crypto_generic_session_t *session)
 {
 	odp_spinlock_lock(&global->lock);
+	if (session->ipsec_params.out_hdr)
+		free(session->ipsec_params.out_hdr);
 	session->next = global->free;
 	global->free = session;
 	odp_spinlock_unlock(&global->lock);
@@ -653,6 +677,13 @@ odp_crypto_session_create(odp_crypto_session_params_t *params,
 	session->cipher.iv.len  = params->iv.length;
 	session->auth.alg  = params->auth_alg;
 	session->output_pool = params->output_pool;
+	/* When a session is created, is considered that proto-esp option
+	* is off. If it is on, in "odp_crypto_session_config_ipsec" function
+	* will be configured ipsec_proto value, before and after functions.
+	*/
+	session->ipsec_proto = -1;
+	session->in_crypto_func.before = &void_func;
+	session->in_crypto_func.after = &void_func;
 
 	/* Process based on cipher */
 	switch (params->cipher_alg) {
@@ -735,6 +766,235 @@ int odp_crypto_session_destroy(odp_crypto_session_t session)
 	return 0;
 }
 
+static inline int locate_ipsec_headers(odph_ipv4hdr_t *ip,
+				       odph_esphdr_t **esp_p)
+{
+	uint8_t *in = ipv4_data_p(ip);
+
+	if (ODPH_IPPROTO_ESP == ip->proto) {
+		*esp_p = (odph_esphdr_t *)in;
+		in += sizeof(odph_esphdr_t);
+	} else {
+		*esp_p = NULL;
+	}
+	return in - (ipv4_data_p(ip));
+}
+
+/**
+ * Function that prepares the headers for ESP encryption and authentication
+ * before doing the crypto operation
+ */
+static void encode_before_crypto(odp_crypto_op_params_t *params,
+				 odp_crypto_generic_session_t *session)
+{
+	int hdr_len = 0;
+	int trl_len = 0;
+	odph_esphdr_t *esp;
+	odph_ipv4hdr_t *ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr
+			     (params->pkt, NULL);
+	uint16_t ip_data_len = ipv4_data_len(ip);
+	uint8_t *ip_data = ipv4_data_p(ip);
+
+	if (ODP_IPSEC_MODE_TUNNEL == session->ipsec_mode) {
+		hdr_len += sizeof(odph_ipv4hdr_t);
+		ip_data = (uint8_t *)ip;
+		ip_data_len += sizeof(odph_ipv4hdr_t);
+	}
+	esp = (odph_esphdr_t *)(ip_data + hdr_len);
+	hdr_len += sizeof(odph_esphdr_t) + session->cipher.iv.len;
+
+	if (!odp_packet_push_tail(params->pkt, hdr_len))
+		abort();
+	memmove(ip_data + hdr_len, ip_data, ip_data_len);
+
+	ip_data += hdr_len;
+
+	if (esp) {
+		uint32_t encrypt_len;
+		odph_esptrl_t *esp_t;
+		uint8_t *icv;
+		uint8_t *buf = odp_packet_data(params->pkt);
+
+		encrypt_len = ESP_ENCODE_LEN(ip_data_len +
+					     sizeof(*esp_t), 8);
+		trl_len = encrypt_len - ip_data_len;
+
+		if (!odp_packet_push_tail(params->pkt, trl_len +
+					  session->auth.icv_len))
+			abort();
+
+		esp->spi = odp_cpu_to_be_32(session->ipsec_params.spi);
+		esp->seq_no = odp_cpu_to_be_32((uint32_t)
+						odp_atomic_fetch_inc_u64
+						(&session->seq_no));
+
+		memcpy(esp + 1, session->cipher.iv.data,
+		       session->cipher.iv.len);
+
+		esp_t = (odph_esptrl_t *)(ip_data + encrypt_len) - 1;
+		esp_t->pad_len = trl_len - sizeof(*esp_t);
+
+		icv = (uint8_t *)(esp_t + 1);
+
+		if (ODP_IPSEC_MODE_TUNNEL == session->ipsec_mode)
+			esp_t->next_header = ODPH_IPV4;
+		else
+			esp_t->next_header = ip->proto;
+		ip->proto =  ODPH_IPPROTO_ESP;
+
+		params->cipher_range.offset = ip_data - buf;
+		params->cipher_range.length = encrypt_len;
+
+		params->auth_range.offset = ((uint8_t *)(ip + 1)) - buf;
+		params->auth_range.length = (uint8_t *)
+					    ((odph_esptrl_t *)esp_t + 1) -
+					    (uint8_t *)esp;
+		params->hash_result_offset = icv - buf;
+		/* In case of ESN */
+		if (session->ipsec_params.esn) {
+			uint8_t *tail;
+			/* Take the high part of 64 bits sequence number. */
+			uint32_t esn = odp_cpu_to_be_32((uint32_t)
+							(odp_atomic_load_u64
+							(&session->seq_no) >>
+							32));
+			odp_packet_push_tail(params->pkt, sizeof(uint32_t));
+			/* Authenticated data includes the ESN (4 bytes) */
+			tail = (uint8_t *)(esp_t + 1);
+			*((uint32_t *)(intptr_t)tail) = esn;
+			params->auth_range.length += sizeof(uint32_t);
+		}
+	}
+	/* Set IPv4 length before authentication */
+	ipv4_adjust_len(ip, hdr_len + trl_len + session->auth.icv_len);
+	/* Header processing */
+	if (ODP_IPSEC_MODE_TUNNEL == session->ipsec_mode) {
+		odph_ipv4hdr_t *out_hdr_ptr = (odph_ipv4hdr_t *)
+					       session->ipsec_params.out_hdr;
+
+		ip->proto = out_hdr_ptr->proto;
+		ip->src_addr = out_hdr_ptr->src_addr;
+		ip->dst_addr = out_hdr_ptr->dst_addr;
+		ip->ttl = out_hdr_ptr->ttl;
+		ip->id = out_hdr_ptr->id++;
+		if (!ip->id) {
+			/* re-init tunnel hdr id */
+			if (odp_random_data((uint8_t *)&out_hdr_ptr->id,
+					    sizeof(uint16_t), 1) !=
+			    sizeof(out_hdr_ptr->id))
+				abort();
+		}
+	}
+	ip->chksum = 0;
+	odph_ipv4_csum_update(params->out_pkt);
+}
+
+/**
+ * Function that prepares the headers for ESP encryption and authentication
+ * after doing the crypto operation
+ */
+static void encode_after_crypto(odp_crypto_op_params_t *params,
+				odp_crypto_generic_session_t *session
+				ODP_UNUSED)
+{
+	odp_packet_pull_tail(params->out_pkt, sizeof(uint32_t));
+}
+
+/**
+ * Function that prepares the headers for ESP decryption and authentication
+ * before doing the crypto operation
+ */
+static void decode_before_crypto(odp_crypto_op_params_t *params,
+				 odp_crypto_generic_session_t *session)
+{
+	int hdr_len = 0;
+	odph_esphdr_t *esp;
+	odph_ipv4hdr_t *ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr
+			     (params->pkt, NULL);
+	hdr_len = locate_ipsec_headers(ip, &esp);
+	hdr_len += session->cipher.iv.len;
+
+	if (esp) {
+		uint16_t ip_data_len = ipv4_data_len(ip);
+		uint8_t *eop = (uint8_t *)(ip) + odp_be_to_cpu_16(ip->tot_len);
+		uint8_t *buf = odp_packet_data(params->pkt);
+
+		params->auth_range.offset = ((uint8_t *)(ip + 1)) - buf;
+		params->auth_range.length = ip_data_len - session->auth.icv_len;
+		params->hash_result_offset = (eop - buf) -
+					      session->auth.icv_len;
+
+		params->cipher_range.offset = ipv4_data_p(ip) + hdr_len - buf;
+		params->cipher_range.length = ipv4_data_len(ip) -
+					      hdr_len - session->auth.icv_len;
+		params->override_iv_ptr = esp->iv;
+		/* Compute ICV with ESN if present */
+		if (session->ipsec_params.esn) {
+			uint8_t *icv = eop - session->auth.icv_len;
+			uint32_t esn;
+
+			/* Increment seq number and take the high part of it */
+			odp_atomic_fetch_inc_u64(&session->seq_no);
+			esn = odp_cpu_to_be_32((uint32_t)(odp_atomic_load_u64
+							 (&session->seq_no) >>
+							 32));
+			if (!odp_packet_push_tail(params->pkt,
+						  sizeof(uint32_t)))
+				abort();
+			memmove(icv + sizeof(uint32_t), icv,
+				session->auth.icv_len);
+			*((uint32_t *)(intptr_t)icv) = esn;
+			params->auth_range.length += sizeof(uint32_t);
+			params->hash_result_offset += sizeof(uint32_t);
+		}
+	}
+}
+
+/**
+ * Function that prepares the headers for ESP decryption and authentication
+ * after doing the crypto operation
+ */
+static void decode_after_crypto(odp_crypto_op_params_t *params,
+				odp_crypto_generic_session_t *session)
+{
+	int trl_len = 0;
+	int hdr_len = 0;
+	odph_ipv4hdr_t *ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr
+			     (params->out_pkt, NULL);
+	uint8_t *eop = (uint8_t *)(ip) + odp_be_to_cpu_16(ip->tot_len)
+			- session->auth.icv_len;
+	odph_esptrl_t *esp_t = (odph_esptrl_t *)(eop) - 1;
+	odph_esphdr_t *esp;
+
+	if (session->ipsec_params.esn) {
+		if (!odp_packet_pull_tail(params->out_pkt, sizeof(uint32_t)))
+			abort();
+	}
+	hdr_len = locate_ipsec_headers(ip, &esp);
+	hdr_len += session->cipher.iv.len;
+	ip->proto = esp_t->next_header;
+	trl_len += esp_t->pad_len + sizeof(*esp_t) + session->auth.icv_len;
+
+	if (ODPH_IPV4 == ip->proto) {
+		odph_ethhdr_t *eth;
+
+		odp_packet_pull_head(params->out_pkt, sizeof(*ip) + hdr_len);
+		odp_packet_pull_tail(params->out_pkt, trl_len);
+		eth = (odph_ethhdr_t *)odp_packet_l2_ptr(params->out_pkt, NULL);
+		eth->type = odp_cpu_to_be_16(ODPH_ETHTYPE_IPV4);
+		ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr(params->out_pkt, NULL);
+	} else {
+		ipv4_adjust_len(ip, -(hdr_len + trl_len));
+		ip->chksum = 0;
+		odph_ipv4_csum_update(params->out_pkt);
+		/* Correct the packet length and move payload into position */
+		memmove(ipv4_data_p(ip), ipv4_data_p(ip) + hdr_len,
+			odp_be_to_cpu_16(ip->tot_len));
+		if (!odp_packet_pull_tail(params->out_pkt, hdr_len + trl_len))
+			abort();
+	}
+}
+
 int
 odp_crypto_operation(odp_crypto_op_params_t *params,
 		     odp_bool_t *posted,
@@ -746,6 +1006,8 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 	odp_crypto_op_result_t local_result;
 
 	session = (odp_crypto_generic_session_t *)(intptr_t)params->session;
+	/* Call the function for processing the headers before encode/decode */
+	session->in_crypto_func.before(params, session);
 
 	/* Resolve output buffer */
 	if (ODP_PACKET_INVALID == params->out_pkt &&
@@ -784,6 +1046,8 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 	local_result.ok =
 		(rc_cipher == ODP_CRYPTO_ALG_ERR_NONE) &&
 		(rc_auth == ODP_CRYPTO_ALG_ERR_NONE);
+	/* Call the function for processing the headers after encode/decode */
+	session->in_crypto_func.after(params, session);
 
 	/* If specified during creation post event to completion queue */
 	if (ODP_QUEUE_INVALID != session->compl_queue) {
@@ -913,4 +1177,59 @@ odp_crypto_compl_free(odp_crypto_compl_t completion_event)
 	_odp_buffer_event_type_set(
 		odp_buffer_from_event((odp_event_t)completion_event),
 		ODP_EVENT_PACKET);
+}
+
+int odp_crypto_session_config_ipsec(odp_crypto_session_t session,
+				    enum odp_ipsec_mode ipsec_mode,
+				    enum odp_ipsec_proto ipsec_proto,
+				    odp_ipsec_params_t *ipsec_params)
+{
+	odp_crypto_generic_session_t *ses;
+
+	ses = (odp_crypto_generic_session_t *)(intptr_t)session;
+	if (!memcpy(&ses->ipsec_params, ipsec_params,
+		    sizeof(odp_ipsec_params_t)))
+		abort();
+	/* Initialize ESP sequence number with 1 */
+	odp_atomic_init_u64(&ses->seq_no, 1);
+
+	ses->ipsec_mode = ipsec_mode;
+	ses->ipsec_proto = ipsec_proto;
+
+	/* Find the ICV length for a specific authentication algorithm */
+	if (ODP_AUTH_ALG_MD5_96 == ses->auth.alg)
+		ses->auth.icv_len = 12;
+	else if (ODP_AUTH_ALG_SHA256_128 == ses->auth.alg)
+		ses->auth.icv_len = 16;
+	/* Set functions in case of encrypt */
+	if (ODP_IPSEC_ESP == ipsec_proto && ODP_CRYPTO_OP_ENCODE == ses->op) {
+		ses->in_crypto_func.before = &encode_before_crypto;
+		if (ses->ipsec_params.esn)
+			ses->in_crypto_func.after = &encode_after_crypto;
+		else
+			ses->in_crypto_func.after = &void_func;
+	}
+	/* Set functions in case of decrypt */
+	if (ODP_IPSEC_ESP == ipsec_proto && ODP_CRYPTO_OP_DECODE == ses->op) {
+		ses->in_crypto_func.before = &decode_before_crypto;
+		ses->in_crypto_func.after = &decode_after_crypto;
+	}
+
+	if (ODP_IPSEC_MODE_TUNNEL == ses->ipsec_mode) {
+		odph_ipv4hdr_t *out_hdr_ptr;
+
+		ses->ipsec_params.out_hdr = malloc(sizeof(odph_ipv4hdr_t));
+		if (!ses->ipsec_params.out_hdr)
+			abort();
+		out_hdr_ptr = (odph_ipv4hdr_t *)ipsec_params->out_hdr;
+		/* Set Outer header non configurable fields (encap) */
+		out_hdr_ptr->proto = ODPH_IPPROTO_ESP;
+		out_hdr_ptr->ttl = 64; /* Default TTL */
+
+		if (!memcpy(ses->ipsec_params.out_hdr, ipsec_params->out_hdr,
+			    sizeof(odph_ipv4hdr_t)))
+			abort();
+	}
+
+	return 0;
 }

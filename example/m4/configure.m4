@@ -13,11 +13,19 @@ AC_ARG_ENABLE([test-example],
 AC_CONFIG_FILES([example/classifier/Makefile
 		 example/generator/Makefile
 		 example/ipsec/Makefile
+		 example/ipsec_proto/Makefile
 		 example/Makefile
 		 example/packet/Makefile
 		 example/time/Makefile
 		 example/timer/Makefile
-		 example/traffic_mgmt/Makefile
+		 example/reflector/Makefile
 		 example/l2fwd_simple/Makefile
-		 example/switch/Makefile
-		 example/hello/Makefile])
+		 example/l3fwd/Makefile
+		 example/lpm-ipfwd/Makefile
+		 example/lpm-ipfwd/lpmlib/Makefile
+		 example/lpm-ipfwd/app/Makefile
+		 example/lpm-ipfwd/app_config/Makefile
+		 example/switch/Makefile])
+AM_COND_IF([BUILD_DPAA2], [AC_CONFIG_FILES([example/kni_demo/Makefile
+		 example/cmdif_demo/Makefile
+		])])

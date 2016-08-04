@@ -14,6 +14,7 @@
 #include <odp/helper/ipsec.h>
 
 #include <odp_ipsec_cache.h>
+#include <odp_ipsec_misc.h>
 
 /** Global pointer to ipsec_cache db */
 ipsec_cache_t *ipsec_cache;
@@ -41,6 +42,7 @@ int create_ipsec_cache_entry(sa_db_entry_t *cipher_sa,
 			     tun_db_entry_t *tun,
 			     crypto_api_mode_e api_mode,
 			     odp_bool_t in,
+			     proto_params_t *proto_param,
 			     odp_queue_t completionq,
 			     odp_pool_t out_pool)
 {
@@ -106,8 +108,8 @@ int create_ipsec_cache_entry(sa_db_entry_t *cipher_sa,
 	/* Generate an IV */
 	if (params.iv.length) {
 		int32_t size = params.iv.length;
-
 		int32_t ret = odp_random_data(params.iv.data, size, 1);
+
 		if (ret != size)
 			return -1;
 	}
@@ -153,6 +155,43 @@ int create_ipsec_cache_entry(sa_db_entry_t *cipher_sa,
 			if (ret != sizeof(entry->state.tun_hdr_id))
 				return -1;
 		}
+	}
+	if (ODP_IPSEC_ESP == proto_param->proto) {
+		enum odp_ipsec_mode	ipsec_mode;
+		odp_ipsec_params_t	ipsec_params;
+		odph_ipv4hdr_t		ip;
+
+		entry->params.proto = ODP_IPSEC_ESP;
+		memset(&ipsec_params, 0, sizeof(odp_ipsec_params_t));
+		/* SPI value (encap) */
+		ipsec_params.spi = cipher_sa->spi;
+		/* Extended sequence numbers (encap/decap) */
+		ipsec_params.esn = proto_param->esn;
+		entry->params.esn = proto_param->esn;
+		/* Outer header size (encap/decap) */
+		ipsec_params.out_hdr_size = sizeof(odph_ipv4hdr_t);
+		if (tun) {
+			/* Tunnel mode */
+			ipsec_mode = ODP_IPSEC_MODE_TUNNEL;
+			/* Outer header (encap) */
+			ipsec_params.out_hdr = (uint8_t *)&ip;
+			/* Outer header type (encap) */
+			ipsec_params.out_hdr_type = ODP_IPSEC_OUTHDR_IPV4;
+			memset(&ip, 0, sizeof(odph_ipv4hdr_t));
+			/* Set Outer header configurable fields (encap) */
+			ip.src_addr = odp_cpu_to_be_32(tun->tun_src_ip);
+			ip.dst_addr = odp_cpu_to_be_32(tun->tun_dst_ip);
+			ip.ttl = 64; /* Default TTL */
+			ip.id = odp_cpu_to_be_16(entry->state.tun_hdr_id);
+		} else {
+			ipsec_mode = ODP_IPSEC_MODE_TRANSPORT;
+		}
+		if (odp_crypto_session_config_ipsec(session, ipsec_mode,
+						    proto_param->proto,
+						    &ipsec_params))
+			return -1;
+	} else {
+		entry->params.proto = -1;
 	}
 	entry->mode = mode;
 

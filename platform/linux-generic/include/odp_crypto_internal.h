@@ -27,6 +27,16 @@ odp_crypto_alg_err_t (*crypto_func_t)(odp_crypto_op_params_t *params,
 				      odp_crypto_generic_session_t *session);
 
 /**
+ * Function prototypes for ESP protocol computation.They are called in
+ * "odp_crypto_operation" function when proto-esp option is active.
+ */
+typedef
+void (*before_func)(odp_crypto_op_params_t *params,
+		    odp_crypto_generic_session_t *session);
+typedef
+void (*after_func)(odp_crypto_op_params_t *params,
+		   odp_crypto_generic_session_t *session);
+/**
  * Per crypto session data structure
  */
 struct odp_crypto_generic_session {
@@ -35,6 +45,14 @@ struct odp_crypto_generic_session {
 	odp_bool_t do_cipher_first;
 	odp_queue_t compl_queue;
 	odp_pool_t output_pool;
+	odp_atomic_u64_t seq_no;
+	odp_ipsec_params_t ipsec_params;
+	enum odp_ipsec_mode ipsec_mode;
+	enum odp_ipsec_proto ipsec_proto;
+	struct {
+		before_func before;
+		after_func after;
+	} in_crypto_func;
 	struct {
 		odp_cipher_alg_t   alg;
 		struct {

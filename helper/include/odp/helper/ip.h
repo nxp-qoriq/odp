@@ -142,6 +142,7 @@ static inline odp_u16sum_t odph_ipv4_csum_update(odp_packet_t pkt)
 
 	ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr(pkt, NULL);
 	w = (uint16_t *)(void *)ip;
+	ip->chksum = 0;
 	ip->chksum = odph_chksum(w, nleft);
 	return ip->chksum;
 }

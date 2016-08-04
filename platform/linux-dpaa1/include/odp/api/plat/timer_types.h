@@ -36,6 +36,23 @@ typedef void *odp_timeout_t;
 
 #define ODP_TIMEOUT_INVALID NULL
 
+/** Get printable format of odp_timer_t*/
+static inline uint64_t odp_timer_to_u64(odp_timer_t hdl)
+{
+	return _odp_pri(hdl);
+}
+
+/** Get printable format of odp_timeout_t*/
+static inline uint64_t odp_timeout_to_u64(odp_timeout_t hdl)
+{
+	return _odp_pri(hdl);
+}
+
+/** Get printable format of odp_timer_pool_t*/
+static inline uint64_t odp_timer_pool_to_u64(odp_timer_pool_t hdl)
+{
+	return _odp_pri(hdl);
+}
 /**
  * @}
  */

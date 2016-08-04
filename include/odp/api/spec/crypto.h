@@ -73,6 +73,14 @@ typedef enum {
 	ODP_CIPHER_ALG_AES128_CBC,
 	/** AES128 in Galois/Counter Mode */
 	ODP_CIPHER_ALG_AES128_GCM,
+	/**< AES128 with Counter Mode */
+	ODP_CIPHER_ALG_AES_CTR,
+	/**< Kasumi F8 Encryption */
+	ODP_CIPHER_ALG_KASUMI_F8,
+	/**< Snow F8 Encryption */
+	ODP_CIPHER_ALG_SNOW_F8,
+	 /**< ZUC Ciphering */
+	ODP_CIPHER_ALG_ZUC
 } odp_cipher_alg_t;
 
 /**
@@ -83,10 +91,21 @@ typedef enum {
 	ODP_AUTH_ALG_NULL,
 	/** HMAC-MD5 with 96 bit key */
 	ODP_AUTH_ALG_MD5_96,
+	ODP_AUTH_ALG_SHA1_96,
+	ODP_AUTH_ALG_SHA1_160,
 	/** SHA256 with 128 bit key */
 	ODP_AUTH_ALG_SHA256_128,
 	/** AES128 in Galois/Counter Mode */
 	ODP_AUTH_ALG_AES128_GCM,
+	ODP_AUTH_ALG_SHA384_192,
+	ODP_AUTH_ALG_SHA512_256,
+	ODP_AUTH_ALG_AES_CMAC_96,
+	/**<AESCMAC with 128 bit key */
+	ODP_AUTH_ALG_AES_CMAC,
+	/**< Snow 3G Authentication */
+	ODP_AUTH_ALG_SNOW_3G,
+	/**< ZUC Authentication */
+	ODP_AUTH_ALG_ZUC
 } odp_auth_alg_t;
 
 /**
@@ -170,6 +189,8 @@ typedef struct odp_crypto_data_range {
 
 /**
  * Crypto API session creation parameters
+ *
+ * @todo Add "odp_session_proc_info_t"
  */
 typedef struct odp_crypto_session_params {
 	odp_crypto_op_t op;                /**< Encode versus decode */
@@ -208,6 +229,8 @@ typedef struct odp_crypto_session_params {
 
 /**
  * Crypto API per packet operation parameters
+ *
+ * @todo Clarify who zero's ICV and how this relates to "hash_result_offset"
  */
 typedef struct odp_crypto_op_params {
 	odp_crypto_session_t session;   /**< Session handle from creation */
@@ -241,14 +264,6 @@ typedef struct odp_crypto_op_params {
  *   indicates the caller wishes the destination packet buffer be allocated
  *   from the output pool specified during session creation.
  *
- * @var odp_crypto_op_params_t::hash_result_offset
- *
- *   Specifies the offset where the hash result is to be stored. In case of
- *   decode sessions, input hash values will be read from this offset, and
- *   overwritten with hash results. If this offset lies within specified
- *   auth_range, implementation will mute this field before calculating the hash
- *   result.
- *
  *   @sa odp_crypto_session_params_t::output_pool.
  */
 
@@ -264,6 +279,8 @@ typedef enum {
 	ODP_CRYPTO_SES_CREATE_ERR_INV_CIPHER,
 	/** Creation failed, bad auth params */
 	ODP_CRYPTO_SES_CREATE_ERR_INV_AUTH,
+	ODP_CRYPTO_SES_CREATE_ERR_ENOTSUP,
+	ODP_CRYPTO_SES_CREATE_ERR_EUNSPEC,
 } odp_crypto_ses_create_err_t;
 
 /**
@@ -280,6 +297,7 @@ typedef enum {
 	ODP_CRYPTO_ALG_ERR_ICV_CHECK,
 	/** IV value not specified */
 	ODP_CRYPTO_ALG_ERR_IV_INVALID,
+	ODP_CRYPTO_ALG_ERR_UNSPEC,
 } odp_crypto_alg_err_t;
 
 /**
@@ -292,6 +310,7 @@ typedef enum {
 	ODP_CRYPTO_HW_ERR_DMA,
 	/** Operation failed due to buffer pool depletion */
 	ODP_CRYPTO_HW_ERR_BP_DEPLETED,
+	ODP_CRYPTO_HW_ERR_UNSPEC
 } odp_crypto_hw_err_t;
 
 /**
@@ -311,6 +330,12 @@ typedef struct odp_crypto_op_result {
 	odp_packet_t pkt;                /**< Output packet */
 	odp_crypto_compl_status_t cipher_status; /**< Cipher status */
 	odp_crypto_compl_status_t auth_status;   /**< Authentication status */
+	int proto_status;		/**< Protocol specific status
+					 * Bit wise errors
+					 * LSB-Bit 0 - if set indicates that
+					 * HFN value matches or exceeds
+					 * HFN threshold
+					 * Others reserved */
 } odp_crypto_op_result_t;
 
 /**

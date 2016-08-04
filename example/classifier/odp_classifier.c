@@ -35,9 +35,51 @@
 #define SHM_PKT_POOL_BUF_SIZE  1856
 
 /** @def MAX_PMR_COUNT
- * @brief Maximum number of Classification Policy
+ * @brief Maximum number of Classification Policy for Exact Matching
  */
 #define MAX_PMR_COUNT	8
+
+/** @def PMR_RULE_BASE_INDEX
+ * @brief Starting Index to store PMR in "stats"
+ */
+#define PMR_RULE_BASE_INDEX	0
+
+/** @def MAX_L2_RULE_COUNT
+ * @brief Maximum number of Classification Policy for L2 Prio
+ */
+#define MAX_L2_RULE_COUNT	8
+
+/** @def L2_RULE_BASE_INDEX
+ * @brief Starting Index to store L2 rule in "stats"
+ */
+#define L2_RULE_BASE_INDEX	(PMR_RULE_BASE_INDEX + MAX_PMR_COUNT)
+
+/** @def MAX_L3_RULE_COUNT
+ * @brief Maximum number of Classification Policy for L3 QoS
+ */
+#define MAX_L3_RULE_COUNT	8
+
+/** @def L3_RULE_BASE_INDEX
+ * @brief Starting Index to store L3 rule in "stats"
+ */
+#define L3_RULE_BASE_INDEX	(L2_RULE_BASE_INDEX + MAX_L2_RULE_COUNT)
+
+/** @def MAX_RULE_COUNT
+ * @brief Maximum number of Classification Rules
+ */
+#define MAX_RULE_COUNT	(MAX_PMR_COUNT + MAX_L2_RULE_COUNT + \
+			MAX_L3_RULE_COUNT + 2)
+
+/** @def DEFAULT_RULE_BASE_INDEX
+ * @brief Starting Index to store Default rule in "stats"
+ */
+#define DEFAULT_RULE_BASE_INDEX (MAX_RULE_COUNT - 2)
+
+/** @def ERROR_RULE_BASE_INDEX
+ * @brief Starting Index to store Default rule in "stats"
+ */
+#define ERROR_RULE_BASE_INDEX (MAX_RULE_COUNT - 1)
+
 
 /** @def DISPLAY_STRING_LEN
  * @brief Length of string used to display term value
@@ -56,25 +98,38 @@ typedef struct {
 	odp_atomic_u64_t queue_pkt_count; /**< count of received packets */
 	odp_atomic_u64_t pool_pkt_count; /**< count of received packets */
 	char cos_name[ODP_COS_NAME_LEN];	/**< cos name */
-	struct {
-		odp_cls_pmr_term_t term;	/**< odp pmr term value */
-		uint64_t val;	/**< pmr term value */
-		uint64_t mask;	/**< pmr term mask */
-		uint32_t val_sz;	/**< size of the pmr term */
-		uint32_t offset;	/**< pmr term offset */
-	} rule;
+	union {
+		struct {
+			odp_cls_pmr_term_t term;	/**< odp pmr term value */
+			uint64_t val;	/**< pmr term value */
+			uint64_t mask;	/**< pmr term mask */
+			uint32_t val_sz;	/**< size of the pmr term */
+			uint32_t offset;	/**< pmr term offset */
+		} rule;
+		struct {
+			uint8_t val;		/**<  L2 Priority Value*/
+		} l2_rule;
+		struct {
+			uint8_t val;		/**< L3 QoS Value */
+		} l3_rule;
+	};
+
 	char value[DISPLAY_STRING_LEN];	/**< Display string for value */
 	char mask[DISPLAY_STRING_LEN];	/**< Display string for mask */
 } global_statistics;
 
 typedef struct {
-	global_statistics stats[MAX_PMR_COUNT];
+	global_statistics stats[MAX_RULE_COUNT];
 	int policy_count;	/**< global policy count */
+	int l2_rule_count;	/**< global policy count for L2 Prio Rules*/
+	int l3_rule_count;	/**< global policy count for L3 Prio Rules*/
 	int appl_mode;		/**< application mode */
 	odp_atomic_u64_t total_packets;	/**< total received packets */
 	int cpu_count;		/**< Number of CPUs to use */
 	uint32_t time;		/**< Number of seconds to run */
 	char *if_name;		/**< pointer to interface names */
+	odp_bool_t l3_precedence;/**< Precedence Flag Over L2
+						Prio Rule*/
 } appl_args_t;
 
 enum packet_mode {
@@ -90,6 +145,7 @@ static void swap_pkt_addrs(odp_packet_t pkt_tbl[], unsigned len);
 static void parse_args(int argc, char *argv[], appl_args_t *appl_args);
 static void print_info(char *progname, appl_args_t *appl_args);
 static void usage(char *progname);
+static void configure_error_cos(odp_pktio_t pktio, appl_args_t *args);
 static void configure_cos(odp_cos_t default_cos, appl_args_t *args);
 static odp_cos_t configure_default_cos(odp_pktio_t pktio, appl_args_t *args);
 static int convert_str_to_pmr_enum(char *token, odp_cls_pmr_term_t *term,
@@ -102,6 +158,7 @@ void print_cls_statistics(appl_args_t *args)
 	int i;
 	uint32_t timeout;
 	int infinite = 0;
+	int32_t total_policy; /*PMR + L2 + L3 + default CoS+ Error CoS*/
 
 	printf("\n");
 	for (i = 0; i < 40; i++)
@@ -123,16 +180,40 @@ void print_cls_statistics(appl_args_t *args)
 		printf("%s\t", args->stats[i].value);
 		printf("%s\n", args->stats[i].mask);
 	}
+	for (i = 0; i < args->l2_rule_count; i++) {
+		printf("%s\t", args->stats[L2_RULE_BASE_INDEX + i].cos_name);
+		printf("VLAN Prio:%s\n",
+		       args->stats[L2_RULE_BASE_INDEX + i].value);
+	}
+	for (i = 0; i < args->l3_rule_count; i++) {
+		printf("%s\t", args->stats[L3_RULE_BASE_INDEX + i].cos_name);
+		printf("IP QoS:%s\n",
+		       args->stats[L3_RULE_BASE_INDEX + i].value);
+	}
 	printf("\n");
 	printf("RECEIVED PACKETS\n");
 	for (i = 0; i < 40; i++)
 		printf("-");
 	printf("\n");
-	for (i = 0; i < args->policy_count; i++)
-		printf("%-12s |", args->stats[i].cos_name);
+
+	for (i = 0; i < args->policy_count - 1; i++)
+		printf("%-12s ", args->stats[i].cos_name);
+	for (i = 0; i < args->l2_rule_count; i++) {
+		printf("%-12s ",
+		       args->stats[L2_RULE_BASE_INDEX + i].cos_name);
+	}
+	for (i = 0; i < args->l3_rule_count; i++) {
+		printf("%-12s ",
+		       args->stats[L3_RULE_BASE_INDEX + i].cos_name);
+	}
+	printf("%-12s ", args->stats[DEFAULT_RULE_BASE_INDEX].cos_name);
+	printf("%-12s ", args->stats[ERROR_RULE_BASE_INDEX].cos_name);
 	printf("Total Packets");
 	printf("\n");
-	for (i = 0; i < args->policy_count; i++)
+
+	total_policy = args->policy_count + args->l2_rule_count +
+			args->l3_rule_count + 1;
+	for (i = 0; i < total_policy; i++)
 		printf("%-6s %-6s|", "queue", "pool");
 	printf("\n");
 
@@ -144,7 +225,7 @@ void print_cls_statistics(appl_args_t *args)
 		infinite = 1;
 
 	for (; timeout > 0 || infinite; timeout--) {
-		for (i = 0; i < args->policy_count; i++) {
+		for (i = 0; i < args->policy_count - 1; i++) {
 			printf("%-6" PRIu64 " ",
 			       odp_atomic_load_u64(&args->stats[i]
 						   .queue_pkt_count));
@@ -152,6 +233,36 @@ void print_cls_statistics(appl_args_t *args)
 			       odp_atomic_load_u64(&args->stats[i]
 						   .pool_pkt_count));
 		}
+		for (i = 0; i < args->l2_rule_count; i++) {
+			printf("%-6" PRIu64 " ",
+			       odp_atomic_load_u64(&args->stats[L2_RULE_BASE_INDEX + i]
+						   .queue_pkt_count));
+			printf("%-6" PRIu64 "|",
+			       odp_atomic_load_u64(&args->stats[L2_RULE_BASE_INDEX + i]
+						   .pool_pkt_count));
+		}
+
+		for (i = 0; i < args->l3_rule_count; i++) {
+			printf("%-6" PRIu64 " ",
+			       odp_atomic_load_u64(&args->stats[L3_RULE_BASE_INDEX + i]
+						   .queue_pkt_count));
+			printf("%-6" PRIu64 "|",
+			       odp_atomic_load_u64(&args->stats[L3_RULE_BASE_INDEX + i]
+						   .pool_pkt_count));
+		}
+
+		printf("%-6" PRIu64 " ",
+		       odp_atomic_load_u64(&args->stats[DEFAULT_RULE_BASE_INDEX]
+					   .queue_pkt_count));
+		printf("%-6" PRIu64 "|",
+			       odp_atomic_load_u64(&args->stats[DEFAULT_RULE_BASE_INDEX]
+						   .pool_pkt_count));
+		printf("%-6" PRIu64 " ",
+		       odp_atomic_load_u64(&args->stats[ERROR_RULE_BASE_INDEX]
+					   .queue_pkt_count));
+		printf("%-6" PRIu64 "|",
+			       odp_atomic_load_u64(&args->stats[ERROR_RULE_BASE_INDEX]
+						   .pool_pkt_count));
 
 		printf("%-" PRIu64, odp_atomic_load_u64(&args->
 							total_packets));
@@ -292,6 +403,9 @@ static int pktio_receive_thread(void *arg)
 		/* Drop packets with errors */
 		if (odp_unlikely(drop_err_pkts(&pkt, 1) == 0)) {
 			EXAMPLE_ERR("Drop frame - err_cnt:%lu\n", ++err_cnt);
+			stats = &appl->stats[ERROR_RULE_BASE_INDEX];
+			if (queue == stats->queue)
+				odp_atomic_inc_u64(&stats->queue_pkt_count);
 			continue;
 		}
 
@@ -306,7 +420,7 @@ static int pktio_receive_thread(void *arg)
 
 		/* Swap Eth MACs and possibly IP-addrs before sending back */
 		swap_pkt_addrs(&pkt, 1);
-		for (i = 0; i <  MAX_PMR_COUNT; i++) {
+		for (i = 0; i <  MAX_RULE_COUNT; i++) {
 			stats = &appl->stats[i];
 			if (queue == stats->queue)
 				odp_atomic_inc_u64(&stats->queue_pkt_count);
@@ -326,6 +440,68 @@ static int pktio_receive_thread(void *arg)
 	}
 
 	return 0;
+}
+
+static void configure_error_cos(odp_pktio_t pktio, appl_args_t *args)
+{
+	odp_queue_param_t qparam;
+	const char queuename[ODP_QUEUE_NAME_LEN] = "ErrorQueue";
+	const char *pool_name = "ErrorPool";
+	const char cosname[ODP_COS_NAME_LEN] = "ErrorCos";
+	odp_cos_t error_cos;
+	odp_pool_t error_pool;
+	odp_queue_t error_queue;
+	odp_pool_param_t pool_params;
+	odp_cls_cos_param_t cls_param;
+	global_statistics *stats = args->stats;
+
+	odp_queue_param_init(&qparam);
+	qparam.type       = ODP_QUEUE_TYPE_SCHED;
+	qparam.sched.prio = ODP_SCHED_PRIO_LOWEST;
+	qparam.sched.sync = ODP_SCHED_SYNC_PARALLEL;
+	qparam.sched.group = ODP_SCHED_GROUP_ALL;
+
+	error_queue = odp_queue_create(queuename, &qparam);
+	if (error_queue == ODP_QUEUE_INVALID) {
+		EXAMPLE_ERR("odp_queue_create failed");
+		exit(EXIT_FAILURE);
+	}
+	odp_pool_param_init(&pool_params);
+	pool_params.pkt.seg_len = SHM_PKT_POOL_BUF_SIZE;
+	pool_params.pkt.len     = SHM_PKT_POOL_BUF_SIZE;
+	pool_params.pkt.num     = SHM_PKT_POOL_SIZE / SHM_PKT_POOL_BUF_SIZE;
+	pool_params.type        = ODP_POOL_PACKET;
+	error_pool = odp_pool_create(pool_name, &pool_params);
+
+	if (error_pool == ODP_POOL_INVALID) {
+		EXAMPLE_ERR("Error: default pool create failed.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	odp_cls_cos_param_init(&cls_param);
+	cls_param.pool = error_pool;
+	cls_param.queue = error_queue;
+	cls_param.drop_policy = ODP_COS_DROP_POOL;
+	error_cos = odp_cls_cos_create(cosname, &cls_param);
+
+	if (error_cos == ODP_COS_INVALID) {
+		EXAMPLE_ERR("Error: default cos create failed.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (0 > odp_pktio_error_cos_set(pktio, error_cos)) {
+		EXAMPLE_ERR("odp_pktio_default_cos_set failed");
+		exit(EXIT_FAILURE);
+	}
+
+	stats[ERROR_RULE_BASE_INDEX].cos = error_cos;
+	/* add error  queue to global stats */
+	stats[ERROR_RULE_BASE_INDEX].queue = error_queue;
+	stats[DEFAULT_RULE_BASE_INDEX].pool = error_pool;
+	snprintf(stats[ERROR_RULE_BASE_INDEX].cos_name,
+		 sizeof(stats[ERROR_RULE_BASE_INDEX].cos_name),
+		 "%s", cosname);
+	odp_atomic_init_u64(&stats[ERROR_RULE_BASE_INDEX].queue_pkt_count, 0);
 }
 
 static odp_cos_t configure_default_cos(odp_pktio_t pktio, appl_args_t *args)
@@ -380,15 +556,15 @@ static odp_cos_t configure_default_cos(odp_pktio_t pktio, appl_args_t *args)
 		EXAMPLE_ERR("odp_pktio_default_cos_set failed");
 		exit(EXIT_FAILURE);
 	}
-	stats[args->policy_count].cos = cos_default;
+	stats[DEFAULT_RULE_BASE_INDEX].cos = cos_default;
 	/* add default queue to global stats */
-	stats[args->policy_count].queue = queue_default;
-	stats[args->policy_count].pool = pool_default;
-	snprintf(stats[args->policy_count].cos_name,
-		 sizeof(stats[args->policy_count].cos_name),
+	stats[DEFAULT_RULE_BASE_INDEX].queue = queue_default;
+	stats[DEFAULT_RULE_BASE_INDEX].pool = pool_default;
+	snprintf(stats[DEFAULT_RULE_BASE_INDEX].cos_name,
+		 sizeof(stats[DEFAULT_RULE_BASE_INDEX].cos_name),
 		 "%s", cos_name);
-	odp_atomic_init_u64(&stats[args->policy_count].queue_pkt_count, 0);
-	odp_atomic_init_u64(&stats[args->policy_count].pool_pkt_count, 0);
+	odp_atomic_init_u64(&stats[DEFAULT_RULE_BASE_INDEX].queue_pkt_count, 0);
+	odp_atomic_init_u64(&stats[DEFAULT_RULE_BASE_INDEX].pool_pkt_count, 0);
 	args->policy_count++;
 	return cos_default;
 }
@@ -465,7 +641,139 @@ static void configure_cos(odp_cos_t default_cos, appl_args_t *args)
 	}
 }
 
-/**
+static void configure_l3_qos_cos_queue(odp_pktio_t pktio, appl_args_t *args)
+{
+	int i = 0, retval;
+	odp_cos_t cos_tbl[MAX_L3_RULE_COUNT];
+	odp_queue_t queue_tbl[MAX_L3_RULE_COUNT];
+	uint8_t qos_tbl[MAX_L3_RULE_COUNT];
+	char cosname[ODP_COS_NAME_LEN];
+	char queuename[ODP_QUEUE_NAME_LEN];
+	odp_queue_param_t qparam;
+	global_statistics *stats;
+	odp_cls_cos_param_t cls_param;
+
+	/** Initialize scalar variable qos_tbl **/
+	for (i = 0; i < MAX_L3_RULE_COUNT; i++)
+		qos_tbl[i] = 0;
+
+	/*Configure Scheduler parameters*/
+	memset(&qparam, 0, sizeof(odp_queue_param_t));
+	qparam.sched.sync = ODP_SCHED_SYNC_PARALLEL;
+	qparam.sched.group = ODP_SCHED_GROUP_ALL;
+	qparam.type       = ODP_QUEUE_TYPE_SCHED;
+
+	for (i = 0; i < args->l3_rule_count; i++) {
+		stats = &args->stats[L3_RULE_BASE_INDEX + i];
+		sprintf(cosname, "%s_%d", "L3_Cos", i);
+		odp_cls_cos_param_init(&cls_param);
+		cls_param.pool = stats->pool;
+		cls_param.queue = stats->queue;
+		cls_param.drop_policy = ODP_COS_DROP_POOL;
+		cos_tbl[i] = odp_cls_cos_create(cosname, &cls_param);
+		if (cos_tbl[i] == ODP_COS_INVALID) {
+			EXAMPLE_ERR("odp_cls_cos_create failed");
+			break;
+		}
+		stats->cos = cos_tbl[i];
+
+		qparam.sched.prio = i % odp_schedule_num_prio();
+		sprintf(queuename, "%s_%d", stats->cos_name, i);
+		queue_tbl[i] = odp_queue_create(queuename, &qparam);
+		if (queue_tbl[i] == ODP_QUEUE_INVALID) {
+			EXAMPLE_ERR("odp_queue_create failed");
+			break;
+		}
+
+		stats->queue = queue_tbl[i];
+
+		retval = odp_cos_queue_set(cos_tbl[i], queue_tbl[i]);
+		if (retval < 0) {
+			EXAMPLE_ERR("odp_cos_queue_set failed");
+			exit(EXIT_FAILURE);
+		}
+		qos_tbl[i] = (int8_t)stats->l3_rule.val;
+		odp_atomic_init_u64(&stats->queue_pkt_count, 0);
+		odp_atomic_init_u64(&stats->pool_pkt_count, 0);
+	}
+	/* count 'i' is passed instead of num_qos to handle the rare scenario
+	if the odp_cls_cos_create() failed in the middle*/
+	if (i != 0) {
+		retval = odp_cos_with_l3_qos(pktio, i, qos_tbl, cos_tbl,
+					     args->l3_precedence);
+		if (retval < 0) {
+			EXAMPLE_ERR("Error in configuring l3 QoS rules\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+static void configure_l2_prio_cos_queue(odp_pktio_t pktio, appl_args_t *args)
+{
+	int i = 0, retval;
+	odp_cos_t cos_tbl[MAX_L2_RULE_COUNT] = {0};
+	odp_queue_t queue_tbl[MAX_L2_RULE_COUNT] = {0};
+	uint8_t l2_tbl[MAX_L2_RULE_COUNT] = {0};
+	char cosname[ODP_COS_NAME_LEN] = {'0'};
+	char queuename[ODP_QUEUE_NAME_LEN] = {'0'};
+	odp_queue_param_t qparam;
+	global_statistics *stats;
+	odp_cls_cos_param_t cls_param;
+
+	/*Configure Scheduler parameters*/
+	memset(&qparam, 0, sizeof(odp_queue_param_t));
+	qparam.sched.sync = ODP_SCHED_SYNC_NONE;
+	qparam.sched.group = ODP_SCHED_GROUP_ALL;
+
+	for (i = 0; i < args->l2_rule_count; i++) {
+		stats = &args->stats[L2_RULE_BASE_INDEX + i];
+		sprintf(cosname, "%s_%d", "L2_Cos", i);
+		odp_cls_cos_param_init(&cls_param);
+		cls_param.pool = stats->pool;
+		cls_param.queue = stats->queue;
+		cls_param.drop_policy = ODP_COS_DROP_POOL;
+		cos_tbl[i] = odp_cls_cos_create(cosname, &cls_param);
+		if (cos_tbl[i] == ODP_COS_INVALID) {
+			EXAMPLE_ERR("odp_cls_cos_create failed");
+			break;
+		}
+		stats->cos = cos_tbl[i];
+
+		memset(&qparam, 0, sizeof(odp_queue_param_t));
+		qparam.sched.sync = ODP_SCHED_SYNC_PARALLEL;
+		qparam.sched.group = ODP_SCHED_GROUP_ALL;
+		qparam.type       = ODP_QUEUE_TYPE_SCHED;
+		qparam.sched.prio = i % odp_schedule_num_prio();
+		sprintf(queuename, "%s_%d", stats->cos_name, i);
+		queue_tbl[i] = odp_queue_create(queuename, &qparam);
+		if (queue_tbl[i] == ODP_QUEUE_INVALID) {
+			EXAMPLE_ERR("odp_queue_create failed");
+			break;
+		}
+		stats->queue = queue_tbl[i];
+
+		retval = odp_cos_queue_set(cos_tbl[i], queue_tbl[i]);
+		if (retval < 0) {
+			EXAMPLE_ERR("odp_cos_queue_set failed");
+			exit(EXIT_FAILURE);
+		}
+		l2_tbl[i] = (uint8_t)stats->l2_rule.val;
+		odp_atomic_init_u64(&stats->queue_pkt_count, 0);
+		odp_atomic_init_u64(&stats->pool_pkt_count, 0);
+	}
+	/* count 'i' is passed instead of num_qos to handle the rare scenario
+	if the odp_cls_cos_create() failed in the middle*/
+	if (i != 0) {
+		retval = odp_cos_with_l2_priority(pktio, args->l2_rule_count,
+						  l2_tbl, cos_tbl);
+		if (retval < 0) {
+			EXAMPLE_ERR("Error in configuring l2 priority rules\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+ /**
  * ODP Classifier example main function
  */
 int main(int argc, char *argv[])
@@ -480,10 +788,17 @@ int main(int argc, char *argv[])
 	odp_pktio_t pktio;
 	appl_args_t *args;
 	odp_cos_t default_cos;
-	odp_shm_t shm;
 	int ret;
 	odp_instance_t instance;
 	odph_odpthread_params_t thr_params;
+	args = calloc(1, sizeof(appl_args_t));
+	if (args == NULL) {
+		EXAMPLE_ERR("Error: args mem alloc failed.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/* Parse and store the application arguments */
+	parse_args(argc, argv, args);
 
 	/* Init ODP before calling anything else */
 	if (odp_init_global(&instance, NULL, NULL)) {
@@ -497,25 +812,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	/* Reserve memory for args from shared mem */
-	shm = odp_shm_reserve("cls_shm_args", sizeof(appl_args_t),
-			      ODP_CACHE_LINE_SIZE, 0);
-
-	if (shm == ODP_SHM_INVALID) {
-		EXAMPLE_ERR("Error: shared mem reserve failed.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	args = odp_shm_addr(shm);
-
-	if (args == NULL) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	memset(args, 0, sizeof(*args));
-	/* Parse and store the application arguments */
-	parse_args(argc, argv, args);
 
 	/* Print both system and application information */
 	print_info(NO_PATH(argv[0]), args);
@@ -558,6 +854,12 @@ int main(int argc, char *argv[])
 
 	configure_cos(default_cos, args);
 
+	configure_l2_prio_cos_queue(pktio, args);
+
+	configure_l3_qos_cos_queue(pktio, args);
+	configure_error_cos(pktio, args);
+
+
 	if (odp_pktio_start(pktio)) {
 		EXAMPLE_ERR("Error: unable to start pktio.\n");
 		exit(EXIT_FAILURE);
@@ -592,7 +894,7 @@ int main(int argc, char *argv[])
 	}
 
 	free(args->if_name);
-	odp_shm_free(shm);
+	free(args);
 	if (odp_pktio_close(pktio))
 		EXAMPLE_ERR("err: close pktio error\n");
 	if (odp_pool_destroy(pool))
@@ -696,6 +998,94 @@ static int convert_str_to_pmr_enum(char *token, odp_cls_pmr_term_t *term,
 	return -1;
 }
 
+static int parse_l3_rule_policy(appl_args_t *appl_args, char *argv[] ODP_UNUSED,
+				char *optarg)
+{
+	int policy_count;
+	char *token;
+	uint8_t	l3_prio;
+	size_t len;
+	global_statistics *stats;
+	char *l3_rule_str;
+
+	policy_count = appl_args->l3_rule_count;
+	stats = appl_args->stats;
+
+	/* last array index is needed for default queue */
+	if (policy_count >= MAX_L3_RULE_COUNT - 1) {
+		EXAMPLE_ERR("Maximum allowed PMR reached\n");
+		return -1;
+	}
+
+	len = strlen(optarg);
+	len++;
+	l3_rule_str = malloc(len);
+	if (!l3_rule_str)
+		return -1;
+	strcpy(l3_rule_str, optarg);
+
+	/* L2 Priority Value */
+	token = strtok(l3_rule_str, ":");
+	strncpy(stats[L3_RULE_BASE_INDEX + policy_count].value, token,
+		DISPLAY_STRING_LEN - 1);
+	l3_prio = atoi(token);
+	stats[L3_RULE_BASE_INDEX + policy_count].l3_rule.val = l3_prio;
+
+	/* Queue Name */
+	token = strtok(NULL, ":");
+
+	strncpy(stats[L3_RULE_BASE_INDEX + policy_count].cos_name, token,
+		ODP_QUEUE_NAME_LEN - 1);
+	appl_args->l3_rule_count++;
+	free(l3_rule_str);
+	return 0;
+}
+
+static int parse_l2_rule_policy(appl_args_t *appl_args, char *argv[],
+				char *optarg)
+{
+	int policy_count;
+	char *token;
+	uint8_t	l2_prio;
+	size_t len;
+	global_statistics *stats;
+	char *l2_rule_str;
+
+	policy_count = appl_args->l2_rule_count;
+	stats = appl_args->stats;
+
+	/* last array index is needed for default queue */
+	if (policy_count >= MAX_L2_RULE_COUNT - 1) {
+		EXAMPLE_ERR("Maximum allowed PMR reached\n");
+		return -1;
+	}
+
+	len = strlen(optarg);
+	len++;
+	l2_rule_str = malloc(len);
+	strcpy(l2_rule_str, optarg);
+
+	/* L2 Priority Value */
+	token = strtok(l2_rule_str, ":");
+	strncpy(stats[L2_RULE_BASE_INDEX + policy_count].value, token,
+		DISPLAY_STRING_LEN - 1);
+	l2_prio = atoi(token);
+	if (l2_prio > 7) {
+		EXAMPLE_ERR("L2 Prio is out of range: Must be between 0-7\n");
+		usage(argv[0]);
+		exit(EXIT_FAILURE);
+	}
+	stats[L2_RULE_BASE_INDEX + policy_count].l2_rule.val = l2_prio;
+
+	/* Queue Name */
+	token = strtok(NULL, ":");
+
+	strncpy(stats[L2_RULE_BASE_INDEX + policy_count].cos_name, token,
+		ODP_QUEUE_NAME_LEN - 1);
+	appl_args->l2_rule_count++;
+	free(l2_rule_str);
+	return 0;
+}
 
 static int parse_pmr_policy(appl_args_t *appl_args, char *argv[], char *optarg)
 {
@@ -791,19 +1181,23 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 	size_t len;
 	int i;
 	int interface = 0;
-	int policy = 0;
+	int policy = 0, l2_rules = 0, l3_rules = 0;
 
 	static const struct option longopts[] = {
 		{"count", required_argument, NULL, 'c'},
 		{"interface", required_argument, NULL, 'i'},	/* return 'i' */
 		{"policy", required_argument, NULL, 'p'},	/* return 'p' */
+		{"l2_policy", required_argument, NULL, 'l'},	/* return 'l' */
+		{"l3_policy", required_argument, NULL, 'q'},	/* return 'q' */
+		{"l3_policy_precedence", required_argument, NULL, 'a'},
+								/* return 'a' */
 		{"mode", required_argument, NULL, 'm'},		/* return 'm' */
 		{"time", required_argument, NULL, 't'},		/* return 't' */
 		{"help", no_argument, NULL, 'h'},		/* return 'h' */
 		{NULL, 0, NULL, 0}
 	};
 
-	static const char *shortopts = "+c:t:i:p:m:t:h";
+	static const char *shortopts = "+c:t:i:p:m:t:l:q:a:h";
 
 	/* let helper collect its own arguments (e.g. --odph_proc) */
 	odph_parse_options(argc, argv, shortopts, longopts);
@@ -826,8 +1220,21 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 				continue;
 			policy = 1;
 			break;
+		case 'l':
+			if (0 > parse_l2_rule_policy(appl_args, argv, optarg))
+				continue;
+			l2_rules = 1;
+			break;
+		case 'q':
+			if (0 > parse_l3_rule_policy(appl_args, argv, optarg))
+				continue;
+			l3_rules = 1;
+			break;
 		case 't':
 			appl_args->time = atoi(optarg);
+			break;
+		case 'a':
+			appl_args->l3_precedence = atoi(optarg);
 			break;
 		case 'i':
 			len = strlen(optarg);
@@ -864,7 +1271,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 		}
 	}
 
-	if (!interface ||  !policy) {
+	if (!interface || (!policy && !l2_rules && !l3_rules)) {
 		usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
@@ -913,11 +1320,16 @@ static void usage(char *progname)
 			"  E.g. %s -i eth1 -m 0 -p \"ODP_PMR_SIP_ADDR:10.10.10.5:FFFFFFFF:queue1\" \\\n"
 			"\t\t\t-p \"ODP_PMR_SIP_ADDR:10.10.10.7:000000FF:queue2\" \\\n"
 			"\t\t\t-p \"ODP_PMR_SIP_ADDR:10.5.5.10:FFFFFF00:queue3\"\n"
+			"\t\t\t-l \"4:queue4\"\n"
+			"\t\t\t-q \"40:queue5\"\n"
+			"\t\t\t-a \"1/0\"\n"
 			"\n"
 			"For the above example configuration the following will be the packet distribution\n"
 			"queue1\t\tPackets with source ip address 10.10.10.5\n"
 			"queue2\t\tPackets with source ip address whose last 8 bits match 7\n"
 			"queue3\t\tPackets with source ip address in the subnet 10.5.5.0\n"
+			"queue4\t\tPackets with VLAN Priority\n"
+			"queue5\t\tPackets with QoS value 40\n"
 			"\n"
 			"Mandatory OPTIONS:\n"
 			"  -i, --interface Eth interface\n"
@@ -931,6 +1343,17 @@ static void usage(char *progname)
 			"<value>		PMR value to be matched.\n"
 			"\n"
 			"<mask  bits>		PMR mask bits to be applied on the PMR term value\n"
+			"<Queue Name>		Name of target queue\n"
+			"\n"
+			"  -l, --l2_policy <VLAN Priority Value>:<queue name>\n"
+			"\n"
+			"<VLAN Priority Value>	L2 VLAN priority value\n"
+			"<Queue Name>		Name of target queue\n"
+			"\n"
+			"  -q, --l3_policy <L3 QoS Value>:<queue name>\n"
+			"\n"
+			"<L3 QoS Value>		L3 QoS value\n"
+			"<Queue Name>		Name of target queue\n"
 			"\n"
 			"Optional OPTIONS\n"
 			"  -c, --count <number> CPU count.\n"
@@ -943,6 +1366,10 @@ static void usage(char *progname)
 			" -t, --timeout		!0: Time for which the classifier will be run in seconds\n"
 			"			0: Runs in infinite loop\n"
 			"			default: Runs in infinite loop\n"
+			"\n"
+			" -a, --l3_policy_precedence	!0: L3 policy rule will take precedence over\n"
+			"				L2 Policy rules else L2 policy take precendece\n"
+			"			default: 0\n"
 			"\n"
 			"  -h, --help		Display help and exit.\n"
 			"\n", NO_PATH(progname), NO_PATH(progname)

@@ -626,7 +626,6 @@ int main(int argc, char *argv[])
 	odp_pool_t pool;
 	int num_workers;
 	int i;
-	odp_shm_t shm;
 	odp_cpumask_t cpumask;
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
 	odp_pool_param_t params;
@@ -638,6 +637,14 @@ int main(int argc, char *argv[])
 	odp_pktio_t *pktio;
 	odp_instance_t instance;
 	odph_odpthread_params_t thr_params;
+	args = calloc(1, sizeof(args_t));
+	if (!args) {
+		EXAMPLE_ERR("Error: args mem alloc failed.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/* Parse and store the application arguments */
+	parse_args(argc, argv, &args->appl);
 
 	/* Init ODP before calling anything else */
 	if (odp_init_global(&instance, NULL, NULL)) {
@@ -657,20 +664,6 @@ int main(int argc, char *argv[])
 	odp_atomic_init_u64(&counters.icmp, 0);
 	odp_atomic_init_u64(&counters.cnt, 0);
 	odp_atomic_init_u64(&counters.tx_drops, 0);
-
-	/* Reserve memory for args from shared mem */
-	shm = odp_shm_reserve("shm_args", sizeof(args_t),
-			      ODP_CACHE_LINE_SIZE, 0);
-	args = odp_shm_addr(shm);
-
-	if (args == NULL) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
-	}
-	memset(args, 0, sizeof(*args));
-
-	/* Parse and store the application arguments */
-	parse_args(argc, argv, &args->appl);
 
 	/* Print both system and application information */
 	print_info(NO_PATH(argv[0]), &args->appl);
@@ -890,8 +883,13 @@ int main(int argc, char *argv[])
 	for (i = 0; i < args->appl.if_count; ++i)
 		odp_pktio_close(pktio[i]);
 	free(pktio);
-	free(args->appl.if_names);
-	free(args->appl.if_str);
+	if (args && args->appl.if_names)
+		free(args->appl.if_names);
+	if (args && args->appl.if_str)
+		free(args->appl.if_str);
+
+	free(args);
+
 	if (0 != odp_pool_destroy(pool))
 		fprintf(stderr, "unable to destroy pool \"pool\"\n");
 	odp_timer_pool_destroy(tp);

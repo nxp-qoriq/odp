@@ -174,7 +174,7 @@ odp_packet_t create_ipv4_packet(stream_db_entry_t *stream,
 	ipsec_cache_entry_t *entry = NULL;
 	odp_packet_t pkt;
 	uint8_t *base;
-	uint8_t *data;
+	uint8_t *data, *auth_data = NULL;
 	odph_ethhdr_t *eth;
 	odph_ipv4hdr_t *ip;
 	odph_ipv4hdr_t *inner_ip = NULL;
@@ -227,7 +227,8 @@ odp_packet_t create_ipv4_packet(stream_db_entry_t *stream,
 	}
 
 	/* AH (if specified) */
-	if (entry && (entry == stream->input.entry) &&
+	if (entry && ODP_IPSEC_ESP != entry->params.proto &&
+	    (entry == stream->input.entry) &&
 	    (ODP_AUTH_ALG_NULL != entry->ah.alg)) {
 		if (entry->ah.alg != ODP_AUTH_ALG_MD5_96 &&
 		    entry->ah.alg != ODP_AUTH_ALG_SHA256_128)
@@ -249,6 +250,7 @@ odp_packet_t create_ipv4_packet(stream_db_entry_t *stream,
 		if (ODP_CIPHER_ALG_3DES_CBC != entry->esp.alg)
 			abort();
 
+		auth_data = data;
 		esp = (odph_esphdr_t *)data;
 		data += sizeof(*esp);
 		data += entry->esp.iv_len;
@@ -357,6 +359,40 @@ odp_packet_t create_ipv4_packet(stream_db_entry_t *stream,
 		memcpy(ah->icv, hash, 12);
 	}
 
+	/* Append the ICV in the case of the IPSEC_ESP protocol */
+	if (entry && ODP_IPSEC_ESP == entry->params.proto &&
+		(entry == stream->input.entry) &&
+		(ODP_AUTH_ALG_NULL != entry->ah.alg)) {
+		if (ODP_AUTH_ALG_MD5_96 != entry->ah.alg)
+			abort();
+		uint8_t hash[EVP_MAX_MD_SIZE];
+		int auth_len = data - auth_data;
+
+		memset(&hash, 0, EVP_MAX_MD_SIZE);
+
+		if (entry->params.esn) {
+			uint32_t esn = 0;
+			/* Authenticated data includes the ESN (4 bytes) */
+			if (!odp_packet_push_tail(pkt, sizeof(uint32_t)))
+				abort();
+			*((uint32_t *)(intptr_t)data) = esn;
+			auth_len += sizeof(uint32_t);
+		}
+		HMAC(EVP_md5(),
+			entry->ah.key.data,
+			entry->ah.key.length,
+			auth_data,
+			auth_len,
+			hash,
+			NULL);
+		if (entry->params.esn)
+			odp_packet_pull_tail(pkt, sizeof(uint32_t));
+		memcpy(data, hash, 12);
+		data += 12;
+
+		ip->tot_len = odp_cpu_to_be_16(data - (uint8_t *)ip);
+	}
+
 	/* Correct set packet length offsets */
 	odp_packet_push_tail(pkt, data - base);
 	odp_packet_l2_offset_set(pkt, (uint8_t *)eth - base);
@@ -429,7 +465,8 @@ odp_bool_t verify_ipv4_packet(stream_db_entry_t *stream,
 		if (ODP_AUTH_ALG_MD5_96 != entry->ah.alg)
 			abort();
 	} else {
-		if (entry && (ODP_AUTH_ALG_NULL != entry->ah.alg))
+		if (entry && ODP_IPSEC_ESP != entry->params.proto &&
+			(ODP_AUTH_ALG_NULL != entry->ah.alg))
 			return FALSE;
 	}
 	if (esp) {
@@ -491,6 +528,40 @@ odp_bool_t verify_ipv4_packet(stream_db_entry_t *stream,
 		DES_key_schedule ks1, ks2, ks3;
 		uint8_t iv[8];
 		int encrypt_len = ipv4_data_len(ip) - hdr_len;
+
+		/* Check ESP authentication if present */
+		if (ODP_IPSEC_ESP == entry->params.proto) {
+			uint8_t hash[EVP_MAX_MD_SIZE];
+			uint8_t icv[12];
+
+			encrypt_len -= entry->ah.icv_len;
+			memcpy(icv, data + encrypt_len, 12);
+			/* Authenticate with ESN if present */
+			if (entry->params.esn) {
+				uint8_t *icv_p;
+				uint32_t esn = 0;
+
+				if (!odp_packet_push_tail(pkt,
+							  sizeof(uint32_t)))
+					abort();
+				icv_p = data + encrypt_len;
+				*((uint32_t *)(intptr_t)icv_p) = esn;
+				encrypt_len += sizeof(uint32_t);
+			}
+			HMAC(EVP_md5(),
+			     entry->ah.key.data,
+			     entry->ah.key.length,
+			     (uint8_t *)(ip + 1),
+			     encrypt_len + hdr_len,
+			     hash,
+			     NULL);
+			if (0 != memcmp(icv, hash, entry->ah.icv_len))
+				return FALSE;
+			if (entry->params.esn) {
+				odp_packet_pull_tail(pkt, sizeof(uint32_t));
+				encrypt_len -= sizeof(uint32_t);
+			}
+		}
 
 		memcpy(iv, esp->iv, sizeof(iv));
 

@@ -43,7 +43,7 @@ AM_CFLAGS +=  -I$(top_srcdir)/helper/include
 
 AM_CFLAGS +=  -I$(srcdir)/../linux-generic/include
 AM_CFLAGS +=  -I$(srcdir)/../linux-generic/include/api
-AM_CFLAGS +=  -I$(srcdir)/../linux-generic/arch/@ARCH@/
+AM_CFLAGS +=  -I$(srcdir)/../linux-generic/arch/@ARCH_DIR@/
 
 if SDK_INSTALL_PATH_
 AM_CFLAGS    += -I$(SDK_INSTALL_PATH)/usr/include
@@ -135,7 +135,7 @@ odpapiinclude_HEADERS = \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/traffic_mngr.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/visibility_begin.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/visibility_end.h \
-		  $(top_srcdir)/platform/linux-generic/arch/@ARCH@/odp/api/cpu_arch.h \
+		  $(top_srcdir)/platform/linux-generic/arch/@ARCH_DIR@/odp/api/cpu_arch.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/version.h
 
 odpapiplatincludedir= $(includedir)/odp/api/plat
@@ -147,7 +147,6 @@ odpapiplatinclude_HEADERS = \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/plat/classification_types.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/plat/cpumask_types.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/plat/crypto_types.h \
-		  $(top_srcdir)/platform/linux-generic/include/odp/api/plat/crypto_ipsec_types.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/plat/event_types.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/plat/init_types.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/plat/packet_types.h \
@@ -195,7 +194,9 @@ noinst_HEADERS = \
 		  ${top_srcdir}/platform/linux-generic/include/odp_posix_extensions.h \
 		  ${top_srcdir}/platform/linux-generic/include/odp_queue_internal.h \
 		  ${top_srcdir}/platform/linux-generic/include/odp_sorted_list_internal.h \
+		  ${top_srcdir}/platform/linux-generic/include/odp_schedule_if.h \
 		  ${top_srcdir}/platform/linux-generic/include/odp_schedule_internal.h \
+		  ${top_srcdir}/platform/linux-generic/include/odp_schedule_ordered_internal.h \
 		  ${top_srcdir}/platform/linux-generic/include/odp_shm_internal.h \
 		  ${top_srcdir}/platform/linux-generic/include/odp_timer_internal.h \
 		  ${top_srcdir}/platform/linux-generic/include/odp_timer_wheel_internal.h \
@@ -227,7 +228,7 @@ __LIB__libodp_linux_la_SOURCES = \
 			   odp_shared_memory.c \
 			   ../linux-generic/odp_spinlock.c \
 			   ../linux-generic/odp_spinlock_recursive.c \
-			   ../linux-generic/odp_thread.c \
+			   odp_thread.c \
 			   ../linux-generic/odp_thrmask.c \
 			   ../linux-generic/odp_ticketlock.c \
 			   ../linux-generic/odp_atomic.c \

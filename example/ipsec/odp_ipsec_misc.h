@@ -73,6 +73,15 @@ typedef struct ip_addr_range_s {
 	uint32_t  mask;     /**< mask, 1 indicates bits are valid */
 } ip_addr_range_t;
 
+
+/**
+ * IPSEC protocol configurable parameters
+ */
+typedef struct proto_params {
+	enum odp_ipsec_proto proto; /** IPSEC protocol */
+	odp_bool_t esn;		/** Use extended sequence numbers */
+} proto_params_t;
+
 /**
  * Parse text string representing a key into ODP key structure
  *
@@ -337,6 +346,58 @@ odp_bool_t is_crypto_compl_status_ok(odp_crypto_compl_status_t *status)
 	return TRUE;
 }
 
+
+/**
+ * Get named parameter value
+ *
+ * @param param      Pointer to name of the parameter
+ * @param input      Pointer to the input string containing the named
+ *                   parameters in the form par_1=val[,par_n=val]
+ *
+ * @return decimal value of the parameter if successful else -1
+ */
+static inline int get_named_parameter(const char *param, char *input)
+{
+	int	val;
+	char	*p, fparam[MAX_STRING + 2], *rp;
+
+	if (strlen(param) >= MAX_STRING)
+		return -1;
+	sprintf(fparam, "%s=", param);
+	p = strstr(input, fparam);
+	if (!p)
+		return -1;
+	p += strlen(fparam);
+	rp = strchr(p, ',');
+	if (rp)
+		*rp = '\0';
+	val = atoi(p);
+	if (rp)
+		*rp = ',';
+	return val;
+}
+
+/**
+ * Parse text string representing IPSEC protocol named parameters
+ *
+ * @param params     Pointer to the IPSEC parameters structure to populate
+ * @param input      Pointer to the input string to parse
+ *
+ * @return 0 if successful else -1
+ */
+static inline
+int parse_ipsec_proto_named_params(proto_params_t *params, char *input)
+{
+	int val;
+
+	val = get_named_parameter("esn", input);
+	if (val < 0) {
+		printf("ERROR: getting \"esn\" parameter value\n");
+		return -1;
+	}
+	params->esn = (val) ? TRUE : FALSE;
+	return 0;
+}
 
 #ifdef __cplusplus
 }
