@@ -179,20 +179,21 @@ odp_queue_t polled_odp_queue_create(const char *name,
 				const odp_queue_param_t *param)
 {
 	odp_queue_t my_queue;
-	odp_queue_type_t type = param->type;
+	odp_queue_param_t qp;
+	odp_queue_type_t type;
+
+	odp_queue_param_init(&qp);
+	if (param)
+		memcpy(&qp, param, sizeof(odp_queue_param_t));
+
+	type = qp.type;
 
 	if (ODP_QUEUE_TYPE_SCHED == type) {
-		printf("%s: change %s to POLL\n", __func__, name);
-		type = ODP_QUEUE_TYPE_PLAIN;
+		printf("%s: change %s to PLAIN\n", __func__, name);
+		qp.type = ODP_QUEUE_TYPE_PLAIN;
 	}
 
-	my_queue = odp_queue_create(name, param);
-
-	if (ODP_QUEUE_TYPE_PLAIN == type) {
-		poll_queues[num_polled_queues++] = my_queue;
-		printf("%s: adding %"PRIu64"\n", __func__,
-		       odp_queue_to_u64(my_queue));
-	}
+	my_queue = odp_queue_create(name, &qp);
 
 	return my_queue;
 }
@@ -388,6 +389,12 @@ static void initialize_intf(char *intf)
 
 	if (odp_pktin_event_queue(pktio, &inq_def, 1) != 1)
 		EXAMPLE_ABORT("Error: failed to get input queue for %s\n", intf);
+
+	if (pktio_param.in_mode == ODP_PKTIN_MODE_QUEUE) {
+		poll_queues[num_polled_queues++] = inq_def;
+		printf("%s: adding %"PRIu64"\n", __func__,
+		       odp_queue_to_u64(inq_def));
+	}
 
 	if (odp_pktout_queue(pktio, &pktout, 1) != 1)
 		EXAMPLE_ABORT("Error: failed to get pktout queue for %s\n", intf);

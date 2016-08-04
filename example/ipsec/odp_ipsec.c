@@ -536,6 +536,12 @@ void initialize_intf(char *intf)
 		exit(EXIT_FAILURE);
 	}
 
+	if (pktio_param.in_mode == ODP_PKTIN_MODE_QUEUE) {
+		poll_queues[num_polled_queues++] = inq;
+		printf("%s: adding %"PRIu64"\n", __func__,
+		       odp_queue_to_u64(inq));
+	}
+
 	if (odp_pktout_queue(pktio, &pktout, 1) != 1) {
 		EXAMPLE_ERR("Error: failed to get pktout queue for %s\n", intf);
 		exit(EXIT_FAILURE);
