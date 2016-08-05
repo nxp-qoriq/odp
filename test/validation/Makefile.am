@@ -22,6 +22,9 @@ ODP_MODULES = atomic \
 	      system
 
 SUBDIRS = common $(ODP_MODULES)
+if BUILD_DPAA2
+SUBDIRS += crypto_proto
+endif
 
 #The tests will need to retain the deprecated test implementation
 AM_CFLAGS += -Wno-deprecated-declarations

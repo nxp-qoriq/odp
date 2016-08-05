@@ -12,6 +12,7 @@ AC_CONFIG_FILES([test/Makefile
 		 test/validation/common/Makefile
 		 test/validation/cpumask/Makefile
 		 test/validation/crypto/Makefile
+		 test/validation/crypto_proto/Makefile
 		 test/validation/errno/Makefile
 		 test/validation/hash/Makefile
 		 test/validation/init/Makefile
