@@ -485,6 +485,16 @@ int odp_pktout_send(odp_pktout_queue_t queue, const odp_packet_t pkt_table[], in
 	return pkts;
 }
 
+int single_capability(odp_pktio_capability_t *capa)
+{
+	memset(capa, 0, sizeof(odp_pktio_capability_t));
+	capa->max_input_queues  = 1;
+	capa->max_output_queues = 1;
+	capa->set_op.op.promisc_mode = 1;
+
+	return 0;
+}
+
 int odp_pktio_inq_setdef(odp_pktio_t id, odp_queue_t queue)
 {
 	pktio_entry_t *pktio_entry = get_pktio_entry(id);
@@ -1190,10 +1200,11 @@ int odp_pktout_queue(odp_pktio_t pktio, odp_pktout_queue_t queues[],
 	return i;
 }
 
-int odp_pktio_capability(odp_pktio_t pktio ODP_UNUSED, odp_pktio_capability_t *capa ODP_UNUSED)
+int odp_pktio_capability(odp_pktio_t pktio ODP_UNUSED, odp_pktio_capability_t *capa)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	/*FIXME: Need to implement pktio specific capability*/
+
+	return single_capability(capa);
 }
 
 int odp_pktin_event_queue(odp_pktio_t pktio, odp_queue_t queues[], int num)

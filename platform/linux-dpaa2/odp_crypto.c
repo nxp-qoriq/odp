@@ -38,6 +38,8 @@
 #include <string.h>
 #include <pthread.h>
 
+#define MAX_SESSIONS 256
+
 #define ODP_DPAA2_CRYPTO_MIN_REQ_VQ 1
 #define ODP_DPAA2_CRYPTO_ENABLE_RX_NOTIF FALSE
 #define SYNC_MODE_EN 0
@@ -1970,9 +1972,27 @@ odp_crypto_compl_free(odp_crypto_compl_t completion_event ODP_UNUSED)
 	/* We use the packet as the completion event so nothing to do here */
 }
 
-int odp_crypto_capability(odp_crypto_capability_t *capa ODP_UNUSED)
+int odp_crypto_capability(odp_crypto_capability_t *capa)
 {
-	ODP_UNIMPLEMENTED();
+	if (NULL == capa)
+		return -1;
+
+	/* Initialize crypto capability structure */
+	memset(capa, 0, sizeof(odp_crypto_capability_t));
+
+	capa->ciphers.bit.null = 1;
+	capa->ciphers.bit.des = 1;
+	capa->ciphers.bit.trides_cbc  = 1;
+	capa->ciphers.bit.aes128_cbc  = 1;
+	capa->ciphers.bit.aes128_gcm  = 1;
+
+	capa->auths.bit.null = 1;
+	capa->auths.bit.md5_96 = 1;
+	capa->auths.bit.sha256_128 = 1;
+	capa->auths.bit.aes128_gcm  = 1;
+
+	capa->max_sessions = MAX_SESSIONS;
+
 	return 0;
 }
 

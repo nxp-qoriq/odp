@@ -136,6 +136,8 @@ static inline odp_queue_t odp_pktio_inq_getdef(odp_pktio_t id)
  */
 int odp_pktio_inq_remdef(odp_pktio_t pktio);
 
+int single_capability(odp_pktio_capability_t *capa);
+
 #ifdef __cplusplus
 }
 #endif
