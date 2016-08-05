@@ -1,4 +1,5 @@
 include $(top_srcdir)/test/Makefile.inc
+bindir = ${exec_prefix}/odp/test/miscellaneous
 
 if test_cpp
 bin_PROGRAMS =  odp_api_from_cpp$(EXEEXT)

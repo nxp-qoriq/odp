@@ -343,9 +343,15 @@ int main(int argc, char *argv[])
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
 	odp_instance_t instance;
 	odph_odpthread_params_t thr_params;
-	odp_shm_t shm = ODP_SHM_INVALID;
 	test_globals_t *gbls = NULL;
 	int err = 0;
+
+	gbls = calloc(1, sizeof(test_globals_t));
+	if (!gbls) {
+		EXAMPLE_ERR("Error: args mem alloc failed.\n");
+		return -1;
+	}
+	parse_args(argc, argv, &gbls->args);
 
 	printf("\nODP timer example starts\n");
 
@@ -372,27 +378,6 @@ int main(int argc, char *argv[])
 	printf("Max CPU count:   %i\n",        odp_cpu_count());
 
 	printf("\n");
-
-	/* Reserve memory for test_globals_t from shared mem */
-	shm = odp_shm_reserve("shm_test_globals", sizeof(test_globals_t),
-			      ODP_CACHE_LINE_SIZE, 0);
-	if (ODP_SHM_INVALID == shm) {
-		err = 1;
-		EXAMPLE_ERR("Error: shared mem reserve failed.\n");
-		goto err;
-	}
-
-	gbls = odp_shm_addr(shm);
-	if (NULL == gbls) {
-		err = 1;
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		goto err;
-	}
-	memset(gbls, 0, sizeof(test_globals_t));
-	gbls->pool = ODP_POOL_INVALID;
-	gbls->tp = ODP_TIMER_POOL_INVALID;
-
-	parse_args(argc, argv, &gbls->args);
 
 	memset(thread_tbl, 0, sizeof(thread_tbl));
 
@@ -444,7 +429,6 @@ int main(int argc, char *argv[])
 	}
 	odp_timer_pool_start();
 
-	odp_shm_print_all();
 	(void)odp_timer_pool_info(gbls->tp, &tpinfo);
 	printf("Timer pool\n");
 	printf("----------\n");
@@ -524,9 +508,8 @@ err:
 		if (odp_pool_destroy(gbls->pool))
 			err = 1;
 
-	if (shm != ODP_SHM_INVALID)
-		if (odp_shm_free(shm))
-			err = 1;
+	if (gbls)
+		free(gbls);
 
 	if (odp_term_local())
 		err = 1;

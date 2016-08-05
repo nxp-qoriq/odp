@@ -1,4 +1,5 @@
 include $(top_srcdir)/test/Makefile.inc
+bindir = ${exec_prefix}/odp/test/performance
 
 TESTS_ENVIRONMENT += TEST_DIR=${builddir}
 
