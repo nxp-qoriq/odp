@@ -210,11 +210,9 @@ AC_ARG_ENABLE([debug-print],
     [  --enable-debug-print    display debugging information],
     [if test "x$enableval" = "xyes"; then
 	ODP_DEBUG_PRINT=1
-     else
-	ODP_DEBUG_PRINT=0
+	ODP_CFLAGS="$ODP_CFLAGS -DODP_IPSEC_DEBUG"
     fi])
 ODP_CFLAGS="$ODP_CFLAGS -DODP_DEBUG_PRINT=$ODP_DEBUG_PRINT"
-ODP_CFLAGS="$ODP_CFLAGS -DODP_IPSEC_DEBUG"
 
 ######################################################################
 AC_ARG_ENABLE([ipsec-debug],
