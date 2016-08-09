@@ -585,7 +585,7 @@ odp_packet_t odp_packet_copy_part(odp_packet_t pkt ODP_UNUSED, uint32_t offset O
 				  uint32_t len ODP_UNUSED, odp_pool_t pool ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
+	return ODP_PACKET_INVALID;
 }
 
 int odp_packet_align(odp_packet_t *pkt ODP_UNUSED, uint32_t offset ODP_UNUSED,

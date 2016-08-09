@@ -193,11 +193,6 @@ odp_pool_t odp_pool_create(const char *name, odp_pool_param_t *params)
 		blk_size = params->pkt.len <= seg_len ? seg_len :
 			ODP_ALIGN_ROUNDUP(params->pkt.len, seg_len);
 
-		/* Reject create if pkt.len needs too many segments */
-		/* todo - segmented buffers not supported */
-		if (blk_size / seg_len > 1 /*ODP_BUFFER_MAX_SEG*/)
-			return ODP_POOL_INVALID;
-
 		/*todo - w.r.t WRIOP 256 byte alignment requirement
 		making the buffer in multiple of 256 */
 		blk_size = ODP_ALIGN_ROUNDUP(
