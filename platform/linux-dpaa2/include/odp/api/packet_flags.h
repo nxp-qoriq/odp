@@ -438,81 +438,141 @@ static inline void odp_packet_has_flow_hash_clr(odp_packet_t pkt)
 	BIT_RESET_AT_POS(pkt_hdr->eth_flags, DPAA2BUF_HAS_HASHVAL);
 }
 
-static inline int odp_packet_has_eth_bcast(odp_packet_t pkt ODP_UNUSED)
+static inline int odp_packet_has_eth_bcast(odp_packet_t pkt)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+	return BIT_ISSET_AT_POS(annotation->word3, L2_ETH_MAC_BROADCAST);
 }
 
-static inline int odp_packet_has_eth_mcast(odp_packet_t pkt ODP_UNUSED)
+static inline int odp_packet_has_eth_mcast(odp_packet_t pkt)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+	return BIT_ISSET_AT_POS(annotation->word3, L2_ETH_MAC_MULTICAST);
 }
 
-static inline  int odp_packet_has_ip_bcast(odp_packet_t pkt ODP_UNUSED)
+static inline  int odp_packet_has_ip_bcast(odp_packet_t pkt)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+	return BIT_ISSET_AT_POS(annotation->word4, L3_IPV4_1_BROADCAST);
 }
 
-static inline  int odp_packet_has_ip_mcast(odp_packet_t pkt ODP_UNUSED)
+static inline  int odp_packet_has_ip_mcast(odp_packet_t pkt)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+	return BIT_ISSET_AT_POS(annotation->word4, L3_IPV4_1_MULTICAST);
 }
 
-static inline void odp_packet_has_eth_bcast_set(odp_packet_t pkt ODP_UNUSED,
-															int val ODP_UNUSED)
+static inline void odp_packet_has_eth_bcast_set(odp_packet_t pkt, int val)
 {
-	ODP_UNIMPLEMENTED();
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+
+	if (val)
+		BIT_SET_AT_POS(annotation->word3, L2_ETH_MAC_BROADCAST);
+	else
+		BIT_RESET_AT_POS(annotation->word3, L2_ETH_MAC_BROADCAST);
 }
 
-static inline void odp_packet_has_eth_mcast_set(odp_packet_t pkt ODP_UNUSED,
-															int val ODP_UNUSED)
+static inline void odp_packet_has_eth_mcast_set(odp_packet_t pkt, int val)
 {
-	ODP_UNIMPLEMENTED();
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+
+	if (val)
+		BIT_SET_AT_POS(annotation->word3, L2_ETH_MAC_MULTICAST);
+	else
+		BIT_RESET_AT_POS(annotation->word3, L2_ETH_MAC_MULTICAST);
 }
 
-static inline void odp_packet_has_ip_bcast_set(odp_packet_t pkt ODP_UNUSED,
-														int val ODP_UNUSED)
+static inline void odp_packet_has_ip_bcast_set(odp_packet_t pkt, int val)
 {
-	ODP_UNIMPLEMENTED();
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+
+	if (val)
+		BIT_SET_AT_POS(annotation->word4, L3_IPV4_1_BROADCAST);
+	else
+		BIT_RESET_AT_POS(annotation->word4, L3_IPV4_1_BROADCAST);
 }
 
-static inline void odp_packet_has_ip_mcast_set(odp_packet_t pkt ODP_UNUSED,
-															int val ODP_UNUSED)
+static inline void odp_packet_has_ip_mcast_set(odp_packet_t pkt, int val)
 {
-	ODP_UNIMPLEMENTED();
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+
+	if (val)
+		BIT_SET_AT_POS(annotation->word4, L3_IPV4_1_MULTICAST);
+	else
+		BIT_RESET_AT_POS(annotation->word4, L3_IPV4_1_MULTICAST);
 }
 
-static inline int odp_packet_has_l2_error(odp_packet_t pkt ODP_UNUSED)
+static inline int odp_packet_has_l2_error(odp_packet_t pkt)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+	return BIT_ISSET_AT_POS(annotation->word3, L2_ETH_PARSING_ERROR);
 }
 
-static inline int odp_packet_has_l3_error(odp_packet_t pkt ODP_UNUSED)
+static inline int odp_packet_has_l3_error(odp_packet_t pkt)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+	return BIT_ISSET_AT_POS(annotation->word4, L3_IP_1_PARSING_ERROR);
 }
 
-static inline int odp_packet_has_l4_error(odp_packet_t pkt ODP_UNUSED)
+static inline int odp_packet_has_l4_error(odp_packet_t pkt)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+	return BIT_ISSET_AT_POS(annotation->word4, L4_SOFT_PARSING_ERROR);
 }
 
-static inline int odp_packet_has_ts(odp_packet_t pkt ODP_UNUSED)
+static inline int odp_packet_has_ts(odp_packet_t pkt)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+	if(annotation->word2)
+		return true;
+	else
+		return false;
 }
 
-static inline void odp_packet_has_ts_clr(odp_packet_t pkt ODP_UNUSED)
+static inline void odp_packet_has_ts_clr(odp_packet_t pkt)
 {
-	ODP_UNIMPLEMENTED();
+	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
+	odp_packet_metadata_t *annotation;
+
+	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+	annotation->word2 = 0;
 }
 
 /**
