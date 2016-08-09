@@ -24,6 +24,7 @@ extern "C" {
 #include <odp/api/plat/sdk/main/dpaa2_dev.h>
 #include <odp/api/plat/sdk/rts/dpaa2_mbuf.h>
 #include <odp/api/plat/sdk/eth/dpaa2_ether.h>
+#include <fsl_dpni.h>
 
 /*! Maximum number of flow distributions per traffic class */
 #define MAX_DIST_PER_TC 8
@@ -308,14 +309,11 @@ void dpaa2_eth_multicast_disable(struct dpaa2_dev *dev);
  *
  * @param[in]	dev - Pointer to DPAA2 Ethernet device
  *
- * @param[in]	wait_to_complete - Amount of time we need to wait in seconds.
- *
- * @param[out]	link_info - Link information filled by DPAA2 ethernet driver.
+ * @param[out]	state - Link information filled by DPAA2 ethernet driver.
  *
  */
-void dpaa2_eth_get_link_info(struct dpaa2_dev *dev,
-				int32_t wait_to_complete,
-				struct dpaa2_eth_link *link_info);
+int32_t dpaa2_eth_get_link_info(struct dpaa2_dev *dev,
+				struct dpni_link_state *state);
 
 /*!
  * @details	Get Extented I/O statistics of an Ethernet device.

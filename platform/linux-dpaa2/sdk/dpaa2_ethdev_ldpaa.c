@@ -286,17 +286,26 @@ int32_t dpaa2_eth_get_mac_addr(struct dpaa2_dev *dev,
 		return DPAA2_FAILURE;
 }
 
-void dpaa2_eth_get_link_info(struct dpaa2_dev *dev ODP_UNUSED,
-				int32_t wait_to_complete ODP_UNUSED,
-				struct dpaa2_eth_link *link_info)
+int32_t dpaa2_eth_get_link_info(struct dpaa2_dev *dev,
+				struct dpni_link_state *state)
 {
+	int ret;
+	struct dpaa2_dev_priv *dev_priv = dev->priv;
+	if (dev_priv == NULL)
+		return DPAA2_FAILURE;
 
-	link_info->link_speed = ETH_LINK_SPEED_AUTONEG;
-	link_info->link_duplex = ETH_LINK_FULL_DUPLEX;
-	link_info->link_status = 1;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
+	if (dpni == NULL)
+		return DPAA2_FAILURE;
 
-	DPAA2_NOTE(ETH, "Not Implemented");
-	return;
+	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, dev_priv->token,
+							state);
+	if (ret == 0) {
+		return DPAA2_SUCCESS;
+	} else {
+		DPAA2_ERR(ETH,"Error while getting link state %d\n", ret);
+		return DPAA2_FAILURE;
+	}
 }
 
 int32_t dpaa2_eth_setup_flow_distribution(struct dpaa2_dev *dev,

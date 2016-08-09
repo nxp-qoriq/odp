@@ -542,6 +542,9 @@ int odp_queue_lock_count(odp_queue_t handle ODP_UNUSED)
 
 int odp_queue_capability(odp_queue_capability_t *capa)
 {
+	if (!capa)
+		return -1;
+
 	memset(capa, 0, sizeof(odp_queue_capability_t));
 
 	capa->max_queues        = ODP_CONFIG_QUEUES;

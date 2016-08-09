@@ -40,11 +40,8 @@ int sec_dequeue_multi(queue_entry_t *queue, odp_buffer_hdr_t *buf_hdr[], int num
 
 
 int pktout_enqueue(queue_entry_t *queue, odp_buffer_hdr_t *buf_hdr);
-odp_buffer_hdr_t *pktout_dequeue(queue_entry_t *queue);
 
 int pktout_enq_multi(queue_entry_t *queue, odp_buffer_hdr_t *buf_hdr[],
-		     int num);
-int pktout_deq_multi(queue_entry_t *queue, odp_buffer_hdr_t *buf_hdr[],
 		     int num);
 
 #ifdef __cplusplus

@@ -52,6 +52,7 @@ struct pktio_entry {
 	classifier_t cls;		/**< classifier linked with this pktio*/
 	char name[IFNAMSIZ];		/**< name of pktio provided to
 					   pktio_open() */
+	odp_pktio_config_t config;	/**< Device configuration */
 	odp_pktio_param_t param; /*PKTIO params*/
 	int pktio_headroom;		/* Pktio Headroom */
 	odp_bool_t promisc;		/**< promiscuous mode state */

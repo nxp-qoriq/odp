@@ -235,7 +235,7 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 		goto get_attr_failure;
 	}
 	sprintf(dev->dev_string, "dpni.%u", dev_priv->hw_id);
-	sprintf((char *)eth_priv->cfg.name, "dpni.%u", dev_priv->hw_id);
+	sprintf((char *)eth_priv->cfg.name, "fsl_dpaa2_eth");
 	memcpy(eth_priv->cfg.mac_addr, mac_addr, ETH_ADDR_LEN);
 	/* driver may only return MTU in case of IPF/IPR offload support
 	 * otherwise it will return 0 in all other cases*/
@@ -419,12 +419,12 @@ int32_t dpaa2_eth_start(struct dpaa2_dev *dev)
 		else
 			num_flows = 1;
 
-		for (dist_idx = 0; dist_idx <	num_flows; dist_idx++) {
+		for (dist_idx = 0; dist_idx < num_flows; dist_idx++) {
 			retcode = dpni_get_rx_flow(dpni, CMD_PRI_LOW, dev_priv->token,
 						tc_idx, dist_idx, &cfg);
 			if (retcode) {
 				DPAA2_ERR(ETH, "Error to get flow information"
-						"Error code = %0x\n", retcode);
+						"Error code = %0d\n", retcode);
 				goto failure;
 			}
 			eth_rx_vq = (struct dpaa2_vq *)(dev->rx_vq[vq_id]);
