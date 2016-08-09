@@ -151,10 +151,11 @@ static void __attribute__((destructor(102))) odp_finish(void)
 
 int odp_init_global(odp_instance_t *instance,
 		    const odp_init_t *params ODP_UNUSED,
-		    const odp_platform_init_t *platform_params ODP_UNUSED)
+		    const odp_platform_init_t *platform_params)
 {
 	int i, ret;
 	const char *env_cfg, *env_pcd;
+	uint64_t dma_map_size = DMA_MAP_SIZE;
 
 	if (odp_init)
 		return 0;
@@ -163,6 +164,9 @@ int odp_init_global(odp_instance_t *instance,
 	odp_global_data.log_fn = odp_override_log;
 	if (params != NULL && params->log_fn != NULL)
 		odp_global_data.log_fn = params->log_fn;
+
+	if (platform_params)
+		dma_map_size = platform_params->data_mem_size;
 
 	ret = of_init();
 	if (ret) {
@@ -179,7 +183,7 @@ int odp_init_global(odp_instance_t *instance,
 	}
 
 	dma_mem_generic = dma_mem_create(DMA_MAP_FLAG_ALLOC,
-					 NULL, DMA_MAP_SIZE);
+					 NULL, dma_map_size);
 	if (!dma_mem_generic) {
 		ODP_ERR("ODP : dma_mem_create fail.\n");
 		return -1;

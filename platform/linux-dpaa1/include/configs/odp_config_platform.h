@@ -8,7 +8,7 @@
 #define ODP_CONFIG_PLATFORM_H_
 
 /* Generic DMA memory area - packet buffers */
-#define DMA_MAP_SIZE            0x10000000
+#define DMA_MAP_SIZE            0x2000000
 
 /* IC offset from buffer header address */
 #define DEFAULT_ICEOF		80
