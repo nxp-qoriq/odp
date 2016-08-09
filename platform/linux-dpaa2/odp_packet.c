@@ -496,16 +496,33 @@ odp_packet_t odpfsl_packet_from_addr(odp_pool_t pkt_pool, void *addr)
 	return (odp_packet_t)aligned_addr;
 }
 
-int odp_packet_alloc_multi(odp_pool_t pool_hdl ODP_UNUSED, uint32_t len ODP_UNUSED,
-									   odp_packet_t pkt[] ODP_UNUSED, int num ODP_UNUSED)
+int odp_packet_alloc_multi(odp_pool_t pool_hdl, uint32_t len,
+			odp_packet_t pkt[], int num)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	pool_entry_t *pool = odp_pool_to_entry(pool_hdl);
+	int count;
+
+	if (pool->s.params.type != ODP_POOL_PACKET) {
+		__odp_errno = EINVAL;
+		return -1;
+	}
+
+	for (count = 0; count < num; ++count) {
+		pkt[count] = odp_packet_alloc(pool_hdl, len);
+		if(pkt[count] == ODP_PACKET_INVALID)
+			break;
+	}
+
+	return count;
 }
 
-void odp_packet_free_multi(const odp_packet_t pkt[] ODP_UNUSED, int num ODP_UNUSED)
+void odp_packet_free_multi(const odp_packet_t pkt[], int num)
 {
-	ODP_UNIMPLEMENTED();
+	int count;
+
+	for (count = 0; count < num; ++count) {
+		odp_packet_free(pkt[count]);
+	}
 }
 
 int odp_packet_input_index(odp_packet_t pkt ODP_UNUSED)

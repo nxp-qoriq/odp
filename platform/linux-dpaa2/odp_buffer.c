@@ -117,16 +117,31 @@ void odp_buffer_print(odp_buffer_t buf)
 	}
 }
 
-int odp_buffer_alloc_multi(odp_pool_t pool_hdl ODP_UNUSED,
-			   odp_buffer_t buf[] ODP_UNUSED,
-			  int num ODP_UNUSED)
+int odp_buffer_alloc_multi(odp_pool_t pool_hdl,
+			   odp_buffer_t buf[], int num)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	int count;
+	pool_entry_t *pool = odp_pool_to_entry(pool_hdl);
+	
+	if (pool->s.params.type != ODP_POOL_BUFFER) {
+		__odp_errno = EINVAL;
+		return -1;
+	}
+
+	for (count = 0; count < num; ++count) {
+		buf[count] = odp_buffer_alloc(pool_hdl);
+		if (buf[count] == ODP_BUFFER_INVALID)
+			break;
+	}
+
+	return count;
 }
 
-void odp_buffer_free_multi(const odp_buffer_t buf[] ODP_UNUSED,
-			   int num ODP_UNUSED)
+void odp_buffer_free_multi(const odp_buffer_t buf[],
+			   int num)
 {
-	ODP_UNIMPLEMENTED();
+	int count;
+
+	for (count = 0; count < num; ++count)
+		odp_buffer_free(buf[count]);
 }
