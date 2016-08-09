@@ -46,8 +46,8 @@ typedef struct odp_pktout_queue_s {
 
 #define ODP_PKTIO_MACADDR_MAXSIZE 16
 
-#define ODP_PKTIN_NO_WAIT 0
-#define ODP_PKTIN_WAIT    UINT64_MAX
+#define ODP_PKTIN_NO_WAIT 1
+#define ODP_PKTIN_WAIT    0
 
 /** Get printable format of odp_pktio_t */
 static inline uint64_t odp_pktio_to_u64(odp_pktio_t hdl)

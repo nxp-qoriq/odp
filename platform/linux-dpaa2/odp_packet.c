@@ -508,10 +508,9 @@ void odp_packet_free_multi(const odp_packet_t pkt[] ODP_UNUSED, int num ODP_UNUS
 	ODP_UNIMPLEMENTED();
 }
 
-int odp_packet_input_index(odp_packet_t pkt ODP_UNUSED)
+int odp_packet_input_index(odp_packet_t pkt)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	return odp_pktio_index(odp_packet_input(pkt));
 }
 
 void odp_packet_ts_set(odp_packet_t pkt ODP_UNUSED, odp_time_t timestamp ODP_UNUSED)
@@ -527,10 +526,9 @@ odp_time_t odp_packet_ts(odp_packet_t pkt ODP_UNUSED)
 }
 
 void odp_packet_prefetch(odp_packet_t pkt ODP_UNUSED,
-								   uint32_t offset ODP_UNUSED,
-								   uint32_t len ODP_UNUSED)
+				uint32_t offset ODP_UNUSED,
+				uint32_t len ODP_UNUSED)
 {
-	ODP_UNIMPLEMENTED();
 }
 
 int odp_packet_extend_head(odp_packet_t *pkt ODP_UNUSED, uint32_t len ODP_UNUSED,

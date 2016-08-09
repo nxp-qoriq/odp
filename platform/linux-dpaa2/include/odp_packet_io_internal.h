@@ -52,6 +52,7 @@ struct pktio_entry {
 	classifier_t cls;		/**< classifier linked with this pktio*/
 	char name[IFNAMSIZ];		/**< name of pktio provided to
 					   pktio_open() */
+	odp_pktio_config_t config;	/**< Device configuration */
 	odp_pktio_param_t param; /*PKTIO params*/
 	int pktio_headroom;		/* Pktio Headroom */
 	odp_bool_t promisc;		/**< promiscuous mode state */
@@ -135,6 +136,8 @@ static inline odp_queue_t odp_pktio_inq_getdef(odp_pktio_t id)
  * @retval <0 on failure
  */
 int odp_pktio_inq_remdef(odp_pktio_t pktio);
+
+int single_capability(odp_pktio_capability_t *capa);
 
 #ifdef __cplusplus
 }

@@ -29,6 +29,7 @@
 #include <ifaddrs.h>
 #include <errno.h>
 #include <dpaa2.h>
+#include <dpaa2_time.h>
 #include <dpaa2_dev.h>
 #include <dpaa2_ethdev.h>
 #include <dpaa2_sec_priv.h>
@@ -309,6 +310,7 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 		return id;
 	}
 
+	pktio_entry->s.pkt_dpaa2.pool = pool;
 	snprintf(pktio_entry->s.name, IFNAMSIZ, "%s", name);
 	pktio_entry->s.pktio_headroom = ODP_CONFIG_PACKET_HEADROOM;
 	unlock_entry_classifier(pktio_entry);
@@ -485,6 +487,19 @@ int odp_pktout_send(odp_pktout_queue_t queue, const odp_packet_t pkt_table[], in
 	return pkts;
 }
 
+int single_capability(odp_pktio_capability_t *capa)
+{
+	if (!capa)
+		return -1;
+
+	memset(capa, 0, sizeof(odp_pktio_capability_t));
+	capa->max_input_queues  = 1;
+	capa->max_output_queues = 1;
+	capa->set_op.op.promisc_mode = 1;
+
+	return 0;
+}
+
 int odp_pktio_inq_setdef(odp_pktio_t id, odp_queue_t queue)
 {
 	pktio_entry_t *pktio_entry = get_pktio_entry(id);
@@ -575,12 +590,6 @@ int pktout_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 	return (nbr == len ? 0 : -1);
 }
 
-odp_buffer_hdr_t *pktout_dequeue(queue_entry_t *qentry ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return NULL;
-}
-
 int pktout_enq_multi(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr[],
 		     int num)
 {
@@ -599,14 +608,6 @@ int pktout_enq_multi(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr[],
 	ndev = pktio_entry->s.pkt_dpaa2.dev;
 	nbr = dpaa2_eth_xmit(ndev, qentry->s.priv, num, pkt_tbl);
 	return nbr;
-}
-
-int pktout_deq_multi(queue_entry_t *qentry ODP_UNUSED,
-		     odp_buffer_hdr_t *buf_hdr[] ODP_UNUSED,
-		     int num ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
 }
 
 int pktin_enqueue(queue_entry_t *qentry,
@@ -1052,6 +1053,7 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 	int retcode;
 	uint32_t i;
 	odp_queue_t queue;
+	odp_pktio_capability_t capa;
 	char name[ODP_QUEUE_NAME_LEN] = {0};
 	pktio_entry_t *pktio_entry;
 	odp_pktin_queue_param_t q_param;
@@ -1062,8 +1064,27 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 		memcpy(&q_param, param, sizeof(odp_pktin_queue_param_t));
 
 	pktio_entry = get_pktio_entry(pktio);
-	if (!pktio_entry)
+	if (!pktio_entry) {
+		printf("Invalid pktio entry\n");
 		return -1;
+	}
+
+	if (param->num_queues == 0 && !(param->classifier_enable)) {
+		ODP_ERR("pktio %s: zero input queues\n", pktio_entry->s.name);
+		return -1;
+	}
+
+	retcode = odp_pktio_capability(pktio, &capa);
+	if (retcode) {
+		ODP_ERR("pktio %s: unable to read capabilities\n",
+			pktio_entry->s.name);
+		return -1;
+	}
+
+	if (param->num_queues > capa.max_input_queues) {
+		ODP_ERR("pktio %s: too many input queues\n", pktio_entry->s.name);
+		return -1;
+	}
 
 	/*Check for pktio parameters*/
 	switch (pktio_entry->s.param.in_mode) {
@@ -1101,8 +1122,9 @@ int odp_pktout_queue_config(odp_pktio_t pktio,
 	queue_entry_t *qentry;
 	pktio_entry_t *pktio_entry;
 	odp_queue_t qid;
+	odp_pktio_capability_t capa;
 	struct dpaa2_dev *ndev;
-	uint32_t i;
+	uint32_t i, ret;
 	char name[ODP_QUEUE_NAME_LEN] = {0};
 	odp_pktout_queue_param_t q_default_param;
 	odp_queue_param_t qparam;
@@ -1115,6 +1137,23 @@ int odp_pktout_queue_config(odp_pktio_t pktio,
 	pktio_entry = get_pktio_entry(pktio);
 	if (!pktio_entry)
 		return -1;
+
+	if (q_default_param.num_queues == 0) {
+		ODP_DBG("pktio %s: zero output queues\n", pktio_entry->s.name);
+		return -1;
+	}
+
+	ret = odp_pktio_capability(pktio, &capa);
+	if (ret) {
+		ODP_DBG("pktio %s: unable to read capabilities\n",
+			pktio_entry->s.name);
+		return -1;
+	}
+
+	if (q_default_param.num_queues > capa.max_output_queues) {
+		ODP_DBG("pktio %s: too many output queues\n", pktio_entry->s.name);
+		return -1;
+	}
 
 	switch (pktio_entry->s.param.out_mode) {
 	case ODP_PKTOUT_MODE_DIRECT:
@@ -1155,14 +1194,17 @@ int odp_pktin_queue(odp_pktio_t pktio, odp_pktin_queue_t queues[],
 {
 	int32_t i = -1;
 	pktio_entry_t *pktio_entry;
+	int num_queues;
 
 	pktio_entry = get_pktio_entry(pktio);
 	if (!pktio_entry)
 		return -1;
 
 	/*TODO: Implementation need to be enhanced for multi queue support*/
+	num_queues = 1;
+
 	if (pktio_entry->s.param.in_mode  == ODP_PKTIN_MODE_DIRECT) {
-		for (i = 0; i < num; i++) {
+		for (i = 0; i < num && i < num_queues; i++) {
 			queues[i].queue = odp_pktio_inq_getdef(pktio);
 			queues[i].pktio = pktio;
 		}
@@ -1173,7 +1215,7 @@ int odp_pktin_queue(odp_pktio_t pktio, odp_pktin_queue_t queues[],
 int odp_pktout_queue(odp_pktio_t pktio, odp_pktout_queue_t queues[],
 							  int num)
 {
-	int32_t i = -1;
+	int32_t i = -1, num_queues;
 	pktio_entry_t *pktio_entry;
 
 	pktio_entry = get_pktio_entry(pktio);
@@ -1181,8 +1223,10 @@ int odp_pktout_queue(odp_pktio_t pktio, odp_pktout_queue_t queues[],
 		return -1;
 
 	/*TODO: Implementation need to be enhanced for multi queue support*/
+	num_queues = 1;
+
 	if (pktio_entry->s.param.out_mode == ODP_PKTOUT_MODE_DIRECT) {
-		for (i = 0; i < num; i++) {
+		for (i = 0; i < num && i < num_queues; i++) {
 			queues[i].queue = odp_pktio_outq_getdef(pktio);
 			queues[i].pktio = pktio;
 		}
@@ -1190,15 +1234,23 @@ int odp_pktout_queue(odp_pktio_t pktio, odp_pktout_queue_t queues[],
 	return i;
 }
 
-int odp_pktio_capability(odp_pktio_t pktio ODP_UNUSED, odp_pktio_capability_t *capa ODP_UNUSED)
+int odp_pktio_capability(odp_pktio_t pktio, odp_pktio_capability_t *capa)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	/*FIXME: Need to implement pktio specific capability*/
+	pktio_entry_t *entry;
+
+	entry = get_pktio_entry(pktio);
+	if (!entry) {
+		ODP_DBG("pktio entry %lu does not exist\n", odp_pktio_to_u64(pktio));
+		return -1;
+	}
+
+	return single_capability(capa);
 }
 
 int odp_pktin_event_queue(odp_pktio_t pktio, odp_queue_t queues[], int num)
 {
-	int32_t i = -1;
+	int32_t i = -1, num_queues;
 	pktio_entry_t *pktio_entry;
 
 	pktio_entry = get_pktio_entry(pktio);
@@ -1206,6 +1258,8 @@ int odp_pktin_event_queue(odp_pktio_t pktio, odp_queue_t queues[], int num)
 		return -1;
 
 	/*TODO: Implementation need to be enhanced for multi queue support*/
+	num_queues = 1;
+
 	switch (pktio_entry->s.param.in_mode) {
 	case ODP_PKTIN_MODE_DIRECT:
 	case ODP_PKTIN_MODE_DISABLED:
@@ -1213,7 +1267,7 @@ int odp_pktin_event_queue(odp_pktio_t pktio, odp_queue_t queues[], int num)
 		break;
 	case ODP_PKTIN_MODE_QUEUE:
 	case ODP_PKTIN_MODE_SCHED:
-		for (i = 0; i < num; i++)
+		for (i = 0; i < num && i < num_queues; i++)
 			queues[i] = odp_pktio_inq_getdef(pktio);
 		break;
 	}
@@ -1245,10 +1299,14 @@ int odp_pktout_event_queue(odp_pktio_t pktio, odp_queue_t queues[], int num)
 	return i;
 }
 
-int odp_pktio_index(odp_pktio_t pktio ODP_UNUSED)
+int odp_pktio_index(odp_pktio_t pktio)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	pktio_entry_t *entry = get_pktio_entry(pktio);
+
+	if (!entry || is_free(entry))
+		return -1;
+
+	return _odp_typeval(pktio) - 1;
 }
 
 void odp_pktio_config_init(odp_pktio_config_t *config)
@@ -1256,51 +1314,253 @@ void odp_pktio_config_init(odp_pktio_config_t *config)
 	memset(config, 0, sizeof(odp_pktio_config_t));
 }
 
-int odp_pktio_config(odp_pktio_t id ODP_UNUSED, const odp_pktio_config_t *config ODP_UNUSED)
+/*TODO: Currently, API is not implementing any configuration for pktio.
+	only configuration is being saved.*/
+int odp_pktio_config(odp_pktio_t id, const odp_pktio_config_t *config)
 {
-	ODP_UNIMPLEMENTED();
+	pktio_entry_t *entry;
+	odp_pktio_capability_t capa;
+	odp_pktio_config_t default_config;
+	int res = 0;
+
+	entry = get_pktio_entry(id);
+	if (!entry)
+		return -1;
+
+	if (!config) {
+		odp_pktio_config_init(&default_config);
+	} else
+		memcpy(&default_config, config, sizeof(odp_pktio_config_t));
+
+	if (odp_pktio_capability(id, &capa))
+		return -1;
+
+	/* Check config for invalid values */
+	if (default_config.pktin.all_bits & ~capa.config.pktin.all_bits) {
+		ODP_ERR("Unsupported input configuration option\n");
+		return -1;
+	}
+	if (default_config.pktout.all_bits & ~capa.config.pktout.all_bits) {
+		ODP_ERR("Unsupported output configuration option\n");
+		return -1;
+	}
+
+	if (default_config.enable_loop && !capa.loop_supported) {
+		ODP_ERR("Loopback mode not supported\n");
+		return -1;
+	}
+
+	lock_entry(entry);
+
+	/*TODO PKTIO state information is not available*/
+#if 0
+	if (entry->s.state == STATE_STARTED) {
+		unlock_entry(entry);
+		ODP_DBG("pktio %s: not stopped\n", entry->s.name);
+		return -1;
+	}
+#endif
+
+	memcpy(&entry->s.config, &default_config, sizeof(odp_pktio_config_t));
+
+	unlock_entry(entry);
+
+	return res;
+}
+
+int odp_pktio_info(odp_pktio_t id, odp_pktio_info_t *info)
+{
+	pktio_entry_t *entry;
+	struct dpaa2_dev *dev;
+	struct dpaa2_dev_priv *dev_priv;
+	struct dpaa2_eth_priv *epriv;
+
+	entry = get_pktio_entry(id);
+
+	if (entry == NULL) {
+		ODP_DBG("pktio entry %d does not exist\n", id);
+		return -1;
+	}
+
+	memset(info, 0, sizeof(odp_pktio_info_t));
+	if (entry->s.type == ODP_PKTIO_TYPE_LOOPBACK) {
+		info->name = "loop";
+	} else
+		info->name = entry->s.name;
+
+	dev = entry->s.pkt_dpaa2.dev;
+	dev_priv = (struct dpaa2_dev_priv *)dev->priv;
+	epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
+
+	info->drv_name = (const char*)epriv->cfg.name;
+	info->pool = entry->s.pkt_dpaa2.pool;
+	memcpy(&info->param, &entry->s.param, sizeof(odp_pktio_param_t));
+
 	return 0;
 }
 
-int odp_pktio_info(odp_pktio_t id ODP_UNUSED, odp_pktio_info_t *info ODP_UNUSED)
+void odp_pktio_print(odp_pktio_t id)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	pktio_entry_t *entry;
+	uint8_t addr[ETH_ADDR_LEN];
+	int max_len = 512;
+	char str[max_len];
+	int len = 0;
+	int n = max_len - 1;
+
+	entry = get_pktio_entry(id);
+	if (entry == NULL) {
+		ODP_DBG("pktio entry %d does not exist\n", id);
+		return;
+	}
+
+	len += snprintf(&str[len], n - len,
+			"pktio\n");
+	len += snprintf(&str[len], n - len,
+			"  handle       %" PRIu64 "\n", odp_pktio_to_u64(id));
+	len += snprintf(&str[len], n - len,
+			"  name         %s\n", entry->s.type == ODP_PKTIO_TYPE_LOOPBACK ? "loop" :
+										entry->s.name);
+
+	len += snprintf(&str[len], n - len,
+			"  type         %s\n", entry->s.type == ODP_PKTIO_TYPE_SOCKET_BASIC ? "ODP_PKTIO_TYPE_SOCKET_BASIC" :
+					(entry->s.type == ODP_PKTIO_TYPE_SOCKET_MMSG ? "ODP_PKTIO_TYPE_SOCKET_MMSG" :
+					(entry->s.type == ODP_PKTIO_TYPE_SOCKET_MMAP ? "ODP_PKTIO_TYPE_SOCKET_MMAP" :
+					(entry->s.type == ODP_PKTIO_TYPE_LOOPBACK ? "ODP_PKTIO_TYPE_LOOPBACK" :
+											"UNKNOWN"))));
+	/*FIXME: Interface state information is not available yet*/
+#if 0
+	len += snprintf(&str[len], n - len,
+			"  state        %s\n",
+			entry->s.state ==  STATE_STARTED ? "start" :
+		       (entry->s.state ==  STATE_STOPPED ? "stop" :
+		       (entry->s.state ==  STATE_OPENED ? "opened" :
+							  "unknown")));
+#endif
+	memset(addr, 0, sizeof(addr));
+	odp_pktio_mac_addr(id, addr, ETH_ADDR_LEN);
+	len += snprintf(&str[len], n - len,
+			"  mac          %02x:%02x:%02x:%02x:%02x:%02x\n",
+			addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
+	len += snprintf(&str[len], n - len,
+			"  mtu          %" PRIu32 "\n", odp_pktio_mtu(id));
+	len += snprintf(&str[len], n - len,
+			"  promisc      %s\n", entry->s.promisc ? "yes" : "no");
+	str[len] = '\0';
+
+	ODP_PRINT("\n%s\n", str);
 }
 
-void odp_pktio_print(odp_pktio_t id ODP_UNUSED)
+int odp_pktin_recv_tmo(odp_pktin_queue_t queue, odp_packet_t packets[],
+						int num, uint64_t wait)
 {
-	ODP_UNIMPLEMENTED();
+	pktio_entry_t *pktio_entry = get_pktio_entry(queue.pktio);
+	int32_t ret;
+	uint64_t wait_till;
+
+	if (pktio_entry == NULL)
+		return -1;
+
+	if (wait)
+		wait_till = dpaa2_time_get_cycles() + wait;
+
+	do {
+		ret = recv_pkt_dpaa2(&pktio_entry->s.pkt_dpaa2, packets, num);
+		if (ret > 0 || ret < 0)
+			break;
+		else if (ret == 0) {
+			if ((wait != ODP_PKTIN_WAIT) && (wait_till <= dpaa2_time_get_cycles()))
+				break;
+		}
+
+		/* If ctrl+C signal is received, just exit the thread */
+		if (odp_unlikely(received_sigint)) {
+			if (odp_term_local())
+				fprintf(stderr, "error: odp_term_local() failed.\n");
+			pthread_exit(NULL);
+		}
+	} while(1);
+
+	return ret;
 }
 
-int odp_pktin_recv_tmo(odp_pktin_queue_t queue ODP_UNUSED, odp_packet_t packets[] ODP_UNUSED,
-								int num ODP_UNUSED, uint64_t wait ODP_UNUSED)
+/*TODO: Improvement for fairness of queue service levels */
+int odp_pktin_recv_mq_tmo(const odp_pktin_queue_t queues[], unsigned num_q,
+					unsigned *from, odp_packet_t packets[],
+					int num, uint64_t wait)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-int odp_pktin_recv_mq_tmo(const odp_pktin_queue_t queues[] ODP_UNUSED, unsigned num_q ODP_UNUSED,
-									  unsigned *from ODP_UNUSED, odp_packet_t packets[] ODP_UNUSED,
-									  int num ODP_UNUSED, uint64_t wait ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
+	pktio_entry_t *pktio_entry;
+	int32_t ret;
+	unsigned i = 0;
+	uint64_t wait_till;
+
+	if (wait)
+		wait_till = dpaa2_time_get_cycles() + wait;
+
+	do {
+		pktio_entry = get_pktio_entry(queues[i++].pktio);
+		if (!pktio_entry)
+			ODP_DBG("pktio_entry unavailable for queue index %d\n", i);
+
+		ret = recv_pkt_dpaa2(&pktio_entry->s.pkt_dpaa2, packets, num);
+		if (ret > 0 && from) {
+			*from = i - 1;
+			break;
+		} else if (ret == 0) {
+			if ((wait != ODP_PKTIN_WAIT) && (wait_till <= dpaa2_time_get_cycles()))
+				break;
+		} else
+			break;
+		if (i == num_q)
+			i = 0;
+
+		/* If ctrl+C signal is received, just exit the thread */
+		if (odp_unlikely(received_sigint)) {
+			if (odp_term_local())
+				fprintf(stderr, "error: odp_term_local() failed.\n");
+			pthread_exit(NULL);
+		}
+	} while(1);
+
+	return ret;
 }
 
-int odp_pktio_link_status(odp_pktio_t id ODP_UNUSED)
+int odp_pktio_link_status(odp_pktio_t id)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	pktio_entry_t *entry;
+	struct dpaa2_dev *dev;
+	struct dpni_link_state state;
+	int ret = -1;
+
+	entry = get_pktio_entry(id);
+	if (entry == NULL) {
+		ODP_DBG("pktio entry %d does not exist\n", id);
+		return -1;
+	}
+
+	if (odp_unlikely(is_free(entry))) {
+		ODP_DBG("already freed pktio\n");
+		return -1;
+	}
+
+	dev = entry->s.pkt_dpaa2.dev;
+
+	ret = dpaa2_eth_get_link_info(dev, &state);
+
+	if(!ret)
+		ret = state.up;
+
+	return ret;
 }
-uint64_t odp_pktin_wait_time(uint64_t nsec ODP_UNUSED)
+
+uint64_t odp_pktin_wait_time(uint64_t nsec)
 {
-	ODP_UNIMPLEMENTED();
-	return 0;
+	return nsec;
 }
 
 uint64_t odp_pktin_ts_res(odp_pktio_t id ODP_UNUSED)
 {
-	ODP_UNIMPLEMENTED();
+	/*TODO timestamp is disabled so return 0*/
 	return 0;
 }
 

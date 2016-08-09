@@ -1970,9 +1970,38 @@ odp_crypto_compl_free(odp_crypto_compl_t completion_event ODP_UNUSED)
 	/* We use the packet as the completion event so nothing to do here */
 }
 
-int odp_crypto_capability(odp_crypto_capability_t *capa ODP_UNUSED)
+int odp_crypto_capability(odp_crypto_capability_t *capa)
 {
-	ODP_UNIMPLEMENTED();
+	if (!capa)
+		return -1;
+
+	/* Initialize crypto capability structure */
+	memset(capa, 0, sizeof(odp_crypto_capability_t));
+
+	capa->ciphers.bit.null = 1;
+	capa->ciphers.bit.des = 1;
+	capa->ciphers.bit.trides_cbc  = 1;
+	capa->ciphers.bit.aes128_cbc  = 1;
+	capa->ciphers.bit.aes128_gcm  = 0;
+
+	capa->auths.bit.null = 1;
+	capa->auths.bit.md5_96 = 1;
+	capa->auths.bit.sha256_128 = 1;
+	capa->auths.bit.aes128_gcm  = 0;
+
+	capa->hw_ciphers.bit.null = 1;
+	capa->hw_ciphers.bit.des = 1;
+	capa->hw_ciphers.bit.trides_cbc  = 1;
+	capa->hw_ciphers.bit.aes128_cbc  = 1;
+	capa->hw_ciphers.bit.aes128_gcm  = 0;
+
+	capa->hw_auths.bit.null = 1;
+	capa->hw_auths.bit.md5_96 = 1;
+	capa->hw_auths.bit.sha256_128 = 1;
+	capa->hw_auths.bit.aes128_gcm  = 0;
+
+	capa->max_sessions = ODP_CONFIG_CRYPTO_SES;
+
 	return 0;
 }
 
