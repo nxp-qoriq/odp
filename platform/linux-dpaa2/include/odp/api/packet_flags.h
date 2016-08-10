@@ -471,7 +471,8 @@ static inline  int odp_packet_has_ip_mcast(odp_packet_t pkt)
 	odp_packet_metadata_t *annotation;
 
 	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
-	return BIT_ISSET_AT_POS(annotation->word4, L3_IPV4_1_MULTICAST);
+	return (BIT_ISSET_AT_POS(annotation->word4, L3_IPV4_1_MULTICAST)) ||
+		(BIT_ISSET_AT_POS(annotation->word4, L3_IPV6_1_MULTICAST));
 }
 
 static inline void odp_packet_has_eth_bcast_set(odp_packet_t pkt, int val)
@@ -505,6 +506,9 @@ static inline void odp_packet_has_ip_bcast_set(odp_packet_t pkt, int val)
 	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
 	odp_packet_metadata_t *annotation;
 
+	if (odp_unlikely(odp_packet_has_ipv6(pkt)))
+		return;
+
 	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
 
 	if (val)
@@ -521,10 +525,17 @@ static inline void odp_packet_has_ip_mcast_set(odp_packet_t pkt, int val)
 
 	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
 
-	if (val)
-		BIT_SET_AT_POS(annotation->word4, L3_IPV4_1_MULTICAST);
-	else
-		BIT_RESET_AT_POS(annotation->word4, L3_IPV4_1_MULTICAST);
+	if (val) {
+		if (odp_packet_has_ipv4(pkt))
+			BIT_SET_AT_POS(annotation->word4, L3_IPV4_1_MULTICAST);
+		else
+			BIT_SET_AT_POS(annotation->word4, L3_IPV6_1_MULTICAST);
+	} else {
+		if (odp_packet_has_ipv4(pkt))
+			BIT_RESET_AT_POS(annotation->word4, L3_IPV4_1_MULTICAST);
+		else
+			BIT_RESET_AT_POS(annotation->word4, L3_IPV6_1_MULTICAST);
+	}
 }
 
 static inline int odp_packet_has_l2_error(odp_packet_t pkt)
