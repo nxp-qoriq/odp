@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2015 - 2016 Freescale Semiconductor, Inc.
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *

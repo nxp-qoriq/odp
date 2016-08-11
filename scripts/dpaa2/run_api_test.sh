@@ -1,4 +1,9 @@
 #!/bin/bash
+#
+# Copyright (c) 2014, Freescale Semiconductor Inc.
+# All rights reserved.
+#
+# SPDX-License-Identifier:     BSD-3-Clause
 
 echo
 printf "\n\nTesting Macless_ni.....\n"
