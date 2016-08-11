@@ -27,7 +27,6 @@ extern "C" {
 /*DPAA2 header files */
 #include <odp/api/hints.h>
 #include <odp/api/align.h>
-#include <odp_config_internal.h>
 #include <odp/api/plat/sdk/common/dpaa2_common.h>
 #include <odp/api/plat/sdk/common/dpaa2_cfg.h>
 #include <odp/api/std_types.h>

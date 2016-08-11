@@ -33,7 +33,8 @@ endif
 SUBDIRS = flib .
 
 include_HEADERS = \
-		  $(top_srcdir)/include/odp.h
+		  $(top_srcdir)/include/odp.h \
+		  $(top_srcdir)/include/odp_api.h
 
 odpincludedir= $(includedir)/odp/api
 odpinclude_HEADERS = \
@@ -50,19 +51,24 @@ odpinclude_HEADERS = \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/debug.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/errno.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/event.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/hash.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/hints.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/init.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/packet_flags.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/packet.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/packet_io.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/packet_io_stats.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/pool.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/queue.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/random.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/rwlock.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/rwlock_recursive.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/schedule.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/schedule_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/shared_memory.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/spinlock.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/spinlock_recursive.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/std_clib.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/std_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/sync.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/system_info.h \
@@ -71,7 +77,10 @@ odpinclude_HEADERS = \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/ticketlock.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/time.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/timer.h \
-		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/version.h
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/traffic_mngr.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/version.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/visibility_begin.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/visibility_end.h
 
 sdkincludecommondir= $(includedir)/odp/api/plat/sdk/common
 sdkincludecommon_HEADERS = \
@@ -151,24 +160,29 @@ odpplatinclude_HEADERS = \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/byteorder_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/classification_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/cpumask_types.h \
-		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/crypto_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/crypto_ipsec_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/crypto_pdcp_types.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/crypto_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/event_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/init_types.h \
-		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/packet_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/packet_annot.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/packet_io_types.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/packet_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/pool_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/queue_types.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/rwlock_recursive_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/rwlock_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/schedule_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/shared_memory_types.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/spinlock_recursive_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/spinlock_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/strong_types.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/thread_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/thrmask_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/ticketlock_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/timer_types.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/time_types.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/traffic_mngr_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/version_types.h
 
 odpplatcmdifincludedir= $(includedir)/odp/api/plat/cmdif
@@ -186,7 +200,7 @@ odpplatmallocincludedir= $(includedir)/odp/api/plat/malloc
 odpplatmallocinclude_HEADERS = \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/malloc/odpfsl_data_malloc.h
 
-odpapiincludedir= $(includedir)/odp/api
+odpapiincludedir= $(includedir)/odp/api/spec
 odpapiinclude_HEADERS = \
 		  $(top_srcdir)/include/odp/api/spec/align.h \
 		  $(top_srcdir)/include/odp/api/spec/atomic.h \
@@ -203,20 +217,24 @@ odpapiinclude_HEADERS = \
 		  $(top_srcdir)/include/odp/api/spec/debug.h \
 		  $(top_srcdir)/include/odp/api/spec/errno.h \
 		  $(top_srcdir)/include/odp/api/spec/event.h \
+		  $(top_srcdir)/include/odp/api/spec/hash.h \
 		  $(top_srcdir)/include/odp/api/spec/hints.h \
 		  $(top_srcdir)/include/odp/api/spec/init.h \
-		  $(top_srcdir)/include/odp/api/spec/packet.h \
 		  $(top_srcdir)/include/odp/api/spec/packet_flags.h \
+		  $(top_srcdir)/include/odp/api/spec/packet.h \
 		  $(top_srcdir)/include/odp/api/spec/packet_io.h \
 		  $(top_srcdir)/include/odp/api/spec/packet_io_stats.h \
 		  $(top_srcdir)/include/odp/api/spec/pool.h \
 		  $(top_srcdir)/include/odp/api/spec/queue.h \
 		  $(top_srcdir)/include/odp/api/spec/random.h \
 		  $(top_srcdir)/include/odp/api/spec/rwlock.h \
+		  $(top_srcdir)/include/odp/api/spec/rwlock_recursive.h \
 		  $(top_srcdir)/include/odp/api/spec/schedule.h \
 		  $(top_srcdir)/include/odp/api/spec/schedule_types.h \
 		  $(top_srcdir)/include/odp/api/spec/shared_memory.h \
 		  $(top_srcdir)/include/odp/api/spec/spinlock.h \
+		  $(top_srcdir)/include/odp/api/spec/spinlock_recursive.h \
+		  $(top_srcdir)/include/odp/api/spec/std_clib.h \
 		  $(top_srcdir)/include/odp/api/spec/std_types.h \
 		  $(top_srcdir)/include/odp/api/spec/sync.h \
 		  $(top_srcdir)/include/odp/api/spec/system_info.h \
@@ -225,6 +243,7 @@ odpapiinclude_HEADERS = \
 		  $(top_srcdir)/include/odp/api/spec/ticketlock.h \
 		  $(top_srcdir)/include/odp/api/spec/time.h \
 		  $(top_srcdir)/include/odp/api/spec/timer.h \
+		  $(top_srcdir)/include/odp/api/spec/traffic_mngr.h \
 		  $(top_srcdir)/include/odp/api/spec/version.h
 
 noinst_HEADERS = \
