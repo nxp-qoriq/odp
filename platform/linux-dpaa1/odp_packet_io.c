@@ -822,6 +822,10 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 				qentry->s.fq.cb.dqrr = dqrr_cb_qm;
 				qentry->s.fq.cb.ern = ern_cb;
 			} else {
+				qentry->s.enqueue = pktin_enqueue;
+				qentry->s.dequeue = pktin_dequeue;
+				qentry->s.enqueue_multi = pktin_enq_multi;
+				qentry->s.dequeue_multi = pktin_deq_multi;
 				channel = pchannel_vdq;
 				qentry->s.fq.cb.dqrr = dqrr_cb_poll_pktin;
 				qentry->s.fq.cb.ern = ern_cb;
@@ -900,6 +904,10 @@ int odp_pktout_queue_config(odp_pktio_t pktio,
 	pktio_entry->s.outq_default = qid;
 	queue_entry = queue_to_qentry(qid);
 	queue_entry->s.pktout = pktio;
+	queue_entry->s.enqueue = pktout_enqueue;
+	queue_entry->s.dequeue = pktout_dequeue;
+	queue_entry->s.enqueue_multi = pktout_enq_multi;
+	queue_entry->s.dequeue_multi = pktout_deq_multi;
 
 	teardown_fq(&queue_entry->s.fq);
 

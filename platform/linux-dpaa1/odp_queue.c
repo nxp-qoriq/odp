@@ -371,24 +371,10 @@ static void queue_init(queue_entry_t *queue, const char *name,
 		queue->s.param.sched.sync  = ODP_SCHED_SYNC_ATOMIC;
 		queue->s.param.sched.group = ODP_SCHED_GROUP_ALL;
 	}
-
-	switch (type) {
-
-	case ODP_QUEUE_TYPE_PLAIN:
-		queue->s.enqueue = pktin_enqueue;
-		queue->s.dequeue = pktin_dequeue;
-		queue->s.enqueue_multi = pktin_enq_multi;
-		queue->s.dequeue_multi = pktin_deq_multi;
-		break;
-
-	case ODP_QUEUE_TYPE_SCHED:
-	default:
-		queue->s.enqueue = queue_enq;
-		queue->s.dequeue = queue_deq;
-		queue->s.enqueue_multi = queue_enq_multi;
-		queue->s.dequeue_multi = queue_deq_multi;
-		break;
-	}
+	queue->s.enqueue = queue_enq;
+	queue->s.dequeue = queue_deq;
+	queue->s.enqueue_multi = queue_enq_multi;
+	queue->s.dequeue_multi = queue_deq_multi;
 	queue->s.head = NULL;
 	queue->s.tail = NULL;
 	queue->s.pri_queue = ODP_QUEUE_INVALID;
