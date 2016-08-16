@@ -233,7 +233,7 @@ AC_ARG_ENABLE([debug],
      else
 	ODP_DEBUG=0
     fi])
-ODP_CFLAGS="$ODP_CFLAGS -DODP_DEBUG=$ODP_DEBUG -DDPAA2_LOGLIB_DISABLE -DQODP_464 -DQODP_344"
+ODP_CFLAGS="$ODP_CFLAGS -DODP_DEBUG=$ODP_DEBUG -DDPAA2_LOGLIB_DISABLE -DQODP_344"
 
 ##########################################################################
 # Adding - DPAA1 required USDPAA dependencies.
@@ -263,10 +263,11 @@ AM_CONDITIONAL([FMLIB_PATH_], [test "x${FMLIB_PATH_}" = "x1"])
 if test "${with_platform}" == "linux-dpaa2";
 then
 AC_ARG_ENABLE([build_type],
-[  --build-type    Specify build type as LS2080/LS2085],
+[  --build-type    Specify build type as LS2080/LS2085/LS2088],
 [case "${enableval}" in
   ls2080) build_type=LS2080 ;;
   ls2085) build_type=LS2085 ;;
+  ls2088) build_type=LS2088 ;;
   *)  build_type=LS2085;;
 esac],[build_type=LS2085])
 fi
@@ -282,6 +283,7 @@ esac],[build_type=LS1043])
 fi
 AM_CONDITIONAL([BUILD_LS2080], [test x$build_type = xLS2080 ])
 AM_CONDITIONAL([BUILD_LS2085], [test x$build_type = xLS2085 ])
+AM_CONDITIONAL([BUILD_LS2088], [test x$build_type = xLS2088 ])
 AM_CONDITIONAL([BUILD_LS1043], [test x$build_type = xLS1043 ])
 AM_CONDITIONAL([LS1043_SOC], [test "x${SOC}" = "xLS1043"])
 AM_CONDITIONAL([P4_SOC], [test "x${SOC}" = "xP4080"])
