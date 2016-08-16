@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -73,10 +73,11 @@ int dpaiop_close(struct fsl_mc_io	*mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
-int dpaiop_create(struct fsl_mc_io		*mc_io,
-		  uint32_t			cmd_flags,
-		  const struct dpaiop_cfg	*cfg,
-		  uint16_t			*token)
+int dpaiop_create(struct fsl_mc_io	*mc_io,
+		  uint16_t	dprc_token,
+		uint32_t	cmd_flags,
+		const struct dpaiop_cfg	*cfg,
+		uint32_t	*obj_id)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -86,7 +87,7 @@ int dpaiop_create(struct fsl_mc_io		*mc_io,
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPAIOP_CMDID_CREATE,
 					  cmd_flags,
-					  0);
+					  dprc_token);
 	DPAIOP_CMD_CREATE(cmd, cfg);
 
 	/* send command to mc*/
@@ -95,22 +96,24 @@ int dpaiop_create(struct fsl_mc_io		*mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = MC_CMD_HDR_READ_TOKEN(cmd.header);
+	CMD_CREATE_RSP_GET_OBJ_ID_PARAM0(cmd, *obj_id);
 
 	return 0;
 }
 
 int dpaiop_destroy(struct fsl_mc_io	*mc_io,
-		   uint32_t		cmd_flags,
-		   uint16_t		token)
+		   uint16_t dprc_token,
+		   uint32_t	cmd_flags,
+		   uint32_t object_id)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPAIOP_CMDID_DESTROY,
 					  cmd_flags,
-					  token);
-
+					  dprc_token);
+	/* set object id to destroy */
+	CMD_DESTROY_SET_OBJ_ID_PARAM0(cmd, object_id);
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
@@ -452,6 +455,27 @@ int dpaiop_get_time_of_day(struct fsl_mc_io *mc_io,
 		return err;
 
 	DPAIOP_RSP_GET_TIME_OF_DAY(cmd, *time_of_day);
+
+	return 0;
+}
+
+int dpaiop_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPAIOP_CMDID_GET_API_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	DPAIOP_RSP_GET_API_VERSION(cmd, *major_ver, *minor_ver);
 
 	return 0;
 }

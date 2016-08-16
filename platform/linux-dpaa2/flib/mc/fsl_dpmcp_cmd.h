@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -33,25 +33,26 @@
 #define _FSL_DPMCP_CMD_H
 
 /* DPMCP Version */
-#define DPMCP_VER_MAJOR				3
+#define DPMCP_VER_MAJOR				4
 #define DPMCP_VER_MINOR				0
 
 /* Command IDs */
-#define DPMCP_CMDID_CLOSE				0x800
-#define DPMCP_CMDID_OPEN				0x80b
-#define DPMCP_CMDID_CREATE				0x90b
-#define DPMCP_CMDID_DESTROY				0x900
+#define DPMCP_CMDID_CLOSE                               ((0x800 << 4) | (0x1))
+#define DPMCP_CMDID_OPEN                                ((0x80b << 4) | (0x1))
+#define DPMCP_CMDID_CREATE                              ((0x90b << 4) | (0x1))
+#define DPMCP_CMDID_DESTROY                             ((0x98b << 4) | (0x1))
+#define DPMCP_CMDID_GET_API_VERSION                     ((0xa0b << 4) | (0x1))
 
-#define DPMCP_CMDID_GET_ATTR				0x004
-#define DPMCP_CMDID_RESET				0x005
+#define DPMCP_CMDID_GET_ATTR                            ((0x004 << 4) | (0x1))
+#define DPMCP_CMDID_RESET                               ((0x005 << 4) | (0x1))
 
-#define DPMCP_CMDID_SET_IRQ				0x010
-#define DPMCP_CMDID_GET_IRQ				0x011
-#define DPMCP_CMDID_SET_IRQ_ENABLE			0x012
-#define DPMCP_CMDID_GET_IRQ_ENABLE			0x013
-#define DPMCP_CMDID_SET_IRQ_MASK			0x014
-#define DPMCP_CMDID_GET_IRQ_MASK			0x015
-#define DPMCP_CMDID_GET_IRQ_STATUS			0x016
+#define DPMCP_CMDID_SET_IRQ                             ((0x010 << 4) | (0x1))
+#define DPMCP_CMDID_GET_IRQ                             ((0x011 << 4) | (0x1))
+#define DPMCP_CMDID_SET_IRQ_ENABLE                      ((0x012 << 4) | (0x1))
+#define DPMCP_CMDID_GET_IRQ_ENABLE                      ((0x013 << 4) | (0x1))
+#define DPMCP_CMDID_SET_IRQ_MASK                        ((0x014 << 4) | (0x1))
+#define DPMCP_CMDID_GET_IRQ_MASK                        ((0x015 << 4) | (0x1))
+#define DPMCP_CMDID_GET_IRQ_STATUS                      ((0x016 << 4) | (0x1))
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMCP_CMD_OPEN(cmd, dpmcp_id) \
@@ -126,10 +127,13 @@ do { \
 
 /*                cmd, param, offset, width, type,	arg_name */
 #define DPMCP_RSP_GET_ATTRIBUTES(cmd, attr) \
+	MC_RSP_OP(cmd, 0, 32, 32, int, attr->id)
+
+/*                cmd, param, offset, width, type,      arg_name */
+#define DPMCP_RSP_GET_API_VERSION(cmd, major, minor) \
 do { \
-	MC_RSP_OP(cmd, 0, 32, 32, int,	    attr->id);\
-	MC_RSP_OP(cmd, 1, 0,  16, uint16_t, attr->version.major);\
-	MC_RSP_OP(cmd, 1, 16, 16, uint16_t, attr->version.minor);\
+	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
+	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
 } while (0)
 
 #endif /* _FSL_DPMCP_CMD_H */

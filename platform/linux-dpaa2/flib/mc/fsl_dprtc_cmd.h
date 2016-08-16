@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -33,41 +33,42 @@
 #define _FSL_DPRTC_CMD_H
 
 /* DPRTC Version */
-#define DPRTC_VER_MAJOR				1
+#define DPRTC_VER_MAJOR				2
 #define DPRTC_VER_MINOR				0
 
 /* Command IDs */
-#define DPRTC_CMDID_CLOSE				0x800
-#define DPRTC_CMDID_OPEN					0x810
-#define DPRTC_CMDID_CREATE				0x910
-#define DPRTC_CMDID_DESTROY				0x900
+#define DPRTC_CMDID_CLOSE                               ((0x800 << 4) | (0x1))
+#define DPRTC_CMDID_OPEN                                ((0x810 << 4) | (0x1))
+#define DPRTC_CMDID_CREATE                              ((0x910 << 4) | (0x1))
+#define DPRTC_CMDID_DESTROY                             ((0x990 << 4) | (0x1))
+#define DPRTC_CMDID_GET_API_VERSION                     ((0xa10 << 4) | (0x1))
 
-#define DPRTC_CMDID_ENABLE				0x002
-#define DPRTC_CMDID_DISABLE				0x003
-#define DPRTC_CMDID_GET_ATTR				0x004
-#define DPRTC_CMDID_RESET				0x005
-#define DPRTC_CMDID_IS_ENABLED				0x006
+#define DPRTC_CMDID_ENABLE                              ((0x002 << 4) | (0x1))
+#define DPRTC_CMDID_DISABLE                             ((0x003 << 4) | (0x1))
+#define DPRTC_CMDID_GET_ATTR                            ((0x004 << 4) | (0x1))
+#define DPRTC_CMDID_RESET                               ((0x005 << 4) | (0x1))
+#define DPRTC_CMDID_IS_ENABLED                          ((0x006 << 4) | (0x1))
 
-#define DPRTC_CMDID_SET_IRQ				0x010
-#define DPRTC_CMDID_GET_IRQ				0x011
-#define DPRTC_CMDID_SET_IRQ_ENABLE			0x012
-#define DPRTC_CMDID_GET_IRQ_ENABLE			0x013
-#define DPRTC_CMDID_SET_IRQ_MASK				0x014
-#define DPRTC_CMDID_GET_IRQ_MASK				0x015
-#define DPRTC_CMDID_GET_IRQ_STATUS			0x016
-#define DPRTC_CMDID_CLEAR_IRQ_STATUS			0x017
+#define DPRTC_CMDID_SET_IRQ                             ((0x010 << 4) | (0x1))
+#define DPRTC_CMDID_GET_IRQ                             ((0x011 << 4) | (0x1))
+#define DPRTC_CMDID_SET_IRQ_ENABLE                      ((0x012 << 4) | (0x1))
+#define DPRTC_CMDID_GET_IRQ_ENABLE                      ((0x013 << 4) | (0x1))
+#define DPRTC_CMDID_SET_IRQ_MASK                        ((0x014 << 4) | (0x1))
+#define DPRTC_CMDID_GET_IRQ_MASK                        ((0x015 << 4) | (0x1))
+#define DPRTC_CMDID_GET_IRQ_STATUS                      ((0x016 << 4) | (0x1))
+#define DPRTC_CMDID_CLEAR_IRQ_STATUS                    ((0x017 << 4) | (0x1))
 
-#define DPRTC_CMDID_SET_CLOCK_OFFSET			0x1d0
-#define DPRTC_CMDID_SET_FREQ_COMPENSATION		0x1d1
-#define DPRTC_CMDID_GET_FREQ_COMPENSATION		0x1d2
-#define DPRTC_CMDID_GET_TIME					0x1d3
-#define DPRTC_CMDID_SET_TIME					0x1d4
-#define DPRTC_CMDID_SET_ALARM					0x1d5
-#define DPRTC_CMDID_SET_PERIODIC_PULSE			0x1d6
-#define DPRTC_CMDID_CLEAR_PERIODIC_PULSE		0x1d7
-#define DPRTC_CMDID_SET_EXT_TRIGGER				0x1d8
-#define DPRTC_CMDID_CLEAR_EXT_TRIGGER			0x1d9
-#define DPRTC_CMDID_GET_EXT_TRIGGER_TIMESTAMP	0x1dA
+#define DPRTC_CMDID_SET_CLOCK_OFFSET                    ((0x1d0 << 4) | (0x1))
+#define DPRTC_CMDID_SET_FREQ_COMPENSATION               ((0x1d1 << 4) | (0x1))
+#define DPRTC_CMDID_GET_FREQ_COMPENSATION               ((0x1d2 << 4) | (0x1))
+#define DPRTC_CMDID_GET_TIME                            ((0x1d3 << 4) | (0x1))
+#define DPRTC_CMDID_SET_TIME                            ((0x1d4 << 4) | (0x1))
+#define DPRTC_CMDID_SET_ALARM                           ((0x1d5 << 4) | (0x1))
+#define DPRTC_CMDID_SET_PERIODIC_PULSE                  ((0x1d6 << 4) | (0x1))
+#define DPRTC_CMDID_CLEAR_PERIODIC_PULSE                ((0x1d7 << 4) | (0x1))
+#define DPRTC_CMDID_SET_EXT_TRIGGER                     ((0x1d8 << 4) | (0x1))
+#define DPRTC_CMDID_CLEAR_EXT_TRIGGER                   ((0x1d9 << 4) | (0x1))
+#define DPRTC_CMDID_GET_EXT_TRIGGER_TIMESTAMP           ((0x1dA << 4) | (0x1))
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPRTC_CMD_OPEN(cmd, dpbp_id) \
@@ -148,11 +149,7 @@ do { \
 
 /*                cmd, param, offset, width, type,	arg_name */
 #define DPRTC_RSP_GET_ATTRIBUTES(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0, 32, 32, int,	    attr->id);\
-	MC_RSP_OP(cmd, 1, 0,  16, uint16_t, attr->version.major);\
-	MC_RSP_OP(cmd, 1, 16, 16, uint16_t, attr->version.minor);\
-} while (0)
+	MC_RSP_OP(cmd, 0, 32, 32, int, attr->id)
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPRTC_CMD_SET_CLOCK_OFFSET(cmd, offset) \
@@ -178,4 +175,10 @@ do { \
 #define DPRTC_CMD_SET_ALARM(cmd, time) \
 	MC_CMD_OP(cmd, 0, 0,  64, uint64_t, time)
 
+/*                cmd, param, offset, width, type,      arg_name */
+#define DPRTC_RSP_GET_API_VERSION(cmd, major, minor) \
+do { \
+	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
+	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
+} while (0)
 #endif /* _FSL_DPRTC_CMD_H */

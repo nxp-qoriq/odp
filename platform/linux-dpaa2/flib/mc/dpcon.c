@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -75,9 +75,10 @@ int dpcon_close(struct fsl_mc_io *mc_io,
 }
 
 int dpcon_create(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
-		 const struct dpcon_cfg *cfg,
-		 uint16_t *token)
+		 uint16_t dprc_token,
+		uint32_t cmd_flags,
+		const struct dpcon_cfg *cfg,
+		uint32_t *obj_id)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -85,7 +86,7 @@ int dpcon_create(struct fsl_mc_io *mc_io,
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPCON_CMDID_CREATE,
 					  cmd_flags,
-					  0);
+					  dprc_token);
 	DPCON_CMD_CREATE(cmd, cfg);
 
 	/* send command to mc*/
@@ -94,22 +95,24 @@ int dpcon_create(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = MC_CMD_HDR_READ_TOKEN(cmd.header);
+	CMD_CREATE_RSP_GET_OBJ_ID_PARAM0(cmd, *obj_id);
 
 	return 0;
 }
 
 int dpcon_destroy(struct fsl_mc_io *mc_io,
-		  uint32_t cmd_flags,
-		  uint16_t token)
+		  uint16_t dprc_token,
+		uint32_t cmd_flags,
+		uint32_t object_id)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPCON_CMDID_DESTROY,
 					  cmd_flags,
-					  token);
-
+					  dprc_token);
+	/* set object id to destroy */
+	CMD_DESTROY_SET_OBJ_ID_PARAM0(cmd, object_id);
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
@@ -397,4 +400,25 @@ int dpcon_set_notification(struct fsl_mc_io *mc_io,
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
+}
+
+int dpcon_get_api_version(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPCON_CMDID_GET_API_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	DPCON_RSP_GET_API_VERSION(cmd, *major_ver, *minor_ver);
+
+	return 0;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -99,15 +99,16 @@ int dpdcei_close(struct fsl_mc_io	*mc_io,
  */
 struct dpdcei_cfg {
 	enum dpdcei_engine	engine;
-	uint8_t		priority;
+	uint8_t			priority;
 };
 
 /**
  * dpdcei_create() - Create the DPDCEI object
  * @mc_io: Pointer to MC portal's I/O object
+ * @dprc_token:	Parent container token; '0' for default container
  * @cmd_flags: Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDCEI object
  * @cfg: configuration parameters
+ * @obj_id: returned object id
  *
  * Create the DPDCEI object, allocate required resources and
  * perform required initialization.
@@ -115,31 +116,34 @@ struct dpdcei_cfg {
  * The object can be created either by declaring it in the
  * DPL file, or by calling this function.
  *
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent calls to
- * this specific object. For objects that are created using the
- * DPL file, call dpdcei_open() function to get an authentication
- * token first.
+ * The function accepts an authentication token of a parent
+ * container that this object should be assigned to. The token
+ * can be '0' so the object will be assigned to the default container.
+ * The newly created object can be opened with the returned
+ * object id and using the container's associated tokens and MC portals.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpdcei_create(struct fsl_mc_io		*mc_io,
-		  uint32_t			cmd_flags,
-		  const struct dpdcei_cfg	*cfg,
-		  uint16_t			*token);
+int dpdcei_create(struct fsl_mc_io	*mc_io,
+		  uint16_t		dprc_token,
+		uint32_t		cmd_flags,
+		const struct dpdcei_cfg	*cfg,
+		uint32_t		*obj_id);
 
 /**
  * dpdcei_destroy() - Destroy the DPDCEI object and release all its resources.
  * @mc_io: Pointer to MC portal's I/O object
+ * @dprc_token: Parent container token; '0' for default container
  * @cmd_flags: Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDCEI object
+ * @object_id:	The object id; it must be a valid id within the container that
+ * created this object;
  *
  * Return:	'0' on Success; error code otherwise.
  */
 int dpdcei_destroy(struct fsl_mc_io	*mc_io,
+		   uint16_t		dprc_token,
 		   uint32_t		cmd_flags,
-		   uint16_t		token);
+		   uint32_t		object_id);
 
 /**
  * dpdcei_enable() - Enable the DPDCEI, allow sending and receiving frames.
@@ -295,7 +299,7 @@ int dpdcei_get_irq_enable(struct fsl_mc_io	*mc_io,
 int dpdcei_set_irq_mask(struct fsl_mc_io	*mc_io,
 			uint32_t		cmd_flags,
 			uint16_t		token,
-			uint8_t		irq_index,
+			uint8_t			irq_index,
 			uint32_t		mask);
 
 /**
@@ -314,7 +318,7 @@ int dpdcei_set_irq_mask(struct fsl_mc_io	*mc_io,
 int dpdcei_get_irq_mask(struct fsl_mc_io	*mc_io,
 			uint32_t		cmd_flags,
 			uint16_t		token,
-			uint8_t		irq_index,
+			uint8_t			irq_index,
 			uint32_t		*mask);
 
 /**
@@ -356,20 +360,10 @@ int dpdcei_clear_irq_status(struct fsl_mc_io	*mc_io,
  * struct dpdcei_attr - Structure representing DPDCEI attributes
  * @id: DPDCEI object ID
  * @engine: DCE engine block
- * @version: DPDCEI version
  */
 struct dpdcei_attr {
 	int id;
 	enum dpdcei_engine engine;
-	/**
-	 * struct version - DPDCEI version
-	 * @major: DPDCEI major version
-	 * @minor: DPDCEI minor version
-	 */
-	struct {
-		uint16_t major;
-		uint16_t minor;
-	} version;
 };
 
 /**
@@ -418,7 +412,7 @@ enum dpdcei_dest {
 struct dpdcei_dest_cfg {
 	enum dpdcei_dest	dest_type;
 	int			dest_id;
-	uint8_t		priority;
+	uint8_t			priority;
 };
 
 /** DPDCEI queue modification options */
@@ -511,5 +505,20 @@ int dpdcei_get_tx_queue(struct fsl_mc_io		*mc_io,
 			uint32_t			cmd_flags,
 			uint16_t			token,
 			struct dpdcei_tx_queue_attr	*attr);
+
+/**
+ * dpdcei_get_api_version() - Get Data Path DCE (decript/encrypt engine) API
+ *				version
+ * @mc_io:  Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @major_ver:	Major version of data path dce API
+ * @minor_ver:	Minor version of data path dce API
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dpdcei_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver);
 
 #endif /* __FSL_DPDCEI_H */

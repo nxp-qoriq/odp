@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -100,9 +100,10 @@ struct dpdmai_cfg {
 /**
  * dpdmai_create() - Create the DPDMAI object
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token:	Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @cfg:	Configuration structure
- * @token:	Returned token; use in subsequent API calls
+ * @obj_id: returned object id
  *
  * Create the DPDMAI object, allocate required resources and
  * perform required initialization.
@@ -110,31 +111,39 @@ struct dpdmai_cfg {
  * The object can be created either by declaring it in the
  * DPL file, or by calling this function.
  *
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent calls to
- * this specific object. For objects that are created using the
- * DPL file, call dpdmai_open() function to get an authentication
- * token first.
+ * The function accepts an authentication token of a parent
+ * container that this object should be assigned to. The token
+ * can be '0' so the object will be assigned to the default container.
+ * The newly created object can be opened with the returned
+ * object id and using the container's associated tokens and MC portals.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpdmai_create(struct fsl_mc_io		*mc_io,
-		  uint32_t			cmd_flags,
-		  const struct dpdmai_cfg	*cfg,
-		  uint16_t			*token);
+int dpdmai_create(struct fsl_mc_io	*mc_io,
+		  uint16_t		dprc_token,
+		uint32_t		cmd_flags,
+		const struct dpdmai_cfg	*cfg,
+		uint32_t		*obj_id);
 
 /**
  * dpdmai_destroy() - Destroy the DPDMAI object and release all its resources.
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token: Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
+ * @object_id:	The object id; it must be a valid id within the container that
+ * created this object;
+ *
+ * The function accepts the authentication token of the parent container that
+ * created the object (not the one that currently owns the object). The object
+ * is searched within parent using the provided 'object_id'.
+ * All tokens to the object must be closed before calling destroy.
  *
  * Return:	'0' on Success; error code otherwise.
  */
 int dpdmai_destroy(struct fsl_mc_io	*mc_io,
-		   uint32_t		cmd_flags,
-		   uint16_t		token);
+		   uint16_t		dprc_token,
+		uint32_t		cmd_flags,
+		uint32_t		object_id);
 
 /**
  * dpdmai_enable() - Enable the DPDMAI, allow sending and receiving frames.
@@ -199,7 +208,7 @@ struct dpdmai_irq_cfg {
 };
 
 /**
- * dpdmai_set_irq() - Set IRQ information for the DPDMAI to trigger an interrupt.
+ * dpdmai_set_irq() - Set IRQ information for the DPDMAI to trigger an interrupt
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPDMAI object
@@ -290,7 +299,7 @@ int dpdmai_get_irq_enable(struct fsl_mc_io	*mc_io,
 int dpdmai_set_irq_mask(struct fsl_mc_io	*mc_io,
 			uint32_t		cmd_flags,
 			uint16_t		token,
-			uint8_t		irq_index,
+			uint8_t			irq_index,
 			uint32_t		mask);
 
 /**
@@ -309,7 +318,7 @@ int dpdmai_set_irq_mask(struct fsl_mc_io	*mc_io,
 int dpdmai_get_irq_mask(struct fsl_mc_io	*mc_io,
 			uint32_t		cmd_flags,
 			uint16_t		token,
-			uint8_t		irq_index,
+			uint8_t			irq_index,
 			uint32_t		*mask);
 
 /**
@@ -351,20 +360,10 @@ int dpdmai_clear_irq_status(struct fsl_mc_io	*mc_io,
 /**
  * struct dpdmai_attr - Structure representing DPDMAI attributes
  * @id: DPDMAI object ID
- * @version: DPDMAI version
  * @num_of_priorities: number of priorities
  */
 struct dpdmai_attr {
 	int	id;
-	/**
-	 * struct version - DPDMAI version
-	 * @major: DPDMAI major version
-	 * @minor: DPDMAI minor version
-	 */
-	struct {
-		uint16_t major;
-		uint16_t minor;
-	} version;
 	uint8_t num_of_priorities;
 };
 
@@ -411,7 +410,7 @@ enum dpdmai_dest {
 struct dpdmai_dest_cfg {
 	enum dpdmai_dest	dest_type;
 	int			dest_id;
-	uint8_t		priority;
+	uint8_t			priority;
 };
 
 /* DPDMAI queue modification options */
@@ -517,5 +516,19 @@ int dpdmai_get_tx_queue(struct fsl_mc_io		*mc_io,
 			uint16_t			token,
 			uint8_t				priority,
 			struct dpdmai_tx_queue_attr	*attr);
+
+/**
+ * dpdmai_get_api_version() - Get Data Path DMA API version
+ * @mc_io:  Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @major_ver:	Major version of data path dma API
+ * @minor_ver:	Minor version of data path dma API
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dpdmai_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver);
 
 #endif /* __FSL_DPDMAI_H */

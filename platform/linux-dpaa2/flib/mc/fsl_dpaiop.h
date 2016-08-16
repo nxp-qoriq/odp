@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -86,28 +86,30 @@ struct dpaiop_cfg {
 /**
  * dpaiop_create() - Create the DPAIOP object.
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token:	Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @cfg:	Configuration structure
- * @token:	Returned token; use in subsequent API calls
+ * @obj_id: returned object id
  *
  * Create the DPAIOP object, allocate required resources and
  * perform required initialization.
  *
  * The object can be created either by declaring it in the
  * DPL file, or by calling this function.
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent calls to
- * this specific object. For objects that are created using the
- * DPL file, call dpaiop_open function to get an authentication
- * token first.
+ *
+ * The function accepts an authentication token of a parent
+ * container that this object should be assigned to. The token
+ * can be '0' so the object will be assigned to the default container.
+ * The newly created object can be opened with the returned
+ * object id and using the container's associated tokens and MC portals.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpaiop_create(struct fsl_mc_io	*mc_io,
-		  uint32_t		cmd_flags,
+int dpaiop_create(struct fsl_mc_io		*mc_io,
+		  uint16_t			dprc_token,
+		  uint32_t			cmd_flags,
 		  const struct dpaiop_cfg	*cfg,
-		uint16_t		*token);
+		  uint32_t			*obj_id);
 
 /**
  * dpaiop_destroy() - Destroy the DPAIOP object and release all its resources.
@@ -115,9 +117,17 @@ int dpaiop_create(struct fsl_mc_io	*mc_io,
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPAIOP object
  *
+ * The function accepts the authentication token of the parent container that
+ * created the object (not the one that currently owns the object). The object
+ * is searched within parent using the provided 'object_id'.
+ * All tokens to the object must be closed before calling destroy.
+ *
  * Return:	'0' on Success; error code otherwise.
  */
-int dpaiop_destroy(struct fsl_mc_io *mc_io, uint32_t cmd_flags, uint16_t token);
+int dpaiop_destroy(struct fsl_mc_io *mc_io,
+		   uint16_t dprc_token,
+		   uint32_t cmd_flags,
+		   uint32_t object_id);
 
 /**
  * dpaiop_reset() - Reset the DPAIOP, returns the object to initial state.
@@ -142,7 +152,7 @@ struct dpaiop_irq_cfg {
 };
 
 /**
- * dpaiop_set_irq() - Set IRQ information for the DPAIOP to trigger an interrupt.
+ * dpaiop_set_irq() - Set IRQ information for the DPAIOP to trigger an interrupt
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPAIOP object
@@ -295,19 +305,9 @@ int dpaiop_clear_irq_status(struct fsl_mc_io	*mc_io,
 /**
  * struct dpaiop_attr - Structure representing DPAIOP attributes
  * @id:	AIOP ID
- * @version:	DPAIOP version
  */
 struct dpaiop_attr {
 	int id;
-	/**
-	 * struct version - Structure representing DPAIOP version
-	 * @major:	DPAIOP major version
-	 * @minor:	DPAIOP minor version
-	 */
-	struct {
-		uint16_t major;
-		uint16_t minor;
-	} version;
 };
 
 /**
@@ -490,5 +490,19 @@ int dpaiop_get_time_of_day(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
 			   uint16_t token,
 			   uint64_t *time_of_day);
+
+/**
+ * dpaiop_get_api_version() - Get Data Path AIOP API version
+ * @mc_io:  Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @major_ver:	Major version of data path aiop API
+ * @minor_ver:	Minor version of data path aiop API
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dpaiop_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver);
 
 #endif /* __FSL_DPAIOP_H */
