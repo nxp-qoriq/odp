@@ -183,7 +183,7 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 						dev->dev_string, retcode);
 		goto dev_open_failure;
 	}
-#ifndef QODP_464
+#if defined(BUILD_LS2088)
 	/* Reset the DPNI before use. It's a workaround to
 	   enable Stashing via MC configuration */
 	retcode = dpni_reset(dpni_dev, CMD_PRI_LOW, dev_priv->token);
@@ -952,13 +952,12 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 	}
 
 	cfg.options = cfg.options | DPNI_QUEUE_OPT_USER_CTX;
-
-#ifndef QODP_464
+#if defined(BUILD_LS2088)
 	cfg.options = cfg.options | DPNI_QUEUE_OPT_FLC;
 #endif
 
 	cfg.user_ctx = (uint64_t)(eth_rx_vq);
-#ifndef QODP_464
+#if defined(BUILD_LS2088)
 	cfg.flc_cfg.flc_type = DPNI_FLC_STASH;
 	cfg.flc_cfg.frame_data_size = DPNI_STASH_SIZE_64B;
 	/* Enabling Annotation stashing */
