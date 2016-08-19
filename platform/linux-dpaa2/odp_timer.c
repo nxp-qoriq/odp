@@ -56,6 +56,7 @@
 #include <odp_timer_internal.h>
 #include <dpaa2_timer.h>
 #include <dpaa2_time.h>
+#include <dpaa2.h>
 
 #define TMO_UNUSED   ((uint64_t)0xFFFFFFFFFFFFFFFF)
 /* TMO_INACTIVE is or-ed with the expiration tick to indicate an expired timer.
@@ -403,7 +404,6 @@ static void *manage(void *ptr)
 	struct worker *attr = ptr;
 	int ret;
 	cpu_set_t cpuset;
-	odp_instance_t instance = 0xdeadbeef;
 
 	CPU_ZERO(&cpuset);
 	CPU_SET(attr->cpu, &cpuset);
@@ -415,9 +415,13 @@ static void *manage(void *ptr)
 		return NULL;
 	}
 
-	/* ODP thread local init */
-	if (odp_init_local(instance, ODP_THREAD_WORKER)) {
-		ODP_ERR("Local init failed\n");
+	/*Register the deaffine API to pthread library that will be called
+	  during timer_free, when pthread_cancel will be called for this thread.*/
+	pthread_cleanup_push(dpaa2_thread_deaffine_io_context, NULL);
+
+	ret = dpaa2_thread_affine_io_context(DPAA2_IO_PORTAL_ANY_FREE);
+	if (ret) {
+		ODP_ERR("dpaa2_thread_affine_io_context failed.\n");
 		return NULL;
 	}
 
