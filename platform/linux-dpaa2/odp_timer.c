@@ -429,8 +429,13 @@ static void *manage(void *ptr)
 		dpaa2_timer_manage();
 		dpaa2_usleep(attr->ures);
 	}
+
+	/* Although function will not be called for this thread, but required to
+	   put the closing brace in macro which was opened during pthread_cleanup_push function*/
+	pthread_cleanup_pop(1);
 	return NULL;
 }
+
 odp_timer_t odp_timer_alloc(odp_timer_pool_t tpid,
 			    odp_queue_t queue,
 			    void *user_ptr)
