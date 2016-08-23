@@ -85,7 +85,7 @@ struct dpaa2_dev_priv {
 		by device driver. This shall contain device-specific Operations
 		& Configuration parameters. */
 	uint32_t flags;	/**< Flags passed by user to Enable features
-			  like Shared Memory usage, notifier. */
+			  like Shared Memory usage, interrupts/notifier. */
 
 };
 

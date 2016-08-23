@@ -28,6 +28,7 @@
  */
 struct dpaa2_intr_handle {
 	int fd; /*!< eventfd corresponding to the device */
+	int poll_fd; /*!< epollfd corresponding to the device */
 	uint32_t flags; /*!< flags including maskable/
 		* automasked/is_enabled information */
 };

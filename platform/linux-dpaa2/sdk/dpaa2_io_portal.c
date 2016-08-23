@@ -63,39 +63,36 @@ int32_t dpaa2_io_portal_exit(void)
 	return DPAA2_SUCCESS;
 }
 
-static int dpaa2_notif_dpio_init(void)
+static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
 {
-	static struct epoll_event epoll_ev;
-	int eventfd;
+	struct epoll_event epoll_ev;
+	int eventfd, dpio_epollfd;
 	int ret;
 
-	notif_dpio_epollfd = epoll_create(1);
-	ret = dpaa2_register_dpio_interrupt(notif_dpio,
+	dpio_epollfd = epoll_create(1);
+	ret = dpaa2_register_dpio_interrupt(dpio_dev,
 		VFIO_DPIO_DATA_IRQ_INDEX);
 	if (ret != DPAA2_SUCCESS) {
 		DPAA2_ERR(FW, "Interrupt registeration failed");
 		return DPAA2_FAILURE;
 	}
 
-	qbman_swp_interrupt_set_trigger(notif_dpio->sw_portal,
+	qbman_swp_interrupt_set_trigger(dpio_dev->sw_portal,
 		QBMAN_SWP_INTERRUPT_DQRI);
-	qbman_swp_interrupt_clear_status(notif_dpio->sw_portal,
+	qbman_swp_interrupt_clear_status(dpio_dev->sw_portal,
 		0xffffffff);
-	/* This API is currently required to be called with channel index 0,
-	so that notifications are pushed from the channel to the Notifier DPIO.
-	Fix should be there in the QBMAN or MC should provide the channel index
-	in attributes */
-	qbman_swp_push_set(notif_dpio->sw_portal, 0, 1);
+	qbman_swp_interrupt_set_inhibit(dpio_dev->sw_portal, 0);
 
-	eventfd = notif_dpio->intr_handle[VFIO_DPIO_DATA_IRQ_INDEX].fd;
-	epoll_ev.events = EPOLLIN | EPOLLPRI;
+	eventfd = dpio_dev->intr_handle[VFIO_DPIO_DATA_IRQ_INDEX].fd;
+	epoll_ev.events = EPOLLIN | EPOLLPRI | EPOLLET;
 	epoll_ev.data.fd = eventfd;
 
-	ret = epoll_ctl(notif_dpio_epollfd, EPOLL_CTL_ADD, eventfd, &epoll_ev);
+	ret = epoll_ctl(dpio_epollfd, EPOLL_CTL_ADD, eventfd, &epoll_ev);
 	if (ret < 0) {
 		DPAA2_ERR(FW, "epoll_ctl failed");
 		return DPAA2_FAILURE;
 	}
+	dpio_dev->intr_handle[VFIO_DPIO_DATA_IRQ_INDEX].poll_fd = dpio_epollfd;
 
 	return DPAA2_SUCCESS;
 }
@@ -248,23 +245,16 @@ int32_t dpaa2_io_portal_probe(ODP_UNUSED struct dpaa2_dev *dev,
 	DPAA2_INFO(FW, "\t DPIO[%d]  ", dpio_dev->hw_id);
 	DPAA2_INFO(FW, "QBMan SW Portal 0x%p\n", dpio_dev->sw_portal);
 
-	/* Add device to DPAA2 DPIO device List */
-	if ((dev_priv->flags & DPAA2_EVENT_NOTIFIER) &&
-			(NULL == notif_dpio) &&
-			(attr.channel_mode == DPIO_LOCAL_CHANNEL)) {
-		notif_dpio = dpio_dev;
-		if (dpaa2_notif_dpio_init() != DPAA2_SUCCESS) {
-			DPAA2_ERR(FW, "Unable to intialize the "
-				"notification DPIO");
-			notif_dpio = NULL;
+	if(dev_priv->flags & DPAA2_ENABLE_INTERRUPTS) {
+		if (dpaa2_dpio_intr_init(dpio_dev) != DPAA2_SUCCESS) {
+			DPAA2_ERR(FW, "Interrupt registration failed for dpio");
 			goto free_res;
 		}
-		DPAA2_INFO(FW, "NOTIFIER DPIO allocated\n");
-		return DPAA2_SUCCESS;
 	}
 
 	io_space_count++;
 	dpio_dev->index = io_space_count;
+	/* Add device to DPAA2 DPIO device List */
 	TAILQ_INSERT_HEAD(dpio_dev_list, dpio_dev, next);
 
 	DPAA2_INFO(FW, "\t Allocated DPIO Device %d\n", io_space_count);
@@ -338,6 +328,16 @@ int32_t dpaa2_io_portal_close(ODP_UNUSED struct dpaa2_dev *dev)
 	}
 
 	return DPAA2_SUCCESS;
+}
+
+void dpaa2_write_all_intr_fd(void)
+{
+	struct dpaa2_dpio_dev *dpio_dev = NULL;
+
+	TAILQ_FOREACH(dpio_dev, dpio_dev_list, next) {
+		uint64_t  i = 1;
+		write(dpio_dev->intr_handle[0].fd, &i, sizeof(uint64_t));
+	}
 }
 
 /*!
@@ -420,6 +420,7 @@ int32_t dpaa2_thread_affine_io_context(uint32_t io_index)
 	}
 	DPAA2_DBG(FW, "io_index %d affined with dpio index %d - dpio =%p",
 			io_index, dpio_dev->index, thread_io_info.dpio_dev);
+	printf("dpio.%d affined to cpu %d\n", dpio_dev->hw_id, sched_getcpu());
 
 	return DPAA2_SUCCESS;
 }
