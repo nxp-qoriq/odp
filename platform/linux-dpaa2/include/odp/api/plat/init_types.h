@@ -37,7 +37,10 @@ typedef enum odpfsl_dq_schedule_mode_t {
 	/** HW Scheduler will enqueue the packet/s in Rx Queue on demand */
 	ODPFSL_PULL = 0,
 	/** HW Scheduler will enqueue the packet/s in RX Queue automatically */
-	ODPFSL_PUSH
+	ODPFSL_PUSH,
+	/** HW Scheduler will enqueue the packet/s in RX Queue automatically
+	    and HW interrupt will be given to the user*/
+	ODPFSL_PUSH_INTR
 } odpfsl_dq_schedule_mode_t;
 /**
  * ODP platform initialization data

@@ -28,8 +28,8 @@ extern "C" {
 /*! DPAA2 flags related to initialization */
 enum {
 	DPAA2_SHARED_MEM = BIT_POS(0), /*!< Shared memory usage is required */
-	DPAA2_EVENT_NOTIFIER = BIT_POS(1), /*!< Application will use
-					* its own event notifier */
+	DPAA2_ENABLE_INTERRUPTS = BIT_POS(1), /*!< Registering Interrupts
+					       * for DPAA2 devices*/
 	DPAA2_LOG_DISABLE = BIT_POS(2), /*!< DPAA2 logging to be disabled */
 	DPAA2_LOG_FILE = BIT_POS(3), /*!< Option to send logs to file */
 	DPAA2_SYSTEM_INFO = BIT_POS(4), /*!< Platform System Information*/
@@ -91,12 +91,26 @@ extern void dpaa2_cleanup(void);
 
 
 /*!
+ * @details	This function must be invoked by a signal handler to wake up
+ *		all the event fds associated with sw portals during exit for cleanup.
+ *		Function is only useful, if hardware interrupts are enabled at
+ *		sw portals.
+ *
+ * @returns     Not applicable.
+ *
+ */
+
+extern void dpaa2_write_all_intr_fd(void);
+
+
+/*!
  * @details	To get total number of available I/O contexts available for use.
  *
  * @returns     Number of IO context objects available for
  *		current application context
  *
  */
+
 extern uint32_t dpaa2_get_io_context_count(void);
 
 

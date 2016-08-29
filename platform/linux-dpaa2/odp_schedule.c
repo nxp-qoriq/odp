@@ -9,6 +9,8 @@
 
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
+#include <sys/epoll.h>
 
 #include <odp/api/init.h>
 #include <odp/api/schedule.h>
@@ -113,6 +115,10 @@ static inline int32_t odp_unset_push_mode(odp_schedule_group_t group, struct dpa
 
 /* Mask of queues per priority */
 typedef uint8_t pri_mask_t;
+
+/* Global variable for PUSH mode interrupts enablement
+ * Variable is only for optimization*/
+int sched_intr = 0;
 
 ODP_STATIC_ASSERT((8*sizeof(pri_mask_t)) >= QUEUES_PER_PRIO,
 		   "pri_mask_t_is_too_small");
@@ -588,7 +594,9 @@ static inline int32_t odp_schedule_dummy(dpaa2_mbuf_pt mbuf[], int num)
 
 	thr_id = odp_thread_id();
 
-	if (dq_schedule_mode & ODPFSL_PUSH) {
+	sched_intr = dq_schedule_mode & ODPFSL_PUSH_INTR;
+	if ((dq_schedule_mode & ODPFSL_PUSH) ||
+			sched_intr) {
 		/* For Group ALL */
 		ret = odp_set_push_mode(ODP_SCHED_GROUP_ALL, NULL);
 		if (ret)
@@ -635,31 +643,61 @@ odp_event_t odp_schedule(odp_queue_t *out_queue, uint64_t wait)
 	int32_t ret;
 	odp_event_t ev = ODP_EVENT_INVALID;
 	dpaa2_mbuf_pt pkt_buf[1];
-	uint64_t wait_till;
-	/* Timeout Handling*/
-	if (wait)
-		wait_till = dpaa2_time_get_cycles() + wait;
+	uint64_t wait_till = 0, time;
+	struct dpaa2_dpio_dev *dpio_dev = thread_io_info.dpio_dev;
+	struct epoll_event epoll_ev;
 
+	if (!sched_intr && wait)
+		wait_till = dpaa2_time_get_cycles() + wait;
 	do {
 		ret = fn_sch_recv_pkt(pkt_buf, 1);
-		if (ret > 0) {
+		if (ret) {
 			ev = (odp_event_t)pkt_buf[0];
 			if (out_queue) {
 				*out_queue =
 					(odp_queue_t)dpaa2_dev_get_vq_handle(pkt_buf[0]->vq);
 			}
 			break;
-		} else if (ret == 0) {
-			if ((wait != ODP_SCHED_WAIT) && (wait_till <= dpaa2_time_get_cycles()))
-				break;
-		}
+		} else {
+			if (odp_unlikely(received_sigint)) {
+				if (odp_term_local())
+					fprintf(stderr, "error: odp_term_local() failed.\n");
+				pthread_exit(NULL);
+			}
 
-		if (odp_unlikely(received_sigint)) {
-			if (odp_term_local())
-				fprintf(stderr, "error: odp_term_local() failed.\n");
-			pthread_exit(NULL);
-		}
+			if (!sched_intr) {
+				if ((wait != ODP_SCHED_WAIT) && (wait_till <= dpaa2_time_get_cycles()))
+					break;
+			} else {
+				if (!wait)
+					time = -1;
+				else if (wait == ODP_SCHED_NO_WAIT)
+					break;
+				else
+					time = wait/ODP_TIME_MSEC_IN_NS;
 
+				qbman_swp_interrupt_clear_status(dpio_dev->sw_portal, QBMAN_SWP_INTERRUPT_DQRI);
+				/* Here, need to call the recv_fn again to check that valid dqrr_entry is now available on
+				 * portal or not as there may be the chances that dqrr_entry pushed at portal before calling
+				 * qbman interrupt clear status API and we may not be able to get the interrupt for that entry.
+				 */
+				ret = fn_sch_recv_pkt(pkt_buf, 1);
+				if (ret > 0) {
+					ev = (odp_event_t)pkt_buf[0];
+					if (out_queue) {
+					*out_queue =
+						(odp_queue_t)dpaa2_dev_get_vq_handle(pkt_buf[0]->vq);
+					}
+					break;
+				}
+
+				ret = epoll_wait(dpio_dev->intr_handle[0].poll_fd, &epoll_ev, 1, time);
+				if (ret < 1) {
+					ODP_DBG("odp_schedule: ERROR or TIMEOUT\n");
+					break;
+				}
+			}
+		}
 	} while (1);
 
 	return ev;
@@ -679,31 +717,58 @@ odp_event_t odp_schedule(odp_queue_t *out_queue, uint64_t wait)
 int odp_schedule_multi(odp_queue_t *out_queue, uint64_t wait,
 		       odp_event_t events[], int num)
 {
-	int32_t i, num_pkt = 0;
+	int32_t num_pkt = 0, i, nfds;
 	dpaa2_mbuf_pt pkt_buf[MAX_DEQ];
-	uint64_t wait_till;
-	/* Timeout Handling*/
-	if (wait)
-		wait_till = dpaa2_time_get_cycles() + wait;
+	uint64_t wait_till = 0, time;
+	struct dpaa2_dpio_dev *dpio_dev = thread_io_info.dpio_dev;
+	struct epoll_event epoll_ev;
 
-	while (1) {
+	if (!sched_intr && wait)
+			wait_till = dpaa2_time_get_cycles() + wait;
+	do {
 		num_pkt = fn_sch_recv_pkt(pkt_buf, num);
-
-
 		if (num_pkt > 0) {
 			if (out_queue) {
-				*out_queue = (odp_queue_t)
-					dpaa2_dev_get_vq_handle(pkt_buf[0]->vq);
+				*out_queue =
+					(odp_queue_t)dpaa2_dev_get_vq_handle(pkt_buf[0]->vq);
 			}
 
 			for (i = 0; i < num_pkt; i++)
 				events[i] = (odp_event_t)pkt_buf[i];
 
 			return num_pkt;
+		} else {
+			if (!sched_intr && !num_pkt) {
+				if ((wait != ODP_SCHED_WAIT) && (wait_till <= dpaa2_time_get_cycles()))
+					break;
+			} else {
+				if (wait == ODP_SCHED_NO_WAIT)
+					break;
+				if (wait) {
+					time = wait/ODP_TIME_MSEC_IN_NS;
+				} else
+					time = -1;
+				qbman_swp_interrupt_clear_status(dpio_dev->sw_portal, QBMAN_SWP_INTERRUPT_DQRI);
+				num_pkt = fn_sch_recv_pkt(pkt_buf, num);
+				if (num_pkt > 0) {
+					if (out_queue) {
+						*out_queue =
+							(odp_queue_t)dpaa2_dev_get_vq_handle(pkt_buf[0]->vq);
+					}
 
-		} else if (num_pkt == 0) {
-			if ((wait != ODP_SCHED_WAIT) && (wait_till <= dpaa2_time_get_cycles()))
-				break;
+					for (i = 0; i < num_pkt; i++)
+						events[i] = (odp_event_t)pkt_buf[i];
+
+					return num_pkt;
+				}
+
+				nfds = epoll_wait(dpio_dev->intr_handle[0].poll_fd, &epoll_ev, 1, time);
+				if (nfds < 1) {
+					ODP_DBG("odp_schedule: ERROR or TIMEOUT\n");
+						break;
+				}
+			}
+
 		}
 
 		if (odp_unlikely(received_sigint)) {
@@ -711,8 +776,8 @@ int odp_schedule_multi(odp_queue_t *out_queue, uint64_t wait,
 				fprintf(stderr, "error: odp_term_local() failed.\n");
 			pthread_exit(NULL);
 		}
+	} while (1);
 
-	}
 	if (out_queue)
 		*out_queue = ODP_QUEUE_INVALID;
 
@@ -751,7 +816,8 @@ int odp_schedule_init_local(void)
 		/* Set the RCV function pointer */
 		fn_sch_recv_pkt = odp_rcv_pull_mode;
 	}
-	if (dq_schedule_mode & ODPFSL_PUSH) {
+	if ((dq_schedule_mode & ODPFSL_PUSH) ||
+			(dq_schedule_mode & ODPFSL_PUSH_INTR)) {
 		for (i = _ODP_SCHED_GROUP_NAMED; i < MAX_SCHED_GRPS; i++) {
 			if (sched->sched_grp[i].name[0] != 0 &&
 				odp_thrmask_isset(sched->sched_grp[i].mask, thr_id) &&
@@ -802,7 +868,8 @@ int odp_schedule_term_local(void)
 			odp_deaffine_group(ODP_SCHED_GROUP_CONTROL, &clr_mask);
 	}
 
-	if (!(dq_schedule_mode & ODPFSL_PUSH)) {
+	if (!((dq_schedule_mode & ODPFSL_PUSH) ||
+			(dq_schedule_mode & ODPFSL_PUSH_INTR))) {
 		for (i = 0; i < dpaa2_res.res_cnt.conc_dev_cnt; i++)
 			dpaa2_dev_deaffine_conc_list(dpaa2_res.conc_dev[i]);
 	}
@@ -897,7 +964,8 @@ int32_t odp_deaffine_group(odp_schedule_group_t group, const odp_thrmask_t *msk)
 			}
 		}
 		if (already_present) {
-			if (dq_schedule_mode & ODPFSL_PUSH) {
+			if ((dq_schedule_mode & ODPFSL_PUSH) ||
+				(dq_schedule_mode & ODPFSL_PUSH_INTR)) {
 				dpio_dev = (struct dpaa2_dpio_dev *) thr_grp[thr].dpio_dev;
 				if (dpio_dev) {
 					ret = odp_unset_push_mode(group, dpio_dev);
@@ -922,7 +990,8 @@ static inline int32_t odp_set_push_mode(odp_schedule_group_t group, struct dpaa2
 {
 	struct dpaa2_dev *conc_dev = sched->sched_grp[group].conc_dev;
 
-	if (dq_schedule_mode & ODPFSL_PUSH) {
+	if ((dq_schedule_mode & ODPFSL_PUSH) ||
+		(dq_schedule_mode & ODPFSL_PUSH_INTR)) {
 		/* PUSH Mode configuration */
 		int32_t retcode;
 		uint8_t ch_index;
@@ -983,7 +1052,8 @@ static inline int32_t odp_unset_push_mode(odp_schedule_group_t group, struct dpa
 {
 	struct dpaa2_dev *conc_dev = sched->sched_grp[group].conc_dev;
 
-	if (dq_schedule_mode & ODPFSL_PUSH) {
+	if ((dq_schedule_mode & ODPFSL_PUSH) ||
+		(dq_schedule_mode & ODPFSL_PUSH_INTR)) {
 		int32_t retcode, i = 0;
 		struct conc_attr attr;
 		struct dpaa2_dpio_dev *dpio_dev;

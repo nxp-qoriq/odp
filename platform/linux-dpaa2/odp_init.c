@@ -103,6 +103,8 @@ static void sigproc(int signum, siginfo_t *info ODP_UNUSED, void *ptr ODP_UNUSED
 		printf("\nSignal Handler Finished\n");
 	}
 	received_sigint = 1;
+	if (dq_schedule_mode & ODPFSL_PUSH_INTR)
+		dpaa2_write_all_intr_fd();
 }
 
 static void catch_signal(int snum, struct sigaction act, struct sigaction tact)
@@ -244,6 +246,9 @@ static int odp_dpaa2_init_global(const odp_platform_init_t *platform_params)
 	cfg.log_level		= DPAA2_LOG_WARNING;
 	cfg.flags		= DPAA2_SOFTQ_SUPPORT;
 
+	if (dq_schedule_mode & ODPFSL_PUSH_INTR)
+		cfg.flags |= DPAA2_ENABLE_INTERRUPTS;
+
 	/* Till now DPAA2 framework is not initialized so that cannot use DPAA2
 	 * logging mechanism. DPAA2 logging will be usable after dpaa2_init.
 	 */
@@ -303,6 +308,13 @@ int odp_init_global(odp_instance_t *instance,
 
 	if (platform_params)
 		dq_schedule_mode = platform_params->dq_schedule_mode;
+
+	if (getenv("ODP_SCH_PUSH_INTR")) {
+		if (dq_schedule_mode & ODPFSL_PUSH) {
+			dq_schedule_mode = ODPFSL_PUSH_INTR;
+			printf("\n Using DPAA2 Scheduler in SW-PUSH mode with interrupts\n ");
+		}
+	}
 
 	odp_global_data.log_fn = odp_override_log;
 	odp_global_data.abort_fn = odp_override_abort;
