@@ -186,6 +186,8 @@ int32_t dpaa2_io_portal_close(struct dpaa2_dev *dev);
 int dpaa2_register_dpio_interrupt(struct dpaa2_dpio_dev *dpio_dev,
 	uint32_t index);
 
+void dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id);
+
 void release_dpio(struct dpaa2_dpio_dev *dpio_dev);
 
 #ifdef __cplusplus
