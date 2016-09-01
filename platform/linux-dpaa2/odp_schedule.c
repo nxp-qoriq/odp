@@ -640,7 +640,7 @@ static inline int32_t odp_schedule_dummy(dpaa2_mbuf_pt mbuf[], int num)
 
 odp_event_t odp_schedule(odp_queue_t *out_queue, uint64_t wait)
 {
-	int32_t ret;
+	int32_t ret, i = 0;
 	odp_event_t ev = ODP_EVENT_INVALID;
 	dpaa2_mbuf_pt pkt_buf[1];
 	uint64_t wait_till = 0, time;
@@ -691,10 +691,26 @@ odp_event_t odp_schedule(odp_queue_t *out_queue, uint64_t wait)
 					break;
 				}
 
+RETRY:
 				ret = epoll_wait(dpio_dev->intr_handle[0].poll_fd, &epoll_ev, 1, time);
 				if (ret < 1) {
-					ODP_DBG("odp_schedule: ERROR or TIMEOUT\n");
-					break;
+					if (!ret) {
+						ODP_DBG("odp_schedule: TIMEOUT\n");
+						break;
+					}
+					/* sometimes due to some spurious inerrupts epoll_wait fails
+					   with errno EINTR. so here we are retrying epoll_wait in such
+					   case to avoid the problem.*/
+					if (errno == EINTR) {
+						ODP_PRINT("odp_schedule: epoll_wait fails\n");
+						i++;
+						if (i > 10) {
+							ODP_PRINT("odp_schedule: epoll_wait fails even after 10 tries\n");
+							ODP_PRINT("odp_schedule: Failed\n");
+							break;
+						}
+						goto RETRY;
+					}
 				}
 			}
 		}
