@@ -192,7 +192,17 @@ get_dpni_parameters() {
 	fi
 	if [[ -z "$DPNI_OPTIONS" ]]
 	then
-		DPNI_OPTIONS="DPNI_OPT_MULTICAST_FILTER,DPNI_OPT_UNICAST_FILTER,DPNI_OPT_DIST_HASH,DPNI_OPT_DIST_FS,DPNI_OPT_FS_MASK_SUPPORT"
+		board_type=$(uname -n | cut -c3-6)
+		if [[ $board_type == "1088" ]]
+		then
+			DPNI_OPTIONS="DPNI_OPT_MULTICAST_FILTER,DPNI_OPT_UNICAST_FILTER,DPNI_OPT_DIST_HASH,DPNI_OPT_DIST_FS"
+		elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" ]]
+		then
+			DPNI_OPTIONS="DPNI_OPT_MULTICAST_FILTER,DPNI_OPT_UNICAST_FILTER,DPNI_OPT_DIST_HASH,DPNI_OPT_DIST_FS,DPNI_OPT_FS_MASK_SUPPORT"
+		else
+			echo "Invalid board type"
+			exit
+		fi
 	fi
 	if [[ -z "$MAX_DIST_KEY_SIZE" ]]
 	then
@@ -227,7 +237,7 @@ get_dpcon_parameters() {
 	fi
 	if [[ -z "$DPCON_PRIORITIES" ]]
 	then
-		DPCON_PRIORITIES=8
+		DPCON_PRIORITIES=2
 	fi
 	echo "DPCON parameters :-->" >> dynamic_dpl_logs
 	echo -e "\tDPCON_PRIORITIES	= "$DPCON_PRIORITIES >> dynamic_dpl_logs
@@ -276,7 +286,7 @@ get_dpio_parameters() {
 	fi
 	if [[ -z "$DPIO_PRIORITIES" ]]
 	then
-		DPIO_PRIORITIES=8
+		DPIO_PRIORITIES=2
 	fi
 	echo "DPIO parameters :-->" >> dynamic_dpl_logs
 	echo -e "\tDPIO_PRIORITIES = "$DPIO_PRIORITIES >> dynamic_dpl_logs
