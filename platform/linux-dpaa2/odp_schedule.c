@@ -341,6 +341,7 @@ void odp_schedule_queue(odp_queue_t queue, int prio)
 	/*Get a conc device from the DPAA2 then map this queue to conc device*/
 	vq_cfg.conc_dev = odp_get_conc_from_grp(qentry->s.param.sched.group);
 
+	prio = 0;
 	vq_cfg.prio = prio;
 	vq_cfg.sync = qentry->s.param.sched.sync;
 	if (enable_hash) {
