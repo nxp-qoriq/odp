@@ -19,7 +19,8 @@
 #include <dpaa2_internal.h>
 #include <dpaa2_vfio.h>
 
-#if defined(BUILD_LS2085) || defined(BUILD_LS2080) || defined(BUILD_LS2088)
+#if defined(BUILD_LS2085) || defined(BUILD_LS2080) || \
+	defined(BUILD_LS2088) || defined(BUILD_LS1088)
 #define NUM_HOST_CPUS 8
 #endif
 

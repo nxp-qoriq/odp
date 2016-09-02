@@ -268,6 +268,7 @@ AC_ARG_ENABLE([build_type],
   ls2080) build_type=LS2080 ;;
   ls2085) build_type=LS2085 ;;
   ls2088) build_type=LS2088 ;;
+  ls1088) build_type=LS1088 ;;
   *)  build_type=LS2085;;
 esac],[build_type=LS2085])
 fi
@@ -284,6 +285,7 @@ fi
 AM_CONDITIONAL([BUILD_LS2080], [test x$build_type = xLS2080 ])
 AM_CONDITIONAL([BUILD_LS2085], [test x$build_type = xLS2085 ])
 AM_CONDITIONAL([BUILD_LS2088], [test x$build_type = xLS2088 ])
+AM_CONDITIONAL([BUILD_LS1088], [test x$build_type = xLS1088 ])
 AM_CONDITIONAL([BUILD_LS1043], [test x$build_type = xLS1043 ])
 AM_CONDITIONAL([LS1043_SOC], [test "x${SOC}" = "xLS1043"])
 AM_CONDITIONAL([P4_SOC], [test "x${SOC}" = "xP4080"])
