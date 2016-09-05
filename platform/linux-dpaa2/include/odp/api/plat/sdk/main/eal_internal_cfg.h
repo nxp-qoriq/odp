@@ -64,6 +64,7 @@ struct hugepage_info {
  */
 struct internal_config {
 	volatile size_t memory;           /**< amount of asked memory */
+	volatile size_t free_memory;      /**< Total available memory to be used by application */
 	volatile unsigned no_hugetlbfs;   /**< true to disable hugetlbfs */
 	uintptr_t base_virtaddr;          /**< base address to try and reserve memory from */
 	volatile int syslog_facility;	  /**< facility passed to openlog() */

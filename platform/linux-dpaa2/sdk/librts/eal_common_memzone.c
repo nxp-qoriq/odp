@@ -53,6 +53,7 @@
 
 #include <dpaa2_mpool.h>
 #include <dpaa2_lock.h>
+#include "eal_internal_cfg.h"
 
 /* internal copy of free memory segments */
 static struct dpaa2_memseg *free_memseg;
@@ -172,6 +173,12 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		return NULL;
 	}
 
+	/* Check if free memory is not more than total memory available for application*/
+	if (internal_config.free_memory < requested_len) {
+		DPAA2_ERR(MEMZONE, "Not enough memory available \n");
+		return NULL;
+	}
+	
 	/* find the smallest segment matching requirements */
 	for (i = 0; i < DPAA2_MAX_MEMSEG; i++) {
 		/* last segment */
@@ -276,6 +283,9 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	free_memseg[memseg_idx].phys_addr += len;
 	free_memseg[memseg_idx].addr =
 		(char *)free_memseg[memseg_idx].addr + len;
+
+	/* Update free memory available for application use */
+	internal_config.free_memory -= requested_len;
 
 	/* fill the zone in config */
 	struct dpaa2_memzone *mz = &mcfg->memzone[mcfg->memzone_idx++];
