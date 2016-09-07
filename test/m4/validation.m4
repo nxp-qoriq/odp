@@ -26,7 +26,7 @@ AC_ARG_WITH([cunit-path],
 AC_HELP_STRING([--with-cunit-path=DIR   path to CUnit libs and headers],
                [(or in the default path if not specified).]),
     [CUNIT_PATH=$withval
-    AM_CPPFLAGS="$AM_CPPFLAGS -I$CUNIT_PATH/include"
+    AM_CPPFLAGS="$AM_CPPFLAGS -isystem$CUNIT_PATH/include"
     AM_LDFLAGS="$AM_LDFLAGS -L$CUNIT_PATH/lib"
     cunit_support=yes],[])
 
