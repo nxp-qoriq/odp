@@ -183,7 +183,7 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 						dev->dev_string, retcode);
 		goto dev_open_failure;
 	}
-#if defined(BUILD_LS2088)
+#if defined(BUILD_LS2088) || defined(BUILD_LS1088)
 	/* Reset the DPNI before use. It's a workaround to
 	   enable Stashing via MC configuration */
 	retcode = dpni_reset(dpni_dev, CMD_PRI_LOW, dev_priv->token);
@@ -935,7 +935,7 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 			cfg.options		= DPNI_QUEUE_OPT_DEST;
 			cfg.dest_cfg.dest_type	= DPNI_DEST_DPCON;
 			cfg.dest_cfg.dest_id	= attr.obj_id;
-			cfg.dest_cfg.priority	= vq_cfg->prio;
+			cfg.dest_cfg.priority	= 0;/*Setting to zero prio*/
 			dev->conc_dev		= vq_cfg->conc_dev;
 			DPAA2_INFO(ETH, "DPCON ID = %d\t Prio = %d\n",
 				cfg.dest_cfg.dest_id, cfg.dest_cfg.priority);
@@ -952,12 +952,12 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 	}
 
 	cfg.options = cfg.options | DPNI_QUEUE_OPT_USER_CTX;
-#if defined(BUILD_LS2088)
+#if defined(BUILD_LS2088) || defined(BUILD_LS1088)
 	cfg.options = cfg.options | DPNI_QUEUE_OPT_FLC;
 #endif
 
 	cfg.user_ctx = (uint64_t)(eth_rx_vq);
-#if defined(BUILD_LS2088)
+#if defined(BUILD_LS2088) || defined(BUILD_LS1088)
 	cfg.flc_cfg.flc_type = DPNI_FLC_STASH;
 	cfg.flc_cfg.frame_data_size = DPNI_STASH_SIZE_64B;
 	/* Enabling Annotation stashing */
