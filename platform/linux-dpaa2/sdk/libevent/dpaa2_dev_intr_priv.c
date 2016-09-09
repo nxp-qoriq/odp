@@ -93,6 +93,7 @@ int dpaa2_register_interrupt(int dev_vfio_fd,
 
 	/* Set the FD and update the flags */
 	intr_handle->fd = fd;
+	intr_handle->flags |= DPAA2_INTR_ENABLED;
 	intr_handle->flags |= DPAA2_INTR_REGISTERED;
 	return DPAA2_SUCCESS;
 }

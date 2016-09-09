@@ -330,6 +330,50 @@ int32_t dpaa2_io_portal_close(ODP_UNUSED struct dpaa2_dev *dev)
 	return DPAA2_SUCCESS;
 }
 
+void dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id)
+{
+#define STRING_LEN	28
+#define COMMAND_LEN	50
+	uint32_t cpu_mask = 1;
+	int ret;
+	size_t len = 0;
+	char *temp = NULL, *token = NULL;
+	char string[STRING_LEN], command[COMMAND_LEN];
+	FILE *file;
+
+	snprintf(string, STRING_LEN, "vfio-fsl-mc-dpio.%d", dpio_id);
+	file = fopen("/proc/interrupts", "r");
+	if (!file) {
+		DPAA2_WARN(FW, "Failed to open /proc/interrupts file\n");
+		return;
+	}
+	while (getline(&temp, &len, file) != -1) {
+		if ((strstr(temp, string)) != NULL) {
+			token = strtok(temp, ":");
+			break;
+		}
+	}
+
+	if (!token) {
+		DPAA2_WARN(FW, "Failed to get interrupt id for dpio.%d\n", dpio_id);
+		if (temp)
+			free(temp);
+		fclose(file);
+		return;
+	}
+
+	cpu_mask = cpu_mask << sched_getcpu();
+	snprintf(command, COMMAND_LEN, "echo %X > /proc/irq/%s/smp_affinity", cpu_mask, token);
+	ret = system(command);
+	if (ret < 0)
+		DPAA2_WARN(FW, "Failed to affine the interrupts on respective core\n");
+	else {
+		DPAA2_DBG(FW, " %s command is executed\n", command);
+	}
+	free(temp);
+	fclose(file);
+}
+
 void dpaa2_write_all_intr_fd(void)
 {
 	struct dpaa2_dpio_dev *dpio_dev = NULL;
@@ -420,7 +464,8 @@ int32_t dpaa2_thread_affine_io_context(uint32_t io_index)
 	}
 	DPAA2_DBG(FW, "io_index %d affined with dpio index %d - dpio =%p",
 			io_index, dpio_dev->index, thread_io_info.dpio_dev);
-	printf("dpio.%d affined to cpu %d\n", dpio_dev->hw_id, sched_getcpu());
+	if ((dpio_dev->intr_handle[VFIO_DPIO_DATA_IRQ_INDEX].flags) & DPAA2_INTR_ENABLED)
+		dpaa2_affine_dpio_intr_to_respective_core(dpio_dev->hw_id);
 
 	return DPAA2_SUCCESS;
 }
