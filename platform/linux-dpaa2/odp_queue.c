@@ -508,7 +508,8 @@ inline int32_t fill_queue_configuration(queue_entry_t *queue,
 {
 	memset(cfg, 0, sizeof(struct dpaa2_vq_param));
 	if (queue->s.param.type == ODP_QUEUE_TYPE_SCHED) {
-		cfg->prio = queue->s.param.sched.prio;
+		/*Setting to zero*/
+		cfg->prio = 0;
 		cfg->sync = queue->s.param.sched.sync;
 		cfg->conc_dev =
 			odp_get_conc_from_grp(queue->s.param.sched.group);

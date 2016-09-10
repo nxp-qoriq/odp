@@ -19,7 +19,8 @@
 #include <dpaa2_internal.h>
 #include <dpaa2_vfio.h>
 
-#if defined(BUILD_LS2085) || defined(BUILD_LS2080) || defined(BUILD_LS2088)
+#if defined(BUILD_LS2085) || defined(BUILD_LS2080) || \
+	defined(BUILD_LS2088) || defined(BUILD_LS1088)
 #define NUM_HOST_CPUS 8
 #endif
 
@@ -163,7 +164,7 @@ int32_t dpaa2_io_portal_probe(ODP_UNUSED struct dpaa2_dev *dev,
 	dpio_dev->qbman_portal_ce_paddr = (uint64_t)mmap(NULL, reg_info.size,
 				PROT_WRITE | PROT_READ, MAP_SHARED,
 				dpio_dev->vfio_fd, reg_info.offset);
-#if defined(BUILD_LS2085) || defined(BUILD_LS2080)
+#if defined(BUILD_LS2085) || defined(BUILD_LS2080) || defined(BUILD_LS1088)
 	/* Create Mapping for QBMan Cache Enabled area. This is a fix for
 	   SMMU fault for DQRR statshing transaction. */
 	if (vfio_dmamap_mem_region(dpio_dev->qbman_portal_ce_paddr,

@@ -57,12 +57,37 @@ extern "C" {
 #define DPAA2_INVALID_CHANNEL_IDX	((uint8_t)(-1))
 
 /*Stashing Macros*/
-#define DPAA2_CORE_CLUSTER_BASE		0x04
-#define DPAA2_CORE_CLUSTER_FIRST		(DPAA2_CORE_CLUSTER_BASE + 0)
+#if defined(BUILD_LS1088)
+/* For LS108X platforms */
+#define DPAA2_CORE_CLUSTER_BASE		0x02
+#define DPAA2_CORE_CLUSTER_FIRST	(DPAA2_CORE_CLUSTER_BASE + 0)
 #define DPAA2_CORE_CLUSTER_SECOND	(DPAA2_CORE_CLUSTER_BASE + 1)
-#define DPAA2_CORE_CLUSTER_THIRD		(DPAA2_CORE_CLUSTER_BASE + 2)
+/* For LS108X platform There are two clusters with following mapping:
+ * Cluster 1 (ID = x02) : CPU0, CPU1, CPU2, CPU3;
+ * Cluster 2 (ID = x03) : CPU4, CPU5, CPU6, CPU7;
+ */
+#define DPAA2_CORE_CLUSTER_GET(sdest, cpu_id) \
+do { \
+	if (cpu_id <= 3) \
+		sdest = DPAA2_CORE_CLUSTER_FIRST; \
+	else \
+		sdest = DPAA2_CORE_CLUSTER_SECOND; \
+} while (0)
+
+#elif defined(BUILD_LS2080) || defined(BUILD_LS2085) || defined(BUILD_LS2088)
+/* For LS208X platforms */
+#define DPAA2_CORE_CLUSTER_BASE		0x04
+#define DPAA2_CORE_CLUSTER_FIRST	(DPAA2_CORE_CLUSTER_BASE + 0)
+#define DPAA2_CORE_CLUSTER_SECOND	(DPAA2_CORE_CLUSTER_BASE + 1)
+#define DPAA2_CORE_CLUSTER_THIRD	(DPAA2_CORE_CLUSTER_BASE + 2)
 #define DPAA2_CORE_CLUSTER_FOURTH	(DPAA2_CORE_CLUSTER_BASE + 3)
 
+/* For LS208X platform There are four clusters with following mapping:
+ * Cluster 1 (ID = x04) : CPU0, CPU1;
+ * Cluster 2 (ID = x05) : CPU2, CPU3;
+ * Cluster 3 (ID = x06) : CPU4, CPU5;
+ * Cluster 4 (ID = x07) : CPU6, CPU7;
+ */
 #define DPAA2_CORE_CLUSTER_GET(sdest, cpu_id) \
 do { \
 	if (cpu_id == 0 || cpu_id == 1) \
@@ -74,6 +99,10 @@ do { \
 	else \
 		sdest = DPAA2_CORE_CLUSTER_FOURTH; \
 } while (0)
+
+#else
+#warning "SDEST is not configured. Unsupported platform."
+#endif
 
 /*
  * The DPAA2 DPIO device structure.
