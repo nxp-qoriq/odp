@@ -32,6 +32,7 @@ extern "C" {
 #endif
 
 #include <odp/api/std_types.h>
+#include <odp/api/plat/counters/counters.h>
 
 /**
  *  Macros to define Object Identifier

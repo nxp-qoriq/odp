@@ -19,9 +19,6 @@
 #define MAX_STRING      32   /**< maximum string length */
 
 /*#define PERF_MONITOR	1*/
-#ifdef	PERF_MONITOR
-#include "../perfcounter/counters.h"
-#endif
 /** @def MAX_WORKERS
  * @brief Maximum number of worker threads
  */
