@@ -47,6 +47,11 @@
 #include <fsl_dpni_cmd.h>
 #include <fsl_mc_sys.h>
 
+/*Macro to define stash line sizes. Below is the configuration offloaded
+ * (DPNI_FLC_STASH_FRAME_ANNOTATION << 2 | DPNI_STASH_SIZE_64B << 4)
+ */
+#define LDPAA_ETH_DEV_STASH_SIZE	0x0000000000000014
+
 #define DPAA2_ASAL_VAL (DPAA2_MBUF_HW_ANNOTATION / 64)
 
 #define LDPAA_ETH_DEV_VENDOR_ID		6487
@@ -130,7 +135,6 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 	struct queues_config *q_config;
 	struct vfio_device_info *obj_info =
 		(struct vfio_device_info *)dev_priv->drv_priv;
-	struct dpni_extended_cfg *ext_cfg = NULL;
 
 	/*Allocate space for device specific data*/
 	eth_priv = (struct dpaa2_eth_priv *)dpaa2_calloc(NULL, 1,
@@ -191,14 +195,6 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 		DPAA2_ERR(ETH, "Error in Resetting the DPNI"
 				" : ErrorCode = %d\n", retcode);
 #endif
-	ext_cfg = (struct dpni_extended_cfg *)dpaa2_data_malloc(NULL, 256,
-							 ODP_CACHE_LINE_SIZE);
-	if (!ext_cfg) {
-		DPAA2_ERR(ETH, "No data memory\n");
-		goto get_attr_failure;
-	}
-	attr.ext_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(ext_cfg));
-
 	/*Get the resource information i.e. numner of RX/TX Queues, TC etc*/
 	retcode = dpni_get_attributes(dpni_dev, CMD_PRI_LOW, dev_priv->token, &attr);
 	if (retcode) {
@@ -207,18 +203,17 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 		goto get_attr_failure;
 	}
 	q_config = &(eth_priv->q_config);
-	q_config->num_tcs = attr.max_tcs;
-	dev->num_tx_vqueues = attr.max_senders;
+	q_config->num_tcs = attr.num_tcs;
+	dev->num_tx_vqueues = attr.num_queues;
 	dev->num_rx_vqueues = 0;
 
 	j = 0;
-	for (i = 0; i < attr.max_tcs; i++) {
-		q_config->tc_config[i].num_dist =
-					ext_cfg->tc_cfg[i].max_dist;
+	for (i = 0; i < attr.num_tcs; i++) {
+		q_config->tc_config[i].num_dist = attr.num_queues;
 		for (flow_id = 0; j < q_config->tc_config[i].num_dist; j++) {
 			eth_rx_vq = dev->rx_vq[j];
 			eth_rx_vq->flow_id = flow_id %
-						q_config->tc_config[i].num_dist;
+					    q_config->tc_config[i].num_dist;
 			eth_rx_vq->tc_index = i;
 			flow_id++;
 		}
@@ -299,8 +294,8 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 	layout.private_data_size = dpaa2_mbuf_sw_annotation;
 	layout.pass_timestamp = TRUE;
 	layout.pass_parser_result = TRUE;
-	retcode = dpni_set_rx_buffer_layout(dpni_dev, CMD_PRI_LOW,
-			dev_priv->token, &layout);
+	retcode = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, dev_priv->token,
+					 DPNI_QUEUE_RX, &layout);
 	if (retcode) {
 		DPAA2_ERR(ETH, "Error (%d) in setting rx buffer layout\n",
 								retcode);
@@ -313,8 +308,8 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 				DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
 	layout.pass_frame_status = TRUE;
 	layout.pass_timestamp = TRUE;
-	retcode = dpni_set_tx_buffer_layout(dpni_dev, CMD_PRI_LOW, dev_priv->token,
-								&layout);
+	retcode = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, dev_priv->token,
+					 DPNI_QUEUE_TX, &layout);
 	if (retcode) {
 		DPAA2_ERR(ETH, "Error (%d) in setting tx buffer layout\n",
 								retcode);
@@ -326,8 +321,8 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 				DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
 	layout.pass_frame_status = TRUE;
 	layout.pass_timestamp = TRUE;
-	retcode = dpni_set_tx_conf_buffer_layout(dpni_dev, CMD_PRI_LOW, dev_priv->token,
-								&layout);
+	retcode = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, dev_priv->token,
+					 DPNI_QUEUE_TX_CONFIRM, &layout);
 	if (retcode) {
 		DPAA2_ERR(ETH, "Error (%d) in setting tx-conf buffer layout\n",
 								retcode);
@@ -342,7 +337,6 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 	}
 	epriv->cfg.hw_features |= DPAA2_PROMISCUOUS_ENABLE;
 
-	dpaa2_data_free(ext_cfg);
 	return DPAA2_SUCCESS;
 
 get_attr_failure:
@@ -350,7 +344,6 @@ get_attr_failure:
 dev_open_failure:
 		dpaa2_free(dpni_dev);
 mem_alloc_failure:
-		dpaa2_data_free(ext_cfg);
 		dpaa2_free(eth_priv);
 		return DPAA2_FAILURE;
 }
@@ -393,7 +386,7 @@ int32_t dpaa2_eth_start(struct dpaa2_dev *dev)
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)dev_priv->hw;
 	struct dpaa2_eth_priv *eth_priv = dev_priv->drv_priv;
-	struct dpni_queue_attr cfg;
+	struct dpni_queue cfg;
 	int32_t retcode;
 	uint8_t tc_idx;
 	uint16_t qdid, dist_idx;
@@ -401,6 +394,7 @@ int32_t dpaa2_eth_start(struct dpaa2_dev *dev)
 	struct dpaa2_vq *eth_rx_vq;
 	struct queues_config *q_config;
 	uint16_t num_flows;
+	struct dpni_queue_id qid;
 
 	/* After enabling a DPNI, Resources i.e. RX/TX VQs etc will be created
 	 * and device will be ready for RX/TX.*/
@@ -420,21 +414,23 @@ int32_t dpaa2_eth_start(struct dpaa2_dev *dev)
 			num_flows = 1;
 
 		for (dist_idx = 0; dist_idx < num_flows; dist_idx++) {
-			retcode = dpni_get_rx_flow(dpni, CMD_PRI_LOW, dev_priv->token,
-						tc_idx, dist_idx, &cfg);
+			retcode = dpni_get_queue(dpni, CMD_PRI_LOW,
+						 dev_priv->token, DPNI_QUEUE_RX,
+						 tc_idx, dist_idx, &cfg, &qid);
 			if (retcode) {
 				DPAA2_ERR(ETH, "Error to get flow information"
 						"Error code = %0d\n", retcode);
 				goto failure;
 			}
 			eth_rx_vq = (struct dpaa2_vq *)(dev->rx_vq[vq_id]);
-			eth_rx_vq->fqid = cfg.fqid;
+			eth_rx_vq->fqid = qid.fqid;
 			vq_id++;
-			DPAA2_INFO(ETH, "FQID = %d\n", cfg.fqid);
+			DPAA2_INFO(ETH, "FQID = %d\n", qid.fqid);
 		}
 	}
 	/*Save the respective qdid of DPNI device into DPAA2 device structure*/
-	retcode = dpni_get_qdid(dpni, CMD_PRI_LOW, dev_priv->token, &qdid);
+	retcode = dpni_get_qdid(dpni, CMD_PRI_LOW, dev_priv->token,
+				DPNI_QUEUE_TX, &qdid);
 	if (retcode != 0) {
 		DPAA2_ERR(ETH, "Error to get qdid:ErrorCode = %d\n", retcode);
 		goto failure;
@@ -914,11 +910,12 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 	int32_t retcode;
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
 	struct fsl_mc_io *dpni = dev_priv->hw;
-	struct dpni_queue_cfg cfg;
+	struct dpni_queue cfg;
 	uint8_t tc_id, flow_id;
 	struct dpaa2_vq *eth_rx_vq;
+	uint8_t options = 0;
 
-	memset(&cfg, 0, sizeof(struct dpni_queue_cfg));
+	memset(&cfg, 0, sizeof(struct dpni_queue));
 	eth_rx_vq = (struct dpaa2_vq *)(dev->rx_vq[vq_id]);
 	eth_rx_vq->sync = ODP_SCHED_SYNC_NONE;
 	/*Get the tc id and flow id from given VQ id*/
@@ -932,40 +929,37 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 			dpaa2_conc_get_attributes(vq_cfg->conc_dev, &attr);
 
 			/*Do settings to get the frame on a DPCON object*/
-			cfg.options		= DPNI_QUEUE_OPT_DEST;
-			cfg.dest_cfg.dest_type	= DPNI_DEST_DPCON;
-			cfg.dest_cfg.dest_id	= attr.obj_id;
-			cfg.dest_cfg.priority	= 0;/*Setting to zero prio*/
+			options |= DPNI_QUEUE_OPT_DEST;
+			cfg.destination.id      = attr.obj_id;
+			cfg.destination.type    = DPNI_DEST_DPCON;
+			cfg.destination.hold_active     = 0;
+			cfg.destination.priority          = 0;
 			dev->conc_dev		= vq_cfg->conc_dev;
 			DPAA2_INFO(ETH, "DPCON ID = %d\t Prio = %d\n",
-				cfg.dest_cfg.dest_id, cfg.dest_cfg.priority);
+				cfg.destination.id, cfg.qdbin);
 			DPAA2_INFO(ETH, "Attaching Ethernet device %s"
 				"with Channel %s\n", dev->dev_string,
 				vq_cfg->conc_dev->dev_string);
 		}
 		if (vq_cfg->sync & ODP_SCHED_SYNC_ATOMIC) {
-			cfg.options = cfg.options |
-				DPNI_QUEUE_OPT_ORDER_PRESERVATION;
-			cfg.order_preservation_en = TRUE;
+			options |= DPNI_QUEUE_OPT_HOLD_ACTIVE;
+			cfg.destination.hold_active     = TRUE;
 			eth_rx_vq->sync = vq_cfg->sync;
+
 		}
 	}
 
-	cfg.options = cfg.options | DPNI_QUEUE_OPT_USER_CTX;
 #if defined(BUILD_LS2088) || defined(BUILD_LS1088)
-	cfg.options = cfg.options | DPNI_QUEUE_OPT_FLC;
+	options |= DPNI_QUEUE_OPT_FLC;
+	cfg.flc.stash_control = true;
+	cfg.flc.value &= 0xFFFFFFFFFFFFFFC0;
+	cfg.flc.value |= LDPAA_ETH_DEV_STASH_SIZE;
 #endif
-
-	cfg.user_ctx = (uint64_t)(eth_rx_vq);
-#if defined(BUILD_LS2088) || defined(BUILD_LS1088)
-	cfg.flc_cfg.flc_type = DPNI_FLC_STASH;
-	cfg.flc_cfg.frame_data_size = DPNI_STASH_SIZE_64B;
-	/* Enabling Annotation stashing */
-	cfg.options |= DPNI_FLC_STASH_FRAME_ANNOTATION;
-	cfg.flc_cfg.options = DPNI_FLC_STASH_FRAME_ANNOTATION;
-#endif
-	retcode = dpni_set_rx_flow(dpni, CMD_PRI_LOW, dev_priv->token,
-						tc_id, flow_id, &cfg);
+	options |= DPNI_QUEUE_OPT_USER_CTX;
+	cfg.user_context = (uint64_t)(eth_rx_vq);
+	retcode = dpni_set_queue(dpni, CMD_PRI_LOW, dev_priv->token,
+				 DPNI_QUEUE_RX, tc_id, flow_id,
+				 options, &cfg);
 	if (retcode) {
 		DPAA2_ERR(ETH, "Error in setting the rx flow: ErrorCode = %d\n",
 								retcode);
@@ -992,97 +986,96 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 }
 
 int32_t dpaa2_eth_setup_tx_vq(struct dpaa2_dev *dev, uint32_t num,
-					uint32_t action)
+					uint32_t action ODP_UNUSED)
 {
 	/* Function to setup TX flow information. It contains traffic class ID,
 	 * flow ID.
 	 */
-	uint32_t tc_idx;
 	int32_t retcode;
-
-	uint16_t flow_id = DPNI_NEW_FLOW_ID;
+	uint16_t flow_id = 0;
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
 	struct fsl_mc_io *dpni = dev_priv->hw;
-	struct dpni_tx_flow_cfg cfg;
-	struct dpni_tx_flow_attr tx_flow_attr;
-	struct dpni_tx_conf_attr tx_conf_attr;
-	struct dpni_tx_conf_cfg tx_conf_cfg;
+	struct dpni_queue tx_flow_cfg;
+	struct dpni_queue tx_flow_attr;
+	struct dpni_queue tx_conf_cfg;
+	struct dpni_queue tx_conf_attr;
 	struct dpaa2_vq *eth_tx_vq;
 	struct dpaa2_vq *conf_err_vq;
-	struct dpaa2_vq *def_err_vq;
+	uint8_t options = 0;
+	struct dpni_queue_id qid;
 
-	memset(&cfg, 0, sizeof(struct dpni_tx_flow_cfg));
-	memset(&tx_conf_cfg, 0, sizeof(struct dpni_tx_conf_cfg));
-	tx_conf_cfg.errors_only = TRUE;
+	memset(&tx_flow_cfg, 0, sizeof(struct dpni_queue));
+	memset(&tx_conf_cfg, 0, sizeof(struct dpni_queue));
 
-	if (action & DPAA2BUF_TX_CONF_REQUIRED) {
-		cfg.options = DPNI_TX_FLOW_OPT_TX_CONF_ERROR;
-		cfg.use_common_tx_conf_queue =
-				((action & DPAA2BUF_TX_CONF_ERR_ON_COMMON_Q) ?
-								TRUE : FALSE);
-		tx_conf_cfg.errors_only = FALSE;
-	}
-	for (tc_idx = 0; tc_idx < num; tc_idx++) {
-		retcode = dpni_set_tx_flow(dpni, CMD_PRI_LOW, dev_priv->token,
-							&flow_id, &cfg);
+	for (flow_id = 0; flow_id < num; flow_id++) {
+		retcode = dpni_set_queue(dpni, CMD_PRI_LOW, dev_priv->token,
+					 DPNI_QUEUE_TX, 0, flow_id,
+					options, &tx_flow_cfg);
 		if (retcode) {
 			DPAA2_ERR(ETH, "Error in setting the tx flow\n"
-						"ErrorCode = %x", retcode);
-				return DPAA2_FAILURE;
-		}
-		/*Set tx-conf and error configuration*/
-		retcode = dpni_set_tx_conf(dpni, CMD_PRI_LOW, dev_priv->token,
-					   flow_id, &tx_conf_cfg);
-		if (retcode) {
-			DPAA2_ERR(ETH, "Error in setting tx conf settings\n"
-						"ErrorCode = %x", retcode);
+				"ErrorCode = %d", retcode);
 			return DPAA2_FAILURE;
 		}
-		eth_tx_vq = (struct dpaa2_vq *)(dev->tx_vq[tc_idx]);
-		conf_err_vq = (struct dpaa2_vq *)(dev->err_vq[tc_idx]);
-		if (flow_id == DPNI_NEW_FLOW_ID) {
-			eth_tx_vq->flow_id = 0;
-			conf_err_vq->flow_id = 0;
-		} else {
-			eth_tx_vq->flow_id = flow_id;
-			conf_err_vq->flow_id = flow_id;
-		}
-		eth_tx_vq->tc_index = tc_idx;
-
-		/*Set frame queue type*/
-		eth_tx_vq->fq_type = DPAA2_FQ_TYPE_TX;
-		conf_err_vq->fq_type = DPAA2_FQ_TYPE_TX_CONF_ERR;
-
-		conf_err_vq->qmfq.cb = dpaa2_eth_cb_dqrr_tx_conf_err;
-		retcode = dpni_get_tx_flow(dpni, CMD_PRI_LOW, dev_priv->token, flow_id,
-								&tx_flow_attr);
+		memset(&qid, 0, sizeof(struct dpni_queue_id));
+		retcode = dpni_get_queue(dpni, CMD_PRI_LOW, dev_priv->token,
+					 DPNI_QUEUE_TX, 0, flow_id,
+					&tx_flow_attr, &qid);
 		if (retcode) {
 			DPAA2_ERR(ETH, "Error in getting the tx flow\n"
-						"ErrorCode = %x", retcode);
+				"ErrorCode = %d", retcode);
 			return DPAA2_FAILURE;
 		}
-		/*Get tx-conf and error frame queue id correspond to each
-		sender*/
-		retcode = dpni_get_tx_conf(dpni, CMD_PRI_LOW, dev_priv->token,
-					   flow_id, &tx_conf_attr);
+
+		eth_tx_vq = (struct dpaa2_vq *)(dev->tx_vq[flow_id]);
+		eth_tx_vq->tc_index = 0; /*Hard Coding for default TC value*/
+		eth_tx_vq->flow_id = flow_id;
+		eth_tx_vq->fq_type = DPAA2_FQ_TYPE_TX;
+		eth_tx_vq->fqid = qid.fqid;
+
+		retcode = dpni_set_queue(dpni, CMD_PRI_LOW, dev_priv->token,
+					 DPNI_QUEUE_TX_CONFIRM, 0, flow_id,
+					 options, &tx_conf_cfg);
 		if (retcode) {
-			DPAA2_ERR(ETH, "Error in getting the tx conf settings\n"
-						"ErrorCode = %x", retcode);
+			DPAA2_ERR(ETH, "Error in setting the tx flow\n"
+						"ErrorCode = %d", retcode);
+				return DPAA2_FAILURE;
+		}
+		memset(&qid, 0, sizeof(struct dpni_queue_id));
+		retcode = dpni_get_queue(dpni, CMD_PRI_LOW, dev_priv->token,
+					 DPNI_QUEUE_TX_CONFIRM, 0, flow_id,
+					&tx_conf_attr, &qid);
+		if (retcode) {
+			DPAA2_ERR(ETH, "Error in getting the tx flow\n"
+						"ErrorCode = %d", retcode);
 			return DPAA2_FAILURE;
 		}
-		conf_err_vq->fqid = tx_conf_attr.queue_attr.fqid;
+
+		conf_err_vq = (struct dpaa2_vq *)(dev->err_vq[flow_id]);
+		conf_err_vq->flow_id = flow_id;
+		conf_err_vq->fq_type = DPAA2_FQ_TYPE_TX_CONF_ERR;
+		conf_err_vq->qmfq.cb = dpaa2_eth_cb_dqrr_tx_conf_err;
+		conf_err_vq->fqid = qid.fqid;
 		DPAA2_INFO(ETH, "tx-conf-err FQID = %d\nFlowID = %d",
 				conf_err_vq->fqid, conf_err_vq->flow_id);
 	}
+
+	/*TODO : Commenting below code as there is no support for common
+		tx-conf and error queue*/
 	/*Set tx-conf and error configuration*/
-	retcode = dpni_set_tx_conf(dpni, CMD_PRI_LOW, dev_priv->token,
-				   DPNI_COMMON_TX_CONF, &tx_conf_cfg);
+	retcode = dpni_set_tx_confirmation_mode(dpni, CMD_PRI_LOW,
+						dev_priv->token,
+						DPNI_CONF_DISABLE);
 	if (retcode) {
 		DPAA2_ERR(ETH, "Error in setting tx conf settings\n"
 					"ErrorCode = %x", retcode);
 		return DPAA2_FAILURE;
 	}
+#if 0
+	struct dpaa2_vq *def_err_vq;
 	/*Get Common tx-conf and error frame queue id correspond to each dpni*/
+	retcode = dpni_get_queue(dpni, CMD_PRI_LOW, dev_priv->token,
+				 DPNI_QUEUE_TX_CONFIRM, 0, flow_id,
+					&tx_conf_attr);
 	retcode = dpni_get_tx_conf(dpni, CMD_PRI_LOW, dev_priv->token,
 				   DPNI_COMMON_TX_CONF, &tx_conf_attr);
 	if (retcode) {
@@ -1095,6 +1088,7 @@ int32_t dpaa2_eth_setup_tx_vq(struct dpaa2_dev *dev, uint32_t num,
 	def_err_vq->fqid = tx_conf_attr.queue_attr.fqid;
 	def_err_vq->qmfq.cb = dpaa2_eth_cb_dqrr_tx_conf_err;
 	DPAA2_INFO(ETH, "Default Error frame queue ID = %d\n", def_err_vq->fqid);
+#endif
 	return DPAA2_SUCCESS;
 }
 
@@ -1110,9 +1104,10 @@ int dpaa2_eth_set_rx_vq_notification(
 	int32_t retcode;
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
 	struct fsl_mc_io *dpni = dev_priv->hw;
-	struct dpni_queue_cfg cfg;
+	struct dpni_queue cfg;
 	struct dpaa2_vq *eth_rx_vq = (struct dpaa2_vq *)(dev->rx_vq[vq_id]);
 	uint64_t notifier_context;
+	uint8_t options = 0;
 
 	if (!notif_dpio) {
 		DPAA2_ERR(ETH, "No notification portal available");
@@ -1126,15 +1121,16 @@ int dpaa2_eth_set_rx_vq_notification(
 		return DPAA2_FAILURE;
 	}
 
-	memset(&cfg, 0, sizeof(struct dpni_queue_cfg));
-	cfg.options = DPNI_QUEUE_OPT_USER_CTX | DPNI_QUEUE_OPT_DEST;
-	cfg.user_ctx = notifier_context;
-	cfg.dest_cfg.dest_type = DPNI_DEST_DPIO;
-	cfg.dest_cfg.dest_id = notif_dpio->hw_id;
-	cfg.dest_cfg.priority = DPAA2_NOTIF_DEF_PRIO;
-
-	retcode = dpni_set_rx_flow(dpni, CMD_PRI_LOW, dev_priv->token,
-		eth_rx_vq->tc_index, eth_rx_vq->flow_id, &cfg);
+	memset(&cfg, 0, sizeof(struct dpni_queue));
+	options |= DPNI_QUEUE_OPT_USER_CTX;
+	options |= DPNI_QUEUE_OPT_DEST;
+	cfg.user_context = notifier_context;
+	cfg.destination.id	= notif_dpio->hw_id;
+	cfg.destination.type	= DPNI_DEST_DPIO;
+	cfg.destination.hold_active	= 0;
+	retcode = dpni_set_queue(dpni, CMD_PRI_LOW, dev_priv->token,
+				 DPNI_QUEUE_RX, eth_rx_vq->tc_index,
+				 eth_rx_vq->flow_id, options, &cfg);
 	if (retcode) {
 		DPAA2_ERR(ETH, "Error in setting the rx flow: ErrorCode = %x\n",
 								retcode);

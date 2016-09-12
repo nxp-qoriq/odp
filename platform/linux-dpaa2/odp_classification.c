@@ -110,6 +110,8 @@ static int32_t odp_offload_rules(odp_pktio_t pktio)
 	struct dpaa2_dev		*dev;
 	struct dpaa2_dev_priv	*dev_priv;
 	struct fsl_mc_io	*dpni;
+	uint16_t	idx = 0;
+	struct dpni_fs_action_cfg action_cfg;
 
 	/*Get pktio entry where rules are to be applied*/
 	entry = get_pktio_entry(pktio);
@@ -117,50 +119,56 @@ static int32_t odp_offload_rules(odp_pktio_t pktio)
 	dev_priv = dev->priv;
 	dpni = dev_priv->hw;
 
+	memset(&action_cfg, 0, sizeof(struct dpni_fs_action_cfg));
 	/*Add all the Classification rules at underlying platform*/
 	TAILQ_FOREACH(fs_rule, &pmr_rule_list[index], next) {
 		fs_rule->rule->key_size = key_cfg_len;
+		action_cfg.flow_id = fs_rule->flow_id;
 		retcode = dpni_add_fs_entry(dpni, CMD_PRI_LOW, dev_priv->token,
-					    fs_rule->tc_id, fs_rule->rule,
-						fs_rule->flow_id);
+					    fs_rule->tc_id, idx,
+					    fs_rule->rule, &action_cfg);
 		if (retcode < 0)
 			goto pmr_add_failure;
 	}
 	if (entry->s.cls.l3_precedence) {
 		TAILQ_FOREACH(fs_rule, &l3_rule_list[index], next) {
 			fs_rule->rule->key_size = key_cfg_len;
+		action_cfg.flow_id = fs_rule->flow_id;
 			retcode = dpni_add_fs_entry(dpni, CMD_PRI_LOW,
 						    dev_priv->token,
-							fs_rule->tc_id,
-					fs_rule->rule, fs_rule->flow_id);
+							fs_rule->tc_id, idx,
+					fs_rule->rule, &action_cfg);
 			if (retcode < 0)
 				goto l3_rule_add_failure;
 		}
 		TAILQ_FOREACH(fs_rule, &l2_rule_list[index], next) {
 			fs_rule->rule->key_size = key_cfg_len;
+			action_cfg.flow_id = fs_rule->flow_id;
 			retcode = dpni_add_fs_entry(dpni, CMD_PRI_LOW,
 						    dev_priv->token,
-							fs_rule->tc_id,
-					fs_rule->rule, fs_rule->flow_id);
+							fs_rule->tc_id, idx,
+					fs_rule->rule, &action_cfg);
 			if (retcode < 0)
 				goto l2_rule_add_failure;
 		}
 	} else {
 		TAILQ_FOREACH(fs_rule, &l2_rule_list[index], next) {
 			fs_rule->rule->key_size = key_cfg_len;
+			action_cfg.flow_id = fs_rule->flow_id;
 			retcode = dpni_add_fs_entry(dpni, CMD_PRI_LOW,
 						    dev_priv->token,
-							fs_rule->tc_id,
-					fs_rule->rule, fs_rule->flow_id);
+							fs_rule->tc_id, idx,
+					fs_rule->rule, &action_cfg);
 			if (retcode < 0)
 				goto l2_rule_add_failure;
 		}
 		TAILQ_FOREACH(fs_rule, &l3_rule_list[index], next) {
 			fs_rule->rule->key_size = key_cfg_len;
+			action_cfg.flow_id = fs_rule->flow_id;
 			retcode = dpni_add_fs_entry(dpni, CMD_PRI_LOW,
 						    dev_priv->token,
-							fs_rule->tc_id,
-					fs_rule->rule, fs_rule->flow_id);
+							fs_rule->tc_id, idx,
+					fs_rule->rule, &action_cfg);
 			if (retcode < 0)
 				goto l3_rule_add_failure;
 		}
@@ -1201,11 +1209,12 @@ int odp_pktio_error_cos_set(odp_pktio_t pktio_in, odp_cos_t error_cos)
 	struct dpaa2_dev *dev;
 	struct dpaa2_dev_priv	*dev_priv;
 	struct fsl_mc_io	*dpni;
-	struct dpni_queue_cfg cfg;
+	struct dpni_queue cfg;
+	struct dpni_queue_id qid;
 	struct dpni_error_cfg	err_cfg;
 	struct dpaa2_dev *conc_dev;
-	struct dpni_queue_attr attr;
 	struct dpaa2_vq *eth_err_vq;
+	uint8_t options = 0;
 
 	entry = get_pktio_entry(pktio_in);
 	if (!entry) {
@@ -1223,7 +1232,8 @@ int odp_pktio_error_cos_set(odp_pktio_t pktio_in, odp_cos_t error_cos)
 	dev = entry->s.pkt_dpaa2.dev;
 	dev_priv = dev->priv;
 	dpni = dev_priv->hw;
-	memset(&cfg, 0, sizeof(struct dpni_queue_cfg));
+	memset(&cfg, 0, sizeof(struct dpni_queue));
+	memset(&qid, 0, sizeof(struct dpni_queue_id));
 	memset(&err_cfg, 0, sizeof(struct dpni_error_cfg));
 
 	/*Update input and output device in ODP queue structure*/
@@ -1241,32 +1251,33 @@ int odp_pktio_error_cos_set(odp_pktio_t pktio_in, odp_cos_t error_cos)
 		dpaa2_conc_get_attributes(conc_dev, &attr);
 
 		/*Do settings to get the frame on a DPCON object*/
-		cfg.options = DPNI_QUEUE_OPT_DEST;
 		if (queue->s.param.sched.sync & ODP_SCHED_SYNC_ATOMIC) {
-			cfg.options = cfg.options |
-				DPNI_QUEUE_OPT_ORDER_PRESERVATION;
-			cfg.order_preservation_en = TRUE;
+			options |= DPNI_QUEUE_OPT_HOLD_ACTIVE;
+			cfg.destination.hold_active	= TRUE;
 		}
-		cfg.dest_cfg.dest_type	= DPNI_DEST_DPCON;
-		cfg.dest_cfg.priority = queue->s.param.sched.prio;
-		cfg.dest_cfg.dest_id	= attr.obj_id;
+		options |= DPNI_QUEUE_OPT_DEST;
+		cfg.destination.type	= DPNI_DEST_DPCON;
+		cfg.destination.priority   = 0;
+		cfg.destination.id	= attr.obj_id;
 		dev->conc_dev		= conc_dev;
 	}
-
-	cfg.options = cfg.options | DPNI_QUEUE_OPT_USER_CTX;
-	cfg.user_ctx = (uint64_t)(eth_err_vq);
+	options |= DPNI_QUEUE_OPT_USER_CTX;
+	cfg.user_context = (uint64_t)(eth_err_vq);
 
 	/*Lets map user created to underlying error queue*/
-	retcode = dpni_set_rx_err_queue(dpni, CMD_PRI_LOW, dev_priv->token,
-					&cfg);
+	retcode = dpni_set_queue(dpni, CMD_PRI_LOW, dev_priv->token,
+				 DPNI_QUEUE_RX_ERR, eth_err_vq->tc_index,
+				eth_err_vq->flow_id, options, &cfg);
 	if (retcode) {
 		ODP_ERR("dpni_set_rx_err_queue() Failed: ErrorCode = %d\n",
 			retcode);
 		return -1;
 	}
 
-	retcode = dpni_get_rx_err_queue(dpni, CMD_PRI_LOW, dev_priv->token,
-					&attr);
+	memset(&cfg, 0, sizeof(cfg));
+	retcode = dpni_get_queue(dpni, CMD_PRI_LOW, dev_priv->token,
+				 DPNI_QUEUE_RX_ERR, eth_err_vq->tc_index,
+				eth_err_vq->flow_id, &cfg, &qid);
 	if (retcode) {
 		ODP_ERR("dpni_get_rx_err_queue() Failed: ErrorCode = %d\n",
 			retcode);
@@ -1301,7 +1312,7 @@ int odp_pktio_error_cos_set(odp_pktio_t pktio_in, odp_cos_t error_cos)
 	dpaa2_dev_set_vq_handle(eth_err_vq, (uint64_t)queue->s.handle);
 	eth_err_vq->fq_type = DPAA2_FQ_TYPE_RX_ERR;
 	eth_err_vq->qmfq.cb = dpaa2_eth_cb_dqrr_fd_to_mbuf;
-	eth_err_vq->fqid = attr.fqid;
+	eth_err_vq->fqid = qid.fqid;
 	cos->s.queue->s.priv = eth_err_vq;
 	return 0;
 }
@@ -1357,8 +1368,8 @@ int odp_pktio_headroom_set(odp_pktio_t pktio_in, uint32_t headroom)
 			"err code: %d\n", dev->dev_string, ret);
 		return ret;
 	}
-	ret = dpni_set_rx_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token,
-					&layout);
+	ret = dpni_set_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token,
+				     DPNI_QUEUE_RX, &layout);
 	if (ret) {
 		ODP_ERR("Setting headroom failed for device %s."
 			"err code: %d\n", dev->dev_string, ret);

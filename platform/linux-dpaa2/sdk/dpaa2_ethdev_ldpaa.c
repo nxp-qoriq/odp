@@ -54,7 +54,6 @@ int dpaa2_eth_mtu_set(struct dpaa2_dev *dev,
 	struct dpaa2_dev_priv *dev_priv;
 	struct dpaa2_eth_priv *eth_priv;
 	struct fsl_mc_io *dpni;
-	struct dpni_extended_cfg *ext_cfg;
 
 	if (dev == NULL)
 		return DPAA2_FAILURE;
@@ -68,18 +67,7 @@ int dpaa2_eth_mtu_set(struct dpaa2_dev *dev,
 	if (dpni == NULL)
 		return DPAA2_FAILURE;
 
-	/* Following memory allocation is required to avoid SMMU fault */
-	ext_cfg = dpaa2_data_malloc(NULL, 256, ODP_CACHE_LINE_SIZE);
-	if (!ext_cfg) {
-		DPAA2_ERR(ETH, "Memory allocation failed for ext_cfg\n");
-		return DPAA2_FAILURE;
-	}
-	attr.ext_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(ext_cfg));
-
 	ret = dpni_get_attributes(dpni, CMD_PRI_LOW, dev_priv->token, &attr);
-	/* Free the unused memory first as return value
-	   of above function may be ERROR */
-	dpaa2_data_free(ext_cfg);
 	if (ret) {
 		DPAA2_ERR(ETH, "DPNI get attribute failed: Error Code = %0x\n",
 								ret);
@@ -93,6 +81,7 @@ int dpaa2_eth_mtu_set(struct dpaa2_dev *dev,
 		DPAA2_ERR(ETH, "setting the max frame length failed");
 		return DPAA2_FAILURE;
 	}
+#ifdef ENABLE_SNIC_SUPPORT
 	if (attr.options & DPNI_OPT_IPF) {
 		ret = dpni_set_mtu(dpni, CMD_PRI_LOW, dev_priv->token, mtu);
 		if (ret) {
@@ -100,6 +89,7 @@ int dpaa2_eth_mtu_set(struct dpaa2_dev *dev,
 			return DPAA2_FAILURE;
 		}
 	}
+#endif
 	eth_priv->cfg.mtu = mtu;
 	DPAA2_NOTE(ETH, "MTU set as %d for the %s", mtu, dev->dev_string);
 	return DPAA2_SUCCESS;
@@ -410,19 +400,22 @@ int dpaa2_eth_timestamp_enable(struct dpaa2_dev *dev)
 	layout.options = DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
 	layout.pass_timestamp = TRUE;
 
-	ret = dpni_set_rx_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token, &layout);
+	ret = dpni_set_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token,
+				     DPNI_QUEUE_RX, &layout);
 	if (ret) {
 		DPAA2_ERR(ETH, "Enabling timestamp for Rx failed with"
 			"err code: %d", ret);
 		return ret;
 	}
-	ret = dpni_set_tx_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token, &layout);
+	ret = dpni_set_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token,
+				     DPNI_QUEUE_TX, &layout);
 	if (ret) {
 		DPAA2_ERR(ETH, "Enabling timestamp failed for Tx with"
 			"err code: %d", ret);
 		return ret;
 	}
-	ret = dpni_set_tx_conf_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token, &layout);
+	ret = dpni_set_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token,
+				     DPNI_QUEUE_TX_CONFIRM, &layout);
 	if (ret) {
 		DPAA2_ERR(ETH, "Enabling timestamp failed for Tx-conf with"
 			"err code: %d", ret);
@@ -442,19 +435,22 @@ int dpaa2_eth_timestamp_disable(struct dpaa2_dev *dev)
 	layout.options = DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
 	layout.pass_timestamp = FALSE;
 
-	ret = dpni_set_rx_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token, &layout);
+	ret = dpni_set_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token,
+				     DPNI_QUEUE_RX, &layout);
 	if (ret) {
 		DPAA2_ERR(ETH, "Disabling timestamp failed for Rx with"
 			"err code: %d", ret);
 		return ret;
 	}
-	ret = dpni_set_tx_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token, &layout);
+	ret = dpni_set_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token,
+				     DPNI_QUEUE_TX, &layout);
 	if (ret) {
 		DPAA2_ERR(ETH, "Disabling timestamp failed for Tx with"
 			"err code: %d", ret);
 		return ret;
 	}
-	ret = dpni_set_tx_conf_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token, &layout);
+	ret = dpni_set_buffer_layout(dpni, CMD_PRI_LOW, dev_priv->token,
+				     DPNI_QUEUE_TX_CONFIRM, &layout);
 	if (ret) {
 		DPAA2_ERR(ETH, "Disabling timestamp failed for Tx-conf with"
 			"err code: %d", ret);
@@ -467,8 +463,10 @@ int dpaa2_eth_timestamp_disable(struct dpaa2_dev *dev)
 int dpaa2_eth_frag_enable(struct dpaa2_dev *dev)
 {
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
-	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
+
+#ifdef ENABLE_SNIC_SUPPORT
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	int ret;
 
 	ret = dpni_set_ipf(dpni, CMD_PRI_LOW, dev_priv->token, 1);
@@ -477,6 +475,7 @@ int dpaa2_eth_frag_enable(struct dpaa2_dev *dev)
 			"feature failed with retcode: %d", ret);
 		return ret;
 	}
+#endif
 	epriv->cfg.hw_features |= DPAA2_FRAG_ENABLE;
 
 	return DPAA2_SUCCESS;
@@ -485,8 +484,10 @@ int dpaa2_eth_frag_enable(struct dpaa2_dev *dev)
 int dpaa2_eth_frag_disable(struct dpaa2_dev *dev)
 {
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
-	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
+
+#ifdef ENABLE_SNIC_SUPPORT
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	int ret;
 
 	ret = dpni_set_ipf(dpni, CMD_PRI_LOW, dev_priv->token, 0);
@@ -495,6 +496,7 @@ int dpaa2_eth_frag_disable(struct dpaa2_dev *dev)
 			"feature failed with retcode: %d", ret);
 		return ret;
 	}
+#endif
 	epriv->cfg.hw_features &= ~DPAA2_FRAG_ENABLE;
 
 	return DPAA2_SUCCESS;
@@ -503,8 +505,10 @@ int dpaa2_eth_frag_disable(struct dpaa2_dev *dev)
 int dpaa2_eth_reassembly_enable(struct dpaa2_dev *dev)
 {
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
-	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
+
+#ifdef ENABLE_SNIC_SUPPORT
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	int ret;
 
 	ret = dpni_set_ipr(dpni, CMD_PRI_LOW, dev_priv->token, 1);
@@ -513,6 +517,7 @@ int dpaa2_eth_reassembly_enable(struct dpaa2_dev *dev)
 			"feature failed with retcode: %d", ret);
 		return ret;
 	}
+#endif
 	epriv->cfg.hw_features |= DPAA2_REASSEMBLY_ENABLE;
 
 	return DPAA2_SUCCESS;
@@ -521,8 +526,10 @@ int dpaa2_eth_reassembly_enable(struct dpaa2_dev *dev)
 int dpaa2_eth_reassembly_disable(struct dpaa2_dev *dev)
 {
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
-	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
+
+#ifdef ENABLE_SNIC_SUPPORT
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	int ret;
 
 	ret = dpni_set_ipr(dpni, CMD_PRI_LOW, dev_priv->token, 0);
@@ -531,6 +538,7 @@ int dpaa2_eth_reassembly_disable(struct dpaa2_dev *dev)
 			"feature failed with retcode: %d", ret);
 		return ret;
 	}
+#endif
 	epriv->cfg.hw_features &= ~DPAA2_REASSEMBLY_ENABLE;
 
 	return DPAA2_SUCCESS;

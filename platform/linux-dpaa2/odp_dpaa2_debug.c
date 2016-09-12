@@ -93,11 +93,13 @@ static void get_dpni_stats(char *dev_name)
 	struct fsl_mc_io *dpni;
 	int32_t  retcode = -1;
 	int nbytes;
-	uint64_t value;
+	union dpni_statistics value;
 	char buf[MAXLENGTH];
 	char *str = buf;
+	uint8_t page0 = 0, page1 = 1, page2 = 2;
 
 	memset(buf, 0, sizeof(buf));
+	memset(&value, 0, sizeof(union dpni_statistics));
 
 	dev_priv = get_dev_priv(dev_name);
 
@@ -113,94 +115,68 @@ static void get_dpni_stats(char *dev_name)
 		return;
 	}
 
-	/*total pkt/frames received */
-	retcode = dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				   DPNI_CNT_ING_FRAME, &value);
+	/*Get Counters from page_0*/
+	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, dev_priv->token,
+				      page0, &value);
 	if (retcode)
 		goto error;
 
+	/*total pkt/frames received */
 	nbytes = sprintf(str, "\nDpni Stats\n%s:"
 		"\t\t\tTotal Ingress Frames\t\t\t\t\t: %lu\n",
-		dev_name, value);
+		dev_name, value.page_0.ingress_all_frames);
 	str = str + nbytes;
 
 	/* get ingress bytes */
-	retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_BYTE, &value);
-	if (retcode)
-		goto error;
-
 	nbytes = sprintf(str, "\t\t\tTotal Ingress Bytes\t\t\t\t\t: %lu\n",
-			 value);
+			 value.page_0.ingress_all_bytes);
 	str = str + nbytes;
 
 	/*Ingress Multicast Frames */
-	retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_MCAST_FRAME, &value);
-	if (retcode)
-		goto error;
-
 	nbytes = sprintf(str, "\t\t\tTotal Ingress Multicast Frames\t\t\t\t: %lu\n",
-			 value);
+			 value.page_0.ingress_multicast_frames);
 	str = str + nbytes;
 
 	/* Ingress Broadcase frames*/
-	retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_BCAST_FRAME, &value);
-	if (retcode)
-		goto error;
-
 	nbytes = sprintf(str, "\t\t\tTotal Ingress Broadcast Frames\t\t\t\t: %lu\n",
-			 value);
+			 value.page_0.ingress_multicast_frames);
 	str = str + nbytes;
 
-	/* Ingress frames dropped due to explicit 'drop' setting*/
-	retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_FRAME_DROP, &value);
+	/*Get Counters from page_1*/
+	retcode =  dpni_get_statistics(dpni, CMD_PRI_LOW, dev_priv->token,
+				       page1, &value);
 	if (retcode)
 		goto error;
-
-	nbytes = sprintf(str, "\t\t\tTotal Ingress Frames dropped explicitly\t\t\t: %lu\n",
-			 value);
-	str = str + nbytes;
-
-	/* Ingress frames discarded due to errors */
-	retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_FRAME_DISCARD, &value);
-	if (retcode)
-		goto error;
-
-	nbytes = sprintf(str, "\t\t\tTotal Ingress Errored Frames discarded\t\t\t: %lu\n",
-			 value);
-	str = str + nbytes;
 
 	/* Egress frames */
-	retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_EGR_FRAME, &value);
-	if (retcode)
-		goto error;
-
 	nbytes = sprintf(str, "\t\t\tTotal Egress Frames\t\t\t\t\t: %lu\n",
-			 value);
+			 value.page_1.egress_all_frames);
 	str = str + nbytes;
 
 	/* Total Egress Bytes */
-	retcode = dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				   DPNI_CNT_EGR_BYTE, &value);
+	nbytes = sprintf(str, "\t\t\tTotal Egress Bytes\t\t\t\t\t: %lu\n",
+			 value.page_1.egress_all_bytes);
+	str = str + nbytes;
+
+	/*Get Counters from page_2*/
+	retcode =  dpni_get_statistics(dpni, CMD_PRI_LOW, dev_priv->token,
+				       page2, &value);
 	if (retcode)
 		goto error;
-	nbytes = sprintf(str, "\t\t\tTotal Egress Bytes\t\t\t\t\t: %lu\n",
-			 value);
+
+	/* Ingress frames dropped due to explicit 'drop' setting*/
+	nbytes = sprintf(str, "\t\t\tTotal Ingress Frames dropped explicitly\t\t\t: %lu\n",
+			 value.page_2.ingress_filtered_frames);
+	str = str + nbytes;
+
+	/* Ingress frames discarded due to errors */
+	nbytes = sprintf(str, "\t\t\tTotal Ingress Errored Frames discarded\t\t\t: %lu\n",
+			 value.page_2.ingress_discarded_frames);
 	str = str + nbytes;
 
 	/* Total Egress frames discarded due to errors */
-	retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_EGR_FRAME_DISCARD, &value);
-	if (retcode)
-		goto error;
-
 	nbytes = sprintf(str, "\t\t\tTotal Egress Errored Frames discarded\t\t\t: %lu\n",
-			 value);
+			 value.page_2.egress_discarded_frames);
 	str = buf;
 	printf("%s\n", str);
 
@@ -230,73 +206,11 @@ static void reset_dpni_stats(char *dev_name)
 		return;
 	}
 
-	/* Reseet ingress packets */
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_FRAME, 0);
+	/* Reset ingress packets */
+	retcode =  dpni_reset_statistics(dpni, CMD_PRI_LOW, dev_priv->token);
 	if (retcode)
 		goto error;
 
-	/* Reset Ingress bytes */
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_BYTE, 0);
-	if (retcode)
-		goto error;
-
-	/* Reset Ingress broadcast frames */
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_BCAST_FRAME, 0);
-	if (retcode)
-		goto error;
-
-	/* Reset Ingress broadcast bytes */
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_BCAST_BYTES, 0);
-	if (retcode)
-		goto error;
-
-	/* Reset ingress Multicast frames */
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_MCAST_FRAME, 0);
-	if (retcode)
-		goto error;
-
-	/* Reset Ingress Multicast bytes */
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_MCAST_BYTE, 0);
-	if (retcode)
-		goto error;
-
-	/* Reset Ingress frames dropped explicitly by "drop" etting */
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_FRAME_DROP, 0);
-	if (retcode)
-		goto error;
-
-	/* Reset Ingress frames discarded*/
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_FRAME_DISCARD, 0);
-	if (retcode)
-		goto error;
-
-	/* Reset Egress Frames */
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_EGR_FRAME, 0);
-	if (retcode)
-		goto error;
-
-	/* Reset Egress Bytes*/
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_EGR_BYTE, 0);
-	if (retcode)
-		goto error;
-
-	/* Reset Egress Frames discarded*/
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_EGR_FRAME_DISCARD, 0);
-	if (retcode)
-		goto error;
-
-	get_dpni_stats(dev_name);
 	return;
 error:
 	ODP_ERR("RESET PKTIO STATS: Error Code = %d\n", retcode);
@@ -333,6 +247,7 @@ static void event_handler(void *msg)
 			struct dpni_attr dpni_attr;
 			struct dpni_attr *attr = &dpni_attr;
 			struct fsl_mc_io *dpni_dev;
+			uint16_t major, minor;
 
 			dev_priv = get_dev_priv(name);
 
@@ -348,31 +263,31 @@ static void event_handler(void *msg)
 				return;
 			}
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
+				dpni_get_api_version(dpni_dev, CMD_PRI_LOW,
+						     &major, &minor);
 				dpni_get_attributes(dpni_dev, CMD_PRI_LOW, dev_priv->token, &dpni_attr);
 				sprintf(str, "Dpni_Attributes\n"
 						"%s:"
-						"\t\t\tDPNI object id	\t\t\t\t\t: %d\n"
-						"\t\t\tDPNI major version \t\t\t\t\t: %u\n"
-						"\t\t\tDPNI minor version \t\t\t\t\t: %u\n"
-						"\t\t\tstart_hdr \t\t\t\t\t\t: %d\n"
-						"\t\t\tMaximum number of different senders \t\t\t: %u\n"
+						"\t\t\tDPNI major version \t\t\t\t\t: %hu\n"
+						"\t\t\tDPNI minor version \t\t\t\t\t: %hu\n"
+						"\t\t\tMaximum number of Rx Queues per TC\t\t\t: %u\n"
+						"\t\t\tMaximum number of Tx Queues \t\t\t: %u\n"
 						"\t\t\tMaximum number of traffic classes (for both Tx and Rx)  : %u\n"
-						"\t\t\tMaximum number of unicast filters \t\t\t: %u\n"
-						"\t\t\tMaximum number of multicast filters \t\t\t: %u\n"
+						"\t\t\tMaximum number of MAC filters \t\t\t: %u\n"
 						"\t\t\tMaximum number of VLAN filters	\t\t\t: %u\n"
 						"\t\t\tMaximum entries in QoS table \t\t\t\t: %u\n"
 						"\t\t\tMaximum key size for the QoS look-up \t\t\t: %u\n"
-						"\t\t\tMaximum key size for the distribution look-up \t\t: %u\n"
-						"\t\t\tMaximum number of policers \t\t\t\t: %u\n"
-						"\t\t\tMaximum number of congestion control groups (CGs) \t: %u\n"
-						"\t\t\tI/O virtual address of 256 bytes DMA-able memory \t: %lu\n\n\n",
+						"\t\t\tMaximum entries in FS table \t\t\t\t: %u\n"
+						"\t\t\tMaximum key size for the distribution look-up \t\t: %u\n",
 						name,
-						attr->id, attr->version.major, attr->version.minor,
-						attr->start_hdr, attr->max_senders, attr->max_tcs,
-						attr->max_unicast_filters, attr->max_multicast_filters,
-						attr->max_vlan_filters, attr->max_qos_entries, attr->max_qos_key_size,
-						attr->max_dist_key_size, attr->max_policers,
-						attr->max_congestion_ctrl, attr->ext_cfg_iova);
+						major, minor, attr->num_queues,
+						attr->num_queues, attr->num_tcs,
+						attr->mac_filter_entries,
+						attr->vlan_filter_entries,
+						attr->qos_entries,
+						attr->qos_key_size,
+						attr->fs_entries,
+						attr->fs_key_size);
 			} else {
 				ODP_PRINT("Command not supported\n");
 				return;
@@ -452,7 +367,7 @@ static void event_handler(void *msg)
 	case DPAA2_DEBUG_DPNI_MTU:
 		{
 			struct dpaa2_dev_priv *dev_priv;
-			uint16_t mtu;
+			uint16_t mtu = 1500;
 			struct fsl_mc_io *dpni_dev;
 
 			dev_priv = get_dev_priv(name);
@@ -468,7 +383,7 @@ static void event_handler(void *msg)
 				ODP_ERR("Error: FSL MC IO HANDLE NOT FOUND!\n");
 				return;
 			}
-
+#ifdef ENABLE_SNIC_SUPPORT
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				dpni_get_mtu(dpni_dev, CMD_PRI_LOW, dev_priv->token, &mtu);
 				sprintf(str, "%s:\t\t\tmtu\t\t\t\t\t\t\t: %u\n\n\n",
@@ -477,12 +392,15 @@ static void event_handler(void *msg)
 				ODP_PRINT("Command not supported\n");
 				return;
 			}
+#endif
+			sprintf(str, "%s:\t\t\tmtu\t\t\t\t\t\t\t: %u\n\n\n",
+				name, mtu);
 			break;
 		}
 	case DPAA2_DEBUG_DPNI_L3_CHKSUM_VALIDATION:
 		{
 			struct dpaa2_dev_priv *dev_priv;
-			int en;
+			uint32_t en;
 			struct fsl_mc_io *dpni_dev;
 
 			dev_priv = get_dev_priv(name);
@@ -500,7 +418,9 @@ static void event_handler(void *msg)
 			}
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
-				dpni_get_l3_chksum_validation(dpni_dev, CMD_PRI_LOW, dev_priv->token, &en);
+				dpni_get_offload(dpni_dev, CMD_PRI_LOW,
+						 dev_priv->token,
+						 DPNI_OFF_RX_L3_CSUM, &en);
 				sprintf(str, "L3 Checksum Hardware Offload Enable on %s"
 						"\t\t\t\t\t: %d\n\n\n", name, en);
 			} else {
@@ -512,7 +432,7 @@ static void event_handler(void *msg)
 	case DPAA2_DEBUG_DPNI_L4_CHKSUM_VALIDATION:
 		{
 			struct dpaa2_dev_priv *dev_priv;
-			int en;
+			uint32_t en;
 			struct fsl_mc_io *dpni_dev;
 
 			dev_priv = get_dev_priv(name);
@@ -530,7 +450,9 @@ static void event_handler(void *msg)
 			}
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
-				dpni_get_l4_chksum_validation(dpni_dev, CMD_PRI_LOW, dev_priv->token, &en);
+				dpni_get_offload(dpni_dev, CMD_PRI_LOW,
+						 dev_priv->token,
+						 DPNI_OFF_RX_L4_CSUM, &en);
 				sprintf(str, "L4 Checksum Hardware Offload Enable on %s"
 						"\t\t\t\t\t: %d\n\n\n", name, en);
 			} else {
