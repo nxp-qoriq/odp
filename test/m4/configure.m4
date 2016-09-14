@@ -31,4 +31,5 @@ AC_CONFIG_FILES([test/Makefile
 		 test/validation/time/Makefile
 		 test/validation/timer/Makefile
 		 test/validation/traffic_mngr/Makefile
-		 test/debug/Makefile])
+		 test/debug/Makefile
+		 test/debug/debug_tool/Makefile])
