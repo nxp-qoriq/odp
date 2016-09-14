@@ -82,14 +82,15 @@ static inline pktio_entry_t *get_pktio_entry(odp_pktio_t id)
 }
 
 /**
- * Set the default input queue to be associated with a pktio handle
+ * Set the input queue to be associated with a pktio handle
  *
  * @param pktio         Packet IO handle
- * @param queue         default input queue set
+ * @param q_entry       queue entry
+ * @param vq_id         virtual queue id of rx queue
  * @retval  0 on success
  * @retval <0 on failure
  */
-int odp_pktio_inq_setdef(odp_pktio_t pktio, odp_queue_t queue);
+int odp_pktio_inq_set(odp_pktio_t pktio, queue_entry_t *qentry, uint8_t vq_id);
 
 /**
  * Query default output queue
@@ -136,8 +137,6 @@ static inline odp_queue_t odp_pktio_inq_getdef(odp_pktio_t id)
  * @retval <0 on failure
  */
 int odp_pktio_inq_remdef(odp_pktio_t pktio);
-
-int single_capability(odp_pktio_capability_t *capa);
 
 #ifdef __cplusplus
 }

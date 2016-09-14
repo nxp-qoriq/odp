@@ -296,45 +296,18 @@ odp_buffer_t odp_schedule_buffer_alloc(odp_queue_t queue)
 }
 
 
-void odp_schedule_queue(odp_queue_t queue, int prio)
+void odp_schedule_queue(queue_entry_t *qentry, int prio, uint8_t vq_id)
 {
-	queue_entry_t *qentry;
 	struct dpaa2_dev *ndev;
 	struct dpaa2_vq_param vq_cfg;
 	pktio_entry_t *pktio_entry;
-	uint32_t i, max_rx_vq = 0;
-	struct queues_config *q_config;
 	int32_t ret;
 
-	qentry = queue_to_qentry(queue);
 	pktio_entry = get_pktio_entry(qentry->s.pktin);
-	if (pktio_entry == NULL || queue == ODP_QUEUE_INVALID)
+	if (!pktio_entry || !qentry)
 		return;
 
 	ndev = pktio_entry->s.pkt_dpaa2.dev;
-	if (enable_hash) {
-		/* Adding support for multiple VQs & Rx Side distribution.
-		   Since, there is no ODP API available to enable Rx
-		   distribution, we are enabling all available VQs for a
-		   given User queue.
-		*/
-		max_rx_vq = dpaa2_dev_get_max_rx_vq(ndev);
-		ODP_PRINT("%s: MAX RX VQs are %d  for %s (%s)\n", __func__,
-			max_rx_vq, ndev->dev_string, pktio_entry->s.name);
-		/* Enable distribution */
-		q_config = dpaa2_eth_get_queues_config(ndev);
-		for (i = 0; i < q_config->num_tcs; i++) {
-			ret = dpaa2_eth_setup_flow_distribution(ndev,
-					DPAA2_FDIST_IP_SA | DPAA2_FDIST_IP_DA,
-					i,
-					q_config->tc_config[i].num_dist);
-			if (ret) {
-				ODP_ERR("Fail to configure RX dist\n");
-				return;
-			}
-		}
-		ODP_PRINT("Configured RX dist! 0x%X\n", DPAA2_FDIST_IP_SA | DPAA2_FDIST_IP_DA);
-	}
 
 	/*Prepare VQ parameters for configuring */
 	memset(&vq_cfg, 0, sizeof(struct dpaa2_vq_param));
@@ -343,29 +316,11 @@ void odp_schedule_queue(odp_queue_t queue, int prio)
 
 	vq_cfg.prio = prio;
 	vq_cfg.sync = qentry->s.param.sched.sync;
-	if (enable_hash) {
-		/*Configure DPAA2 for RX Queue*/
-		for (i = 0; i < max_rx_vq; i++) {
-			ret = dpaa2_eth_setup_rx_vq(ndev, i, &vq_cfg);
-			if (DPAA2_FAILURE == ret) {
-				ODP_ERR("Fail to setup RX VQ with CONC\n");
-				return;
-			}
-			/* All Low level VQs must be mapped to single User
-				Qeueue */
-			dpaa2_dev_set_vq_handle(ndev->rx_vq[i],
-						(uint64_t)qentry->s.handle);
-			ODP_DBG("setup VQ %d with handle 0x%X\n", i,
-					qentry->s.handle);
-		}
-	} else {
-		i = 0;
-		dpaa2_eth_setup_rx_vq(ndev, i, &vq_cfg);
-		/* All Low level VQs must be mapped to single User Qeueue */
-		dpaa2_dev_set_vq_handle(ndev->rx_vq[i],
-					(uint64_t)qentry->s.handle);
-		ODP_DBG("setup VQ %d with handle 0x%X\n", i, qentry->s.handle);
-	}
+	dpaa2_eth_setup_rx_vq(ndev, vq_id, &vq_cfg);
+	/* All Low level VQs must be mapped to single User Qeueue */
+	dpaa2_dev_set_vq_handle(ndev->rx_vq[vq_id],
+			(uint64_t)qentry->s.handle);
+	ODP_DBG("setup VQ %d with handle 0x%X\n", vq_id, qentry->s.handle);
 	ret = odp_add_queue_to_group(qentry->s.param.sched.group);
 	if (ret == 1)
 		odp_affine_group(qentry->s.param.sched.group, NULL);

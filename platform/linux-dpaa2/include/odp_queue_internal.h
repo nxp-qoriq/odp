@@ -158,6 +158,11 @@ static inline int queue_is_sched(odp_queue_t handle)
 */
 int32_t fill_queue_configuration(queue_entry_t *queue,
 				struct dpaa2_vq_param *cfg);
+
+/**
+ * Returns free queue entry from queue table.
+ */
+queue_entry_t *get_free_queue_entry(void);
 #ifdef __cplusplus
 }
 #endif

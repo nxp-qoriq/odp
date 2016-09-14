@@ -593,3 +593,18 @@ int odp_queue_info(odp_queue_t handle, odp_queue_info_t *info)
 
 	return 0;
 }
+
+queue_entry_t *get_free_queue_entry(void)
+{
+	uint32_t i;
+	queue_entry_t *queue = NULL;
+
+	for (i = 0; i < ODP_CONFIG_QUEUES; i++) {
+		queue = get_qentry(i);
+
+		if (queue->s.status == QUEUE_STATUS_FREE)
+			return queue;
+	}
+	return queue;
+}
+
