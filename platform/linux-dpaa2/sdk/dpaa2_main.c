@@ -137,6 +137,8 @@ static int32_t dpaa2_rts_init(struct dpaa2_init_cfg *cfg)
 
 	if (internal_config.memory == 0) {
 		internal_config.memory = cfg->data_mem_size;
+		/* At init time, all memory is free memory */
+		internal_config.free_memory = cfg->data_mem_size;
 	}
 
 	if (cfg->data_mem_size == 0) {

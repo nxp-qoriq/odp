@@ -130,7 +130,7 @@ static struct sigevent notification;
  * 256 MB will be allocated to application at init time
  * for application-specific use.
  * */
-#define APPL_DATA_MEM_SIZE  ((uint64_t)256 * 1024 * 1024) /*256 MB*/
+#define APPL_DATA_MEM_SIZE  ((uint64_t)64 * 1024 * 1024) /*64 MB*/
 
 /*********************************************************************
 			Structure Definitions
