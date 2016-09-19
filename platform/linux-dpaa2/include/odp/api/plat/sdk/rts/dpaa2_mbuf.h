@@ -112,6 +112,7 @@ extern void *dpaa2_mbuf_shell_mpool;
 
 /*Buffer headroom*/
 extern uint32_t dpaa2_mbuf_head_room;
+extern uint32_t dpaa2_mbuf_tail_room;
 
 /*!
  * Buffer pool configuration structure. User need to give DPAA2 the

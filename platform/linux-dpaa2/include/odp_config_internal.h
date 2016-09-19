@@ -89,7 +89,7 @@ extern "C" {
  * without restriction. Note that most implementations will automatically
  * consider any unused portion of the last segment of a packet as tailroom
  */
-#define ODP_CONFIG_PACKET_TAILROOM 0
+#define ODP_CONFIG_PACKET_TAILROOM 128
 
 /*
  * Maximum number of segments per packet

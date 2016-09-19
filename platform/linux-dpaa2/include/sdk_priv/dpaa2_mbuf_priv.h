@@ -43,6 +43,7 @@ extern "C" {
 	fd->simple.flc_lo = lower_32_bits((uint64_t)addr);	\
 	fd->simple.flc_hi = upper_32_bits((uint64_t)addr);
 #define DPAA2_SET_FLE_INTERNAL_JD(fle, len) fle->frc = (0x80000000 | (len));
+#define DPAA2_SET_FLE_OFFSET(fle, offset)	(fle->fin_bpid_offset |= (uint32_t)offset << 16);
 #define DPAA2_GET_FLE_ADDR(fle)					\
 	(uint64_t)((((uint64_t)(fle->addr_hi)) << 32) + fle->addr_lo)
 #define DPAA2_SET_FLE_ADDR(fle, addr)	\

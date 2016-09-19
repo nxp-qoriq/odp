@@ -53,10 +53,10 @@ TAILQ_HEAD(sec_map_list, sec_dev_list);
 struct sec_map_list dev_map_list;
 struct sec_dev_list *sec_dev_map, *last_used_dev = NULL;
 
-void *dpaa2_sec_cb_dqrr_fd_to_mbuf(
-		struct qbman_swp *qm ODP_UNUSED,
-		const struct qbman_fd *fd,
-		const struct qbman_result *dqrr ODP_UNUSED)
+void *dpaa2_sec_contig_fd_to_mbuf(const struct qbman_fd *fd);
+void *dpaa2_sec_sg_fd_to_mbuf(const struct qbman_fd *fd);
+
+void *dpaa2_sec_contig_fd_to_mbuf(const struct qbman_fd *fd)
 {
 	/* FIXME Check if you can pass the original XXX_req in original
 	   buffer or FD? If so, retrieving it back will be efficient. */
@@ -123,6 +123,86 @@ void *dpaa2_sec_cb_dqrr_fd_to_mbuf(
 
 	/*todo - based on vq type, store the DQRR in mbuf*/
 	return mbuf;
+}
+
+void *dpaa2_sec_sg_fd_to_mbuf(const struct qbman_fd *fd)
+{
+	dpaa2_mbuf_pt mbuf, cur_seg;
+	struct qbman_fle *fle, *sge;
+	int i = 0;
+#ifdef ODP_IPSEC_DEBUG
+	crypto_ses_entry_t *session;
+#endif
+	fle = (struct qbman_fle *)DPAA2_GET_FD_ADDR(fd);
+	sge = (struct qbman_fle *)DPAA2_GET_FLE_ADDR(fle);
+
+	if (odp_unlikely(DPAA2_GET_FD_IVP(fd))) {
+		/* This case is not handled */
+		DPAA2_DBG(SEC, "ALLOC shell called");
+		mbuf = dpaa2_mbuf_alloc_shell();
+		if (!mbuf) {
+			DPAA2_ERR(ETH, "Unable to allocate shell");
+			return NULL;
+		}
+		mbuf->bpid = DPAA2_GET_FD_BPID(fd);
+		mbuf->priv_meta_off = DPAA2_GET_FD_OFFSET(fd);
+		mbuf->head = (uint8_t *)DPAA2_GET_FLE_ADDR(fle) + mbuf->priv_meta_off;
+		mbuf->data = mbuf->head;
+		mbuf->end_off = DPAA2_GET_FD_LEN(fd);
+
+	} else {
+		DPAA2_DBG(SEC, "INLINE SHELL Retrieved, meta_data_size: %x",
+			 bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
+		mbuf = DPAA2_INLINE_MBUF_FROM_BUF(DPAA2_GET_FLE_ADDR(sge),
+			 (bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size + dpaa2_mbuf_head_room));
+	}
+
+	cur_seg = mbuf;
+	while (cur_seg) {
+		cur_seg->frame_len = (sge+i)->length;
+		i++;
+		cur_seg = cur_seg->next_sg;
+	}
+	mbuf->tot_frame_len = fle->length;
+	mbuf->drv_priv_resv[1] = fd->simple.frc;
+
+#ifdef ODP_IPSEC_DEBUG
+	session = (crypto_ses_entry_t *)mbuf->drv_priv_cnxt1;
+	if (odp_unlikely(fd->simple.frc)) {
+		odp_atomic_inc_u64(&session->stats.errors);
+	} else {
+		odp_atomic_inc_u64(&session->stats.op_complete);
+		odp_atomic_add_u64(&session->stats.bytes, (uint64_t)mbuf->tot_frame_len);
+	}
+#endif
+	DPAA2_DBG(SEC, "priv_meta_off: %x, data: %p, head: %p, end_off: %x, "
+			"bpid: %x, len: %x, tot_len: %x\n", mbuf->priv_meta_off,
+			mbuf->data, mbuf->head, mbuf->end_off, mbuf->bpid,
+			mbuf->frame_len, mbuf->tot_frame_len);
+
+	mbuf->flags |= DPAA2BUF_SEC_CNTX_VALID;
+
+	/*TODO Stash bits are not taken care currently*/
+	mbuf->vq = (void *)DPAA2_GET_FD_FLC(fd);
+
+	_odp_buffer_type_set(mbuf, ODP_EVENT_CRYPTO_COMPL);
+
+	/*todo - based on vq type, store the DQRR in mbuf*/
+	return mbuf;
+}
+
+void *dpaa2_sec_cb_dqrr_fd_to_mbuf(
+		struct qbman_swp *qm ODP_UNUSED,
+		const struct qbman_fd *fd,
+		const struct qbman_result *dqrr ODP_UNUSED)
+{
+	struct qbman_fle *fle;
+	fle = (struct qbman_fle *)DPAA2_GET_FD_ADDR(fd);
+	/*First check FLE format i.e. contigous or S/G ?*/
+	if (DPAA2_IS_SET_FLE_SG_EXT(fle))
+		return dpaa2_sec_sg_fd_to_mbuf(fd);
+	else
+		return dpaa2_sec_contig_fd_to_mbuf(fd);
 }
 
 int32_t dpaa2_sec_attach_bp_list(struct dpaa2_dev *dev,
