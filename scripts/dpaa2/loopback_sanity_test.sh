@@ -87,11 +87,9 @@ developer_help() {
 	|   kernel   |		|   FDPRC    |		|   SDPRC  |
 	|	     |		|	     |		|          |
 	==============		==============		============
-	NI |	  | NI2	     FDPNI2|	| FDPNI0	      /\
-	   |	  |________________|	|		      \/ SDPNI2
+	NI |	  | NI2	     FDPNI2|	| FDPNI0
+	   |	  |________________|	|
 	   |____________________________|
-
-	SDPNI2 will be Connected to itself
 
 	MAC addresses to these DPNIs will be as:
 
@@ -105,7 +103,6 @@ developer_help() {
 
 	SDPNI0 = 00:00:00:00:6:1
 	SDPNI1 = 00:00:00:00:5:2
-	SDPNI2 = 00:00:00:00:4:3
 
 	Namespaces and kernel interfaces:
 
@@ -224,7 +221,7 @@ check_resources () {
 	then
 		return 1;
 	fi
-	if [[ -z $SDPRC || -z $SDPNI0 || -z $SDPNI1 || -z $SDPNI2 ]]
+	if [[ -z $SDPRC || -z $SDPNI0 || -z $SDPNI1 ]]
 	then
 		return 1;
 	fi
@@ -248,11 +245,10 @@ get_resources() {
 	# * creating the 2nd container "SDPRC" with 2 DPNIs in which one will be connected to
 	# * the first DPNI of first conatiner and 2nd DPNI will remain unconnected.
 	# */
-	. ./dynamic_dpl.sh $FDPNI1 dpni dpni-self
+	. ./dynamic_dpl.sh $FDPNI1 dpni
 	SDPRC=$DPRC
 	SDPNI0=$DPNI1
 	SDPNI1=$DPNI2
-	SDPNI2=$DPNI3
 
 	#/*Creating the required linux interfaces and connecting them to the reaquired DPNIs*/
 
@@ -1133,18 +1129,6 @@ run_odp() {
 	# */
 	run_command TIMER "./odp_timer_test -c 2 -t 2 -p 2000000"
 
-	#/* ODP_GENERATOR
-	# */
-	run_command GENERATOR "./odp_generator -I $FDPNI0 --srcmac 00:00:00:00:05:01  --dstmac 00:00:00:00:08:01 --srcip 192.168.111.1 --dstip 192.168.111.2 -n 10 -m p"
-
-	#/* ODP_GENERATOR
-	# */
-	run_command GENERATOR "./odp_generator -I $FDPNI0 -m r"
-
-	#/* ODP_GENERATOR
-	# */
-	run_command GENERATOR "./odp_generator -I $FDPNI0 --srcmac 00:00:00:00:05:01  --dstmac 00:00:00:00:08:01 --srcip 192.168.111.1 --dstip 192.168.111.2 -n 10 -m u"
-
 	#/* ODP_CLASSIFIER
 	# */
 	run_command CLASSIFIER "./odp_classifier -i $FDPNI0 -p ODP_PMR_SIP_ADDR:192.168.111.2:FFFFFFFF:queue1 -l 2:queue2 -q 40:queue3 -m 1 -a 1"
@@ -1212,6 +1196,18 @@ run_odp() {
 	#/* ODP_IPSEC_PROTO ( POLL_QUEUE ) (TUNNEL) (INTEROPS)
 	# */
 	run_command IPSEC_PROTO "./odp_ipsec_proto -i $FDPNI0,$FDPNI2 -r 192.168.111.2/32:$FDPNI0:00.00.00.00.08.01 -r 192.168.222.2/32:$FDPNI2:00.00.00.00.08.02 -p 192.168.111.0/24:192.168.222.0/24:out:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:in:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8 -m 1" -o
+
+	#/* ODP_GENERATOR
+	# */
+	run_command GENERATOR "./odp_generator -I $FDPNI0 --srcmac 00:00:00:00:05:01  --dstmac 00:00:00:00:08:01 --srcip 192.168.111.1 --dstip 192.168.111.2 -n 10 -m p"
+
+	#/* ODP_GENERATOR
+	# */
+	run_command GENERATOR "./odp_generator -I $FDPNI0 -m r"
+
+	#/* ODP_GENERATOR
+	# */
+	run_command GENERATOR "./odp_generator -I $FDPNI0 --srcmac 00:00:00:00:05:01  --dstmac 00:00:00:00:08:01 --srcip 192.168.111.1 --dstip 192.168.111.2 -n 10 -m u"
 }
 
 run_cunit_command() {
@@ -1239,10 +1235,6 @@ run_cunit_command() {
 			echo
 			echo
 			return;
-		fi
-		if [[ "$1" == "./pktio_main" ]]
-		then
-			export ODP_PKTIO_IF0=$SDPNI2
 		fi
 		eval "$1 > log 2>&1 &"
 		sleep 10
