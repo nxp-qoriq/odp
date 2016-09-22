@@ -577,14 +577,12 @@ int main(int argc, char *argv[])
 
 	/* Init ODP before calling anything else */
 	if (odp_init_global(&instance, NULL, NULL)) {
-		EXAMPLE_ERR("Error: ODP global init failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: ODP global init failed.\n");
 	}
 
 	/* Init this thread */
 	if (odp_init_local(instance, ODP_THREAD_CONTROL)) {
-		EXAMPLE_ERR("Error: ODP local init failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: ODP local init failed.\n");
 	}
 
 	/* Parse and store the application arguments */
@@ -595,8 +593,7 @@ int main(int argc, char *argv[])
 	server_cidev = odpfsl_cidev_open();
 
 	if (!client_cidev || !server_cidev) {
-		printf("Not enough Resource to run\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Not enough Resource to run\n");
 	}
 
 	/* Create the memory pool */
@@ -606,8 +603,7 @@ int main(int argc, char *argv[])
 	params.buf.size = CMDIF_BUF_SIZE;
 	cmdif_memory_pool = odp_pool_create("cmdif_memory_pool", &params);
 	if (ODP_POOL_INVALID == cmdif_memory_pool) {
-		EXAMPLE_ERR("Error: cmdif_memory_pool creation failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: cmdif_memory_pool creation failed.\n");
 	}
 
 	/* Create the buffer pool */
@@ -617,8 +613,7 @@ int main(int argc, char *argv[])
 	params.buf.size = CMDIF_BUF_SIZE;
 	cmdif_packet_pool = odp_pool_create("cmdif_packet_pool", &params);
 	if (ODP_POOL_INVALID == cmdif_packet_pool) {
-		EXAMPLE_ERR("Error: cmdif_packet_pool creation failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: cmdif_packet_pool creation failed.\n");
 	}
 
 	if (args.mode & CMDIF_DEMO_CLIENT_MODE) {

@@ -34,8 +34,7 @@ void init_sa_db(void)
 	sa_db = odp_shm_addr(shm);
 
 	if (sa_db == NULL) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	memset(sa_db, 0, sizeof(*sa_db));
 }
@@ -51,8 +50,7 @@ void init_tun_db(void)
 	tun_db = odp_shm_addr(shm);
 
 	if (!tun_db) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	memset(tun_db, 0, sizeof(*tun_db));
 }

@@ -92,8 +92,7 @@ void init_fwd_db(void)
 	fwd_db = odp_shm_addr(shm);
 
 	if (fwd_db == NULL) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	memset(fwd_db, 0, sizeof(*fwd_db));
 }
@@ -222,8 +221,7 @@ void odp_init_routing_table(void)
 						ODP_CACHE_LINE_SIZE, 0);
 	flow_table = odp_shm_addr(hash_shm);
 	if (!flow_table) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	/*Inialize Locks*/
 	for (i = 0; i < bucket_count; i++) {

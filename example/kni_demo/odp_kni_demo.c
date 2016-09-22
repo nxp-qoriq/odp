@@ -623,15 +623,13 @@ initialize_odp(void)
 	odp_instance_t instance;
 	/* Initializing the Global context for ODP */
 	if (odp_init_global(&instance, NULL, NULL)) {
-		EXAMPLE_ERR("Error: ODP global initialization failed.\n");
-		exit(FAILURE);
+		EXAMPLE_ABORT("Error: ODP global initialization failed.\n");
 	}
 
 	/* Initializing the Local Context for the main process context */
 	if (odp_init_local(instance, ODP_THREAD_CONTROL)) {
-		EXAMPLE_ERR("Error: ODP local initialization failed.\n");
 		odp_term_global(instance);	/* Ignore error in this */
-		exit(FAILURE);
+		EXAMPLE_ABORT("Error: ODP local initialization failed.\n");
 	}
 }
 
@@ -889,16 +887,13 @@ main(int argc, char **argv)
 	/* Handling command line arguments */
 	args = calloc(1, sizeof(args_t));
 	if (!args) {
-		EXAMPLE_ERR("Error: Failed to allocate memory for args.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: Failed to allocate memory for args.\n");
 	}
 	/* Parsing and storing the arguments */
 	ret = parse_cmdline_args(argc, argv, args);
 	if (ret != SUCCESS) {
-		EXAMPLE_ERR("Error: Commandline argument parsing not "\
-				"successful.\n");
 		free(args);
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: Commandline argument parsing not successful.\n");
 	}
 
 	EXAMPLE_DBG("Debug: Initializing ODP (Global and Local Init).\n");

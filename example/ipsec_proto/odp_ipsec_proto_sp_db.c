@@ -31,8 +31,7 @@ void init_sp_db(void)
 	sp_db = odp_shm_addr(shm);
 
 	if (sp_db == NULL) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	memset(sp_db, 0, sizeof(*sp_db));
 }

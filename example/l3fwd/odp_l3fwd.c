@@ -502,8 +502,7 @@ void odp_process_and_send_packet(odp_packet_t pkt_tbl[], uint32_t pkts_ok)
 					/*Entry found. Updated in Flow table first.*/
 					flow = calloc(1, sizeof(odp_flow_entry_t));
 					if (!flow) {
-						EXAMPLE_ERR("Failure to allocate memory");
-						exit(EXIT_FAILURE);
+						EXAMPLE_ABORT("Failure to allocate memory");
 					}
 					flow->l3_src = sip;
 					flow->l3_dst = dip;
@@ -742,8 +741,7 @@ int main(int argc, char *argv[])
 
 	gbl_args = calloc(1, sizeof(args_t));
 	if (gbl_args == NULL) {
-		EXAMPLE_ERR("Error: args mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: args mem alloc failed.\n");
 	}
 
 	/* Parse and store the application arguments */
@@ -751,14 +749,12 @@ int main(int argc, char *argv[])
 
 	/* Init ODP before calling anything else */
 	if (odp_init_global(&instance, NULL, NULL)) {
-		EXAMPLE_ERR("Error: ODP global init failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: ODP global init failed.\n");
 	}
 
 	/* Init this thread */
 	if (odp_init_local(instance, ODP_THREAD_CONTROL)) {
-		EXAMPLE_ERR("Error: ODP local init failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: ODP local init failed.\n");
 	}
 
 	/*Configure flow entry with default values*/
@@ -788,9 +784,8 @@ int main(int argc, char *argv[])
 	printf("cpu mask:           %s\n", cpumaskstr);
 
 	if ((gbl_args->appl.mode == APPL_MODE_PKT_BURST) && (num_workers < gbl_args->appl.if_count)) {
-		EXAMPLE_ERR("Error: CPU count %d less than interface count\n",
-			num_workers);
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: CPU count %d less than interface count\n",
+			      num_workers);
 	}
 
 	/* Create packet pool */
@@ -803,8 +798,7 @@ int main(int argc, char *argv[])
 	pool = odp_pool_create("packet pool", &params);
 
 	if (pool == ODP_POOL_INVALID) {
-		EXAMPLE_ERR("Error: packet pool create failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: packet pool create failed.\n");
 	}
 
 	/*Dump the created packet pool*/

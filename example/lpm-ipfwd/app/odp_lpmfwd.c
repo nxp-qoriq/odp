@@ -1055,8 +1055,7 @@ int main(int argc, char *argv[])
 
 	gbl_args = calloc(1, sizeof(args_t));
 	if (gbl_args == NULL) {
-		EXAMPLE_ERR("Error: args mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: args mem alloc failed.\n");
 	}
 
 	/* Parse and store the application arguments */
@@ -1067,28 +1066,24 @@ int main(int argc, char *argv[])
 
 	/* Init ODP before calling anything else */
 	if (odp_init_global(&instance, NULL, &plat_init)) {
-		EXAMPLE_ERR("Error: ODP global init failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: ODP global init failed.\n");
 	}
 
 	/* Init this thread */
 	if (odp_init_local(instance, ODP_THREAD_CONTROL)) {
-		EXAMPLE_ERR("Error: ODP local init failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: ODP local init failed.\n");
 	}
 
 
 	err = initialize_ip_stack(&stack);
 	if (odp_unlikely(err)) {
-		EXAMPLE_ERR("Error Initializing IP Stack\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error Initializing IP Stack\n");
 	}
 
 	/* Create Message queues to send and receive */
 	err = create_mq();
 	if (odp_unlikely(err)) {
-		EXAMPLE_ERR("Error in creating message queues\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error in creating message queues\n");
 	}
 
 	/* Print both system and application information */
@@ -1111,10 +1106,9 @@ int main(int argc, char *argv[])
 	printf("cpu mask:           %s\n", cpumaskstr);
 
 	if (num_workers < gbl_args->appl.if_count && gbl_args->appl.mode == APPL_MODE_PKT_BURST) {
-		EXAMPLE_ERR("Error: CPU count %d less than interface count\n",
-			num_workers);
 		destroy_mq();
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: CPU count %d less than interface count\n",
+			      num_workers);
 	}
 
 	/* Create packet pool */
@@ -1127,9 +1121,8 @@ int main(int argc, char *argv[])
 	pool = odp_pool_create("packet pool", &params);
 
 	if (pool == ODP_POOL_INVALID) {
-		EXAMPLE_ERR("Error: packet pool create failed.\n");
 		destroy_mq();
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: packet pool create failed.\n");
 	}
 
 	/*Dump the created packet pool*/

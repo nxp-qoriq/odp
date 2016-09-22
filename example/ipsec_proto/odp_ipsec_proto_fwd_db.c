@@ -101,8 +101,7 @@ void odp_init_routing_table(void)
 						ODP_CACHE_LINE_SIZE, 0);
 	flow_table = odp_shm_addr(hash_shm);
 	if (!flow_table) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	/*Inialize Locks*/
 	for (i = 0; i < bucket_count; i++) {
@@ -118,9 +117,8 @@ void odp_init_routing_table(void)
 						ODP_CACHE_LINE_SIZE, 0);
 	ipsec_in_flow_table = odp_shm_addr(hash_shm);
 	if (!ipsec_in_flow_table) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
 		odp_shm_free(odp_shm_lookup("route_table"));
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	/*Inialize Locks*/
 	for (i = 0; i < bucket_count; i++) {
@@ -136,10 +134,9 @@ void odp_init_routing_table(void)
 						ODP_CACHE_LINE_SIZE, 0);
 	ipsec_out_flow_table = odp_shm_addr(hash_shm);
 	if (!ipsec_out_flow_table) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
 		odp_shm_free(odp_shm_lookup("ipsec_in_route_table"));
 		odp_shm_free(odp_shm_lookup("route_table"));
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	/*Inialize Locks*/
 	for (i = 0; i < bucket_count; i++) {
@@ -162,8 +159,7 @@ void init_fwd_db(void)
 	fwd_db = odp_shm_addr(shm);
 
 	if (fwd_db == NULL) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	memset(fwd_db, 0, sizeof(*fwd_db));
 }

@@ -272,8 +272,7 @@ void ipsec_init_pre(void)
 	out_pool = odp_pool_create("out_pool", &params);
 
 	if (ODP_POOL_INVALID == out_pool) {
-		EXAMPLE_ERR("Error: message pool create failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: message pool create failed.\n");
 	}
 
 	/* Initialize our data bases */
@@ -326,8 +325,7 @@ void ipsec_init_post(crypto_api_mode_e api_mode)
 						     entry->input,
 						     completionq[queue_id - 1],
 						     out_pool)) {
-				EXAMPLE_ERR("Error: IPSec cache entry failed.\n");
-				exit(EXIT_FAILURE);
+				EXAMPLE_ABORT("Error: IPSec cache entry failed.\n");
 			}
 		} else {
 			printf(" WARNING: SA not found for SP\n");
@@ -373,8 +371,7 @@ static void initialize_intf(char *intf)
 	 */
 	pktio = odp_pktio_open(intf, pkt_pool, &pktio_param);
 	if (ODP_PKTIO_INVALID == pktio) {
-		EXAMPLE_ERR("Error: pktio create failed for %s\n", intf);
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: pktio create failed for %s\n", intf);
 	}
 
 	/*
@@ -401,16 +398,14 @@ static void initialize_intf(char *intf)
 
 	ret = odp_pktio_start(pktio);
 	if (ret) {
-		EXAMPLE_ERR("Error: unable to start %s\n", intf);
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: unable to start %s\n", intf);
 	}
 
 	/* Read the source MAC address for this interface */
 	ret = odp_pktio_mac_addr(pktio, src_mac, sizeof(src_mac));
 	if (ret < 0) {
-		EXAMPLE_ERR("Error: failed during MAC address get for %s\n",
-			    intf);
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: failed during MAC address get for %s\n",
+			      intf);
 	}
 
 	printf("Created pktio:%02" PRIu64 ", queue mode (ATOMIC queues)\n"
@@ -510,8 +505,7 @@ pkt_disposition_e do_route_fwd_db(odp_packet_t pkt)
 			/*Entry found. Updated in Flow table first.*/
 			flow = calloc(1, sizeof(odp_flow_entry_t));
 			if (!flow) {
-				EXAMPLE_ERR("Failure to allocate memory");
-				exit(EXIT_FAILURE);
+				EXAMPLE_ABORT("Failure to allocate memory");
 			}
 			flow->l3_src = sip;
 			flow->l3_dst = dip;
@@ -594,8 +588,7 @@ pkt_disposition_e do_ipsec_in_classify(odp_packet_t pkt,
 			/*Entry found. Updated in Flow table first.*/
 			flow = calloc(1, sizeof(odp_flow_entry_t));
 			if (!flow) {
-				EXAMPLE_ERR("Failure to allocate memory");
-				exit(EXIT_FAILURE);
+				EXAMPLE_ABORT("Failure to allocate memory");
 			}
 			flow->l3_src = sip;
 			flow->l3_dst = dip;
@@ -674,8 +667,7 @@ pkt_disposition_e do_ipsec_out_classify(odp_packet_t pkt,
 			/*Entry found. Updated in Flow table first.*/
 			flow = calloc(1, sizeof(odp_flow_entry_t));
 			if (!flow) {
-				EXAMPLE_ERR("Failure to allocate memory");
-				exit(EXIT_FAILURE);
+				EXAMPLE_ABORT("Failure to allocate memory");
 			}
 			flow->l3_src = sip;
 			flow->l3_dst = dip;
@@ -853,13 +845,11 @@ main(int argc, char *argv[])
 	}
 	/* Initialize ODP before calling anything else */
 	if (odp_init_global(&instance, NULL, NULL)) {
-		EXAMPLE_ERR("Error: ODP global init failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: ODP global init failed.\n");
 	}
 	/* Initialize this thread */
 	if (odp_init_local(instance, ODP_THREAD_CONTROL)) {
-		EXAMPLE_ERR("Error: ODP local init failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: ODP local init failed.\n");
 	}
 	/* Reserve memory for arguments from shared memory */
 	shm = odp_shm_reserve("shm_args", sizeof(args_t),
@@ -867,8 +857,7 @@ main(int argc, char *argv[])
 	args = odp_shm_addr(shm);
 
 	if (NULL == args) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	memset(args, 0, sizeof(*args));
 
@@ -909,8 +898,7 @@ main(int argc, char *argv[])
 	for (i = 0; i < num_workers; i++) {
 		completionq[i] = queue_create("completion", &qparam);
 		if (ODP_QUEUE_INVALID == completionq[i]) {
-			EXAMPLE_ERR("Error: completion queue creation failed\n");
-			exit(EXIT_FAILURE);
+			EXAMPLE_ABORT("Error: completion queue creation failed\n");
 		}
 	}
 	printf("num worker threads: %i\n", num_workers);
@@ -930,8 +918,7 @@ main(int argc, char *argv[])
 	pkt_pool = odp_pool_create("packet_pool", &params);
 
 	if (ODP_POOL_INVALID == pkt_pool) {
-		EXAMPLE_ERR("Error: packet pool create failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: packet pool create failed.\n");
 	}
 
 	/* Populate our IPsec cache */
@@ -1047,8 +1034,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 			appl_args->if_names =
 				calloc(appl_args->if_count, sizeof(char *));
 			if (!appl_args->if_names) {
-				EXAMPLE_ERR("Memory allocation failure\n");
-				exit(EXIT_SUCCESS);
+				EXAMPLE_ABORT("Memory allocation failure\n");
 			}
 			/* Store the if names (reset names string) */
 			strcpy(appl_args->if_str, optarg);

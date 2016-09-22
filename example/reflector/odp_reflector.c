@@ -381,8 +381,7 @@ int main(int argc, char *argv[])
 
 	args = calloc(1, sizeof(args_t));
 	if (args == NULL) {
-		EXAMPLE_ERR("Error: args mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: args mem alloc failed.\n");
 	}
 
 	memset(args, 0, sizeof(*args));
@@ -408,14 +407,12 @@ int main(int argc, char *argv[])
 	}
 	plat_init.data_mem_size = ODPAPP_DATA_MEM_SIZE;
 	if (odp_init_global(&instance, NULL, &plat_init)) {
-		EXAMPLE_ERR("Error: ODP global init failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: ODP global init failed.\n");
 	}
 
 	/* Init this thread */
 	if (odp_init_local(instance, ODP_THREAD_CONTROL)) {
-		EXAMPLE_ERR("Error: ODP local init failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: ODP local init failed.\n");
 	}
 
 	/* Print both system and application information */
@@ -449,8 +446,7 @@ int main(int argc, char *argv[])
 	pool = odp_pool_create("packet_pool", &params);
 
 	if (pool == ODP_POOL_INVALID) {
-		EXAMPLE_ERR("Error: packet pool create failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: packet pool create failed.\n");
 	}
 	odp_pool_print(pool);
 
@@ -629,9 +625,8 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 			odp_cpumask_and(&cpumask_and, &cpumask_args, &cpumask);
 			if (odp_cpumask_count(&cpumask_and) <
 			    odp_cpumask_count(&cpumask_args)) {
-				EXAMPLE_ERR("Wrong cpu mask, max cpu's:%d\n",
-					    num_workers);
-				exit(EXIT_FAILURE);
+				EXAMPLE_ABORT("Wrong cpu mask, max cpu's:%d\n",
+					      num_workers);
 			}
 			break;
 			/* parse packet-io interface names */
