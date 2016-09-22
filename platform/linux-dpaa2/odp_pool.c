@@ -20,7 +20,6 @@
 #include <odp/api/hints.h>
 #include <odp_debug_internal.h>
 #include <odp_atomic_internal.h>
-#include <odp_config_internal.h>
 
 #include <string.h>
 #include <stdlib.h>

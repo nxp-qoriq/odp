@@ -6,6 +6,7 @@ pkgconfig_DATA = $(top_builddir)/pkgconfig/libodphelper-linux.pc
 LIB   = $(top_builddir)/lib
 AM_CFLAGS  = -I$(srcdir)/include
 AM_CFLAGS += -I$(top_srcdir)/platform/@with_platform@/include
+AM_CFLAGS += -I$(top_srcdir)/platform/linux-generic/include
 AM_CFLAGS += -I$(top_srcdir)/include
 
 AM_LDFLAGS += -version-number '$(ODPHELPER_LIBSO_VERSION)'
