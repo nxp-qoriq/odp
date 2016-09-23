@@ -209,8 +209,8 @@ odpplatmallocinclude_HEADERS = \
 
 odpplatcountersincludedir= $(includedir)/odp/api/plat/counters
 odpplatcountersinclude_HEADERS = \
-		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/counters/counters_v7.h
-		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/counters/counters_v8.h
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/counters/counters_v7.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/counters/counters_v8.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/counters/counters.h
 
 odpapiincludedir= $(includedir)/odp/api/spec
