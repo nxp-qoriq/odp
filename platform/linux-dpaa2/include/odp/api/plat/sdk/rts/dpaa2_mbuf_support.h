@@ -34,7 +34,7 @@ int dpaa2_mbuf_pool_get_bpid(void *bplist);
  *
  */
 static inline void dpaa2_inline_mbuf_reset(
-		dpaa2_mbuf_pt mbuf)
+		struct dpaa2_mbuf *mbuf)
 {
 	mbuf->flags &= ~(DPAA2BUF_SEC_CNTX_VALID | DPAA2BUF_AIOP_CNTX_VALID);
 	mbuf->eth_flags = 0;

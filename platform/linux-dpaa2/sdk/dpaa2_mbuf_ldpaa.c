@@ -19,6 +19,7 @@
 #include <dpaa2_aiop.h>
 #include <dpaa2_vq.h>
 #include <dpaa2_memconfig.h>
+#include <dpaa2_eth_ldpaa_annot.h>
 
 /* QBMAN header files */
 #include <fsl_qbman_portal.h>
@@ -193,9 +194,7 @@ static inline void cpu_spin(int cycles)
  * @returns	dpaa2 buffer on success; NULL on failure.
  *
  */
-dpaa2_mbuf_pt dpaa2_mbuf_alloc_from_bpid(
-		uint16_t bpid,
-		int length)
+dpaa2_mbuf_pt dpaa2_mbuf_alloc_from_bpid(uint16_t bpid)
 {
 	dpaa2_mbuf_pt mbuf = NULL;
 	struct qbman_swp *swp = thread_io_info.dpio_dev->sw_portal;
@@ -205,22 +204,6 @@ dpaa2_mbuf_pt dpaa2_mbuf_alloc_from_bpid(
 	int32_t try_count;
 
 	DPAA2_TRACE(BUF);
-
-	/* Check for valid bpid. If size is 0 at the input bpid,
-	 * impiles it is invalid */
-	if (!bpid_info[bpid].size) {
-		DPAA2_ERR(BUF, "Please provide a valid bpid");
-		return NULL;
-	}
-
-	/* Allocate SG DPAA2 buffer if sg support is enabled and length
-	than the buffer size */
-	if ((unsigned)length > bpid_info[bpid].size) {
-			if (sg_support)
-				return dpaa2_mbuf_alloc_sg_from_bpid(bpid, length);
-			else
-				return NULL;
-	}
 	if (bpid_info[bpid].stockpile) {
 		/*if the stockpile for this bpid for this thread is not available,
 		it will allocate the stockpile for this thread */
@@ -324,10 +307,13 @@ alloc_try_again:
 	dpaa2_inline_mbuf_reset(mbuf);
 	_odp_buffer_type_set(mbuf, ODP_EVENT_PACKET);
 
+	mbuf->head = (uint8_t *)(buf + DPAA2_FD_PTA_SIZE +
+				DPAA2_MBUF_HW_ANNOTATION);
 	mbuf->data = mbuf->head + dpaa2_mbuf_head_room;
+	mbuf->priv_meta_off = DPAA2_FD_PTA_SIZE + DPAA2_MBUF_HW_ANNOTATION;
 	mbuf->hw_annot = (uint64_t)(mbuf->head - DPAA2_MBUF_HW_ANNOTATION);
 	mbuf->frame_len = mbuf->end_off - (mbuf->head - mbuf->data);
-	mbuf->tot_frame_len += mbuf->frame_len;
+	mbuf->tot_frame_len = mbuf->frame_len;
 
 	return mbuf;
 }
@@ -343,11 +329,12 @@ alloc_try_again:
 void dpaa2_mbuf_free(dpaa2_mbuf_pt mbuf)
 {
 	struct qbman_release_desc releasedesc;
-	dpaa2_mbuf_pt tmp = mbuf;
+	dpaa2_mbuf_pt tmp = mbuf, seg;
 	struct qbman_swp *swp = thread_io_info.dpio_dev->sw_portal;
 	uint64_t buf;
 	int ret = 0;
 	struct bpsp *pool;
+	uint32_t is_sgt_buf = true;
 
 	DPAA2_TRACE(BUF);
 
@@ -363,8 +350,10 @@ void dpaa2_mbuf_free(dpaa2_mbuf_pt mbuf)
 		MARK_HOLD_DQRR_PTR_INVALID;
 	}
 
+	seg = DPAA2_INLINE_MBUF_FROM_BUF((mbuf->hw_annot - DPAA2_FD_PTA_SIZE),
+					 bpid_info[mbuf->bpid].meta_data_size);
+	tmp = seg;
 	while (tmp != NULL) {
-		tmp = tmp->next_sg;
 		if (mbuf->bpid != INVALID_BPID) {
 			pool = th_bpsp_info[mbuf->bpid];
 			/*if stockpile is not available for this thread, directly release the
@@ -375,9 +364,17 @@ void dpaa2_mbuf_free(dpaa2_mbuf_pt mbuf)
 				qbman_release_desc_clear(&releasedesc);
 				qbman_release_desc_set_bpid(&releasedesc,
 							    mbuf->bpid);
-				buf = (uint64_t)dpaa2_mbuf_frame_addr(mbuf);
-				DPAA2_INFO(BUF, "Releasing buffer: %llx", buf);
-				DPAA2_INFO(BUF, "QBMan SW Portal 0x%p\n", swp);
+				if (is_sgt_buf) {
+					buf = (uint64_t)(tmp->head -
+						DPAA2_MBUF_HW_ANNOTATION -
+						DPAA2_FD_PTA_SIZE);
+					is_sgt_buf = false;
+				} else {
+					buf = (uint64_t)tmp->head;
+				}
+				DPAA2_INFO(BUF, "Releasing buffer: %p\n",
+								(void *)buf);
+				DPAA2_INFO(BUF, "QBMan SW Portal %p\n", swp);
 				do {
 					/* Release buffer into the BMAN */
 					ret = qbman_swp_release(swp,
@@ -404,7 +401,16 @@ void dpaa2_mbuf_free(dpaa2_mbuf_pt mbuf)
 			 * whether a release-to-hw was attempted. */
 			/* Add buffers to stockpile if they fit */
 			if ((uint32_t)pool->sp_fill < BMAN_STOCKPILE_SZ) {
-				pool->sp[pool->sp_fill] = (uint64_t)dpaa2_mbuf_frame_addr(mbuf);
+				if (is_sgt_buf) {
+					pool->sp[pool->sp_fill] = (uint64_t)
+						(tmp->head -
+						DPAA2_MBUF_HW_ANNOTATION -
+						DPAA2_FD_PTA_SIZE);
+					is_sgt_buf = false;
+				} else {
+					pool->sp[pool->sp_fill] =
+							(uint64_t)tmp->head ;
+				}
 				DPAA2_INFO(BUF, "Buffer released: %lx", *buf);
 				pool->sp_fill++;
 			}
@@ -432,9 +438,9 @@ void dpaa2_mbuf_free(dpaa2_mbuf_pt mbuf)
 			}
 		}
 release_done:
-		if (mbuf->flags & DPAA2BUF_ALLOCATED_SHELL)
-			dpaa2_mbuf_free_shell(mbuf);
-		mbuf = tmp;
+		if (tmp->flags & DPAA2BUF_ALLOCATED_SHELL)
+			dpaa2_mbuf_free_shell(tmp);
+		tmp = tmp->next_sg;
 	}
 }
 

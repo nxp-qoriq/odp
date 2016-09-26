@@ -174,7 +174,6 @@ int dpaa2_mbuf_sg_copy(
 
 /* Extern declarations */
 extern struct dpaa2_bp_list *g_bp_list;
-extern bool_t sg_support;
 
 #ifdef __cplusplus
 }

@@ -440,6 +440,19 @@ odp_buffer_t odpfsl_buffer_from_addr(void *addr)
 	return buf;
 }
 
+int pool_type_is_packet(odp_pool_t pool)
+{
+	odp_pool_info_t pool_info;
+
+	if (pool == ODP_POOL_INVALID)
+		return 0;
+
+	if (odp_pool_info(pool, &pool_info) != 0)
+		return 0;
+
+	return pool_info.params.type == ODP_POOL_PACKET;
+}
+
 int odp_pool_capability(odp_pool_capability_t *capa)
 {
 	memset(capa, 0, sizeof(odp_pool_capability_t));
