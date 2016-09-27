@@ -80,11 +80,11 @@ script help :----->
 	Below "ENVIRONMENT VARIABLES" are exported to get user defined
 	configuration"
 	/**DPNI**:-->
-		MAX_SENDERS         = max number of parallel senders on DPNI.
+		MAX_QUEUES         = max number of Rx/Tx Queues on DPNI.
 					Set the parameter using below command:
-					'export MAX_SENDERS=<Number of senders>'
-					where "Number of senders" is an integer
-					value "e.g export MAX_SENDERS=8"
+					'export MAX_QUEUES=<Number of Queues>'
+					where "Number of Queues" is an integer
+					value "e.g export MAX_QUEUES=8"
 
 		MAX_TCS             = maximum traffic classes for Rx/Tx both.
 					Set the parameter using below command:
@@ -92,26 +92,10 @@ script help :----->
 					where "Number of traffic classes" is an
 					integer value. "e.g export MAX_TCS=8"
 
-		MAX_DIST_PER_TC     = maximum dist 'size per RX traffic class.
-					Set the parameter using below command:
-					'export MAX_DIST_PER_TC="dist_in_tc1,dist_in_tc2,..."'
-					export MAX_DIST_PER_TC="8,8,8,8,8,8,8,8"
-					to set 4 distribution in each TC
-					Distribution values occurrence must be
-					equal to number of MAX_TCS.
-				Note: Make sure to modify MAX_DIST_PER_TC if
-					MAX_TCS is modified.
-
 		DPNI_OPTIONS        = DPNI related options.
 					Set the parameter using below command:
 					'export DPNI_OPTIONS="opt-1,opt-2,..."'
-					e.g export DPNI_OPTIONS="DPNI_OPT_MULTICAST_FILTER,DPNI_OPT_UNICAST_FILTER,DPNI_OPT_DIST_HASH,DPNI_OPT_DIST_FS,DPNI_OPT_FS_MASK_SUPPORT"
-
-		MAX_DIST_KEY_SIZE   = maximum distribution key size.
-					Set the parameter using below command:
-					'export MAX_DIST_KEY_SIZE=<Key length>
-					 where "key length" is an integer value.
-					 e.g. export MAX_DIST_KEY_SIZE=32
+					e.g export DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE,DPNI_OPT_HAS_KEY_MASKING"
 
 	/**DPCON**:-->
 		DPCON_COUNT	    = DPCONC objects count
@@ -178,27 +162,23 @@ EOF
 #/* Function, to intialize the DPNI related parameters
 #*/
 get_dpni_parameters() {
-	if [[ -z "$MAX_SENDERS" ]]
+	if [[ -z "$MAX_QUEUES" ]]
 	then
-		MAX_SENDERS=8
+		MAX_QUEUES=8
 	fi
 	if [[ -z "$MAX_TCS" ]]
 	then
 		MAX_TCS=1
-	fi
-	if [[ -z "$MAX_DIST_PER_TC" ]]
-	then
-		MAX_DIST_PER_TC=8
 	fi
 	if [[ -z "$DPNI_OPTIONS" ]]
 	then
 		board_type=$(uname -n | cut -c3-6)
 		if [[ $board_type == "1088" ]]
 		then
-			DPNI_OPTIONS="DPNI_OPT_MULTICAST_FILTER,DPNI_OPT_UNICAST_FILTER,DPNI_OPT_DIST_HASH,DPNI_OPT_DIST_FS"
+			DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE"
 		elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" ]]
 		then
-			DPNI_OPTIONS="DPNI_OPT_MULTICAST_FILTER,DPNI_OPT_UNICAST_FILTER,DPNI_OPT_DIST_HASH,DPNI_OPT_DIST_FS,DPNI_OPT_FS_MASK_SUPPORT"
+			DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE,DPNI_OPT_HAS_KEY_MASKING"
 		else
 			echo "Invalid board type"
 			exit
@@ -210,10 +190,8 @@ get_dpni_parameters() {
 	fi
 	echo >> dynamic_dpl_logs
 	echo  "DPNI parameters :-->" >> dynamic_dpl_logs
-	echo -e "\tMAX_SENDERS = "$MAX_SENDERS >> dynamic_dpl_logs
+	echo -e "\tMAX_QUEUES = "$MAX_QUEUES >> dynamic_dpl_logs
 	echo -e "\tMAX_TCS = "$MAX_TCS >> dynamic_dpl_logs
-	echo -e "\tMAX_DIST_PER_TC = "$MAX_DIST_PER_TC >> dynamic_dpl_logs
-	echo -e "\tMAX_DIST_KEY_SIZE = "$MAX_DIST_KEY_SIZE >> dynamic_dpl_logs
 	echo -e "\tDPNI_OPTIONS = "$DPNI_OPTIONS >> dynamic_dpl_logs
 	echo >> dynamic_dpl_logs
 	echo >> dynamic_dpl_logs
@@ -442,7 +420,7 @@ then
 			else
 				ACTUAL_MAC="00:00:00:00:02:"$num
 			fi
-			OBJ=$(restool dpni create --mac-addr=$ACTUAL_MAC --max-senders=$MAX_SENDERS --options=$DPNI_OPTIONS --max-tcs=$MAX_TCS --max-dist-per-tc=$MAX_DIST_PER_TC --max-dist-key-size=$MAX_DIST_KEY_SIZE | head -1 | cut -f1 -d ' ')
+			OBJ=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES | head -1 | cut -f1 -d ' ')
 			echo $OBJ "created with MAC addr = "$ACTUAL_MAC >> dynamic_dpl_logs
 			MAC_ADDR1=$ACTUAL_MAC
 			MAC_OCTET2=3
@@ -469,7 +447,7 @@ then
 		else
 			ACTUAL_MAC="00:00:00:00:"$MAC_OCTET2":"$MAC_OCTET1
 		fi
-		DPNI=$(restool dpni create --mac-addr=$ACTUAL_MAC --max-senders=$MAX_SENDERS --options=$DPNI_OPTIONS --max-tcs=$MAX_TCS --max-dist-per-tc=$MAX_DIST_PER_TC --max-dist-key-size=$MAX_DIST_KEY_SIZE | head -1 | cut -f1 -d ' ')
+		DPNI=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES | head -1 | cut -f1 -d ' ')
 		echo -e '\t'$DPNI "created with MAC addr = "$ACTUAL_MAC >> dynamic_dpl_logs
 		export DPNI$num=$DPNI
 		MAC_ADDR2=$ACTUAL_MAC
@@ -566,7 +544,7 @@ then
 
 	restool dprc sync
 	#/* Creating a loop device */
-	LOOP_IF=$(restool dpni create --mac-addr="00:00:00:11:11:11" --max-senders=$MAX_SENDERS --options=$DPNI_OPTIONS --max-tcs=$MAX_TCS --max-dist-per-tc=$MAX_DIST_PER_TC --max-dist-key-size=$MAX_DIST_KEY_SIZE | head -1 | cut -f1 -d ' ')
+	LOOP_IF=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES | head -1 | cut -f1 -d ' ')
 	restool dprc sync
 	TEMP=$(restool dprc connect dprc.1 --endpoint1=$LOOP_IF --endpoint2=$LOOP_IF)
 	restool dprc sync
