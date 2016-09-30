@@ -76,3 +76,10 @@ int odpfsl_cidev_internal_id(void *cidev)
 {
 	return get_aiop_dev_id(cidev);
 }
+
+void odpfsl_cmdif_sync_timeout_params(uint64_t wait_interval_us,
+		uint64_t num_tries)
+{
+	cmdif_client_sync_wait_interval = wait_interval_us;
+	cmdif_client_sync_num_tries = num_tries;
+}

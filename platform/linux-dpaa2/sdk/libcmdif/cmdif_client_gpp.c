@@ -17,8 +17,10 @@
 #include <dpaa2_aiop_priv.h>
 
 
-#define CMDIF_CLIENT_TIMEOUT		3000
-#define CMDIF_CLIENT_SYNC_WAIT		100
+/* Default 10 milli-second wait for CMDIF sync commands */
+uint64_t cmdif_client_sync_wait_interval = 10000;
+/* Default max 1000 tries (polls) for CMDIF sync commands */
+uint64_t cmdif_client_sync_num_tries = 1000;
 
 int send_fd(struct cmdif_fd *cfd, int pr, void *pdev)
 {
@@ -109,7 +111,7 @@ int cmdif_open(struct cmdif_desc *cidesc,
 {
 	struct cmdif_fd fd;
 	int err = 0;
-	int t = 0;
+	uint64_t t = 0;
 	int resp = 0;
 
 	err = cmdif_open_cmd(cidesc, module_name, instance_id, data,
@@ -130,10 +132,10 @@ int cmdif_open(struct cmdif_desc *cidesc,
 	do {
 		resp = cmdif_sync_ready(cidesc);
 		if (resp == 0)
-			dpaa2_msleep(CMDIF_CLIENT_SYNC_WAIT);
+			dpaa2_usleep(cmdif_client_sync_wait_interval);
 		t++;
-	} while ((resp == 0) && (t < CMDIF_CLIENT_TIMEOUT));
-	if (t == CMDIF_CLIENT_TIMEOUT) {
+	} while ((resp == 0) && (t < cmdif_client_sync_num_tries));
+	if (t == cmdif_client_sync_num_tries) {
 		DPAA2_ERR(CMD, "cmdif_sync_ready reached timeout value");
 		err = -ETIMEDOUT;
 		goto error;
@@ -157,7 +159,7 @@ int cmdif_close(struct cmdif_desc *cidesc)
 {
 	struct cmdif_fd fd;
 	int err = 0;
-	int t = 0;
+	uint64_t t = 0;
 	int resp = 0;
 
 	err = cmdif_close_cmd(cidesc, &fd);
@@ -177,10 +179,10 @@ int cmdif_close(struct cmdif_desc *cidesc)
 	do {
 		resp = cmdif_sync_ready(cidesc);
 		if (resp == 0)
-			dpaa2_msleep(CMDIF_CLIENT_SYNC_WAIT);
+			dpaa2_usleep(cmdif_client_sync_wait_interval);
 		t++;
-	} while ((resp == 0) && (t < CMDIF_CLIENT_TIMEOUT));
-	if (t == CMDIF_CLIENT_TIMEOUT) {
+	} while ((resp == 0) && (t < cmdif_client_sync_num_tries));
+	if (t == cmdif_client_sync_num_tries) {
 		DPAA2_ERR(CMD, "cmdif_sync_ready reached timeout value");
 		goto error;
 	}
@@ -206,7 +208,7 @@ int cmdif_send(struct cmdif_desc *cidesc,
 {
 	struct cmdif_fd fd;
 	int err = 0;
-	int t = 0;
+	uint64_t t = 0;
 	int resp = 0;
 
 	err = cmdif_cmd(cidesc, cmd_id, size, data, async_cb, async_ctx, &fd);
@@ -226,10 +228,10 @@ int cmdif_send(struct cmdif_desc *cidesc,
 		do {
 			resp = cmdif_sync_ready(cidesc);
 			if (resp == 0)
-				dpaa2_msleep(CMDIF_CLIENT_SYNC_WAIT);
+				dpaa2_usleep(cmdif_client_sync_wait_interval);
 			t++;
-		} while ((resp == 0) && (t < CMDIF_CLIENT_TIMEOUT));
-		if (t == CMDIF_CLIENT_TIMEOUT) {
+		} while ((resp == 0) && (t < cmdif_client_sync_num_tries));
+		if (t == cmdif_client_sync_num_tries) {
 			DPAA2_ERR(CMD, "cmdif_sync_ready reached "
 				"timeout value");
 			return -ETIMEDOUT;
