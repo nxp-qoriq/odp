@@ -69,6 +69,7 @@ static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
 	struct epoll_event epoll_ev;
 	int eventfd, dpio_epollfd;
 	int ret;
+	int threshold = 0x3, timeout = 0xFF;
 
 	dpio_epollfd = epoll_create(1);
 	ret = dpaa2_register_dpio_interrupt(dpio_dev,
@@ -78,11 +79,23 @@ static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
 		return DPAA2_FAILURE;
 	}
 
+	if (getenv("ODP_INTR_THRESHOLD"))
+		threshold = atoi(getenv("ODP_INTR_THRESHOLD"));
+
+	if (getenv("ODP_INTR_TIMEOUT"))
+		sscanf(getenv("ODP_INTR_TIMEOUT"), "%x", &timeout);
+
 	qbman_swp_interrupt_set_trigger(dpio_dev->sw_portal,
 		QBMAN_SWP_INTERRUPT_DQRI);
 	qbman_swp_interrupt_clear_status(dpio_dev->sw_portal,
 		0xffffffff);
 	qbman_swp_interrupt_set_inhibit(dpio_dev->sw_portal, 0);
+	qbman_swp_dqrr_thrshld_write(dpio_dev->sw_portal, threshold);
+	qbman_swp_intr_timeout_write(dpio_dev->sw_portal, timeout);
+	printf("DPIO_ID = %d, INTR: DQRR Threshold value = %d\n", dpio_dev->hw_id,
+			qbman_swp_dqrr_thrshld_read_status(dpio_dev->sw_portal));
+	printf("DPIO_ID = %d, INTR: Timeout value =        %d\n", dpio_dev->hw_id,
+			qbman_swp_intr_timeout_read_status(dpio_dev->sw_portal));
 
 	eventfd = dpio_dev->intr_handle[VFIO_DPIO_DATA_IRQ_INDEX].fd;
 	epoll_ev.events = EPOLLIN | EPOLLPRI | EPOLLET;
