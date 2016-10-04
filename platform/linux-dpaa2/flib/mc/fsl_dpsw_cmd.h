@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -33,100 +33,101 @@
 #define __FSL_DPSW_CMD_H
 
 /* DPSW Version */
-#define DPSW_VER_MAJOR				7
+#define DPSW_VER_MAJOR				8
 #define DPSW_VER_MINOR				0
 
 /* Command IDs */
-#define DPSW_CMDID_CLOSE			0x800
-#define DPSW_CMDID_OPEN				0x802
-#define DPSW_CMDID_CREATE			0x902
-#define DPSW_CMDID_DESTROY			0x900
+#define DPSW_CMDID_CLOSE                        ((0x800 << 4) | (0x1))
+#define DPSW_CMDID_OPEN                         ((0x802 << 4) | (0x1))
+#define DPSW_CMDID_CREATE                       ((0x902 << 4) | (0x1))
+#define DPSW_CMDID_DESTROY                      ((0x982 << 4) | (0x1))
+#define DPSW_CMDID_GET_API_VERSION              ((0xa02 << 4) | (0x1))
 
-#define DPSW_CMDID_ENABLE			0x002
-#define DPSW_CMDID_DISABLE			0x003
-#define DPSW_CMDID_GET_ATTR			0x004
-#define DPSW_CMDID_RESET			0x005
-#define DPSW_CMDID_IS_ENABLED			0x006
+#define DPSW_CMDID_ENABLE                       ((0x002 << 4) | (0x1))
+#define DPSW_CMDID_DISABLE                      ((0x003 << 4) | (0x1))
+#define DPSW_CMDID_GET_ATTR                     ((0x004 << 4) | (0x1))
+#define DPSW_CMDID_RESET                        ((0x005 << 4) | (0x1))
+#define DPSW_CMDID_IS_ENABLED                   ((0x006 << 4) | (0x1))
 
-#define DPSW_CMDID_SET_IRQ			0x010
-#define DPSW_CMDID_GET_IRQ			0x011
-#define DPSW_CMDID_SET_IRQ_ENABLE		0x012
-#define DPSW_CMDID_GET_IRQ_ENABLE		0x013
-#define DPSW_CMDID_SET_IRQ_MASK			0x014
-#define DPSW_CMDID_GET_IRQ_MASK			0x015
-#define DPSW_CMDID_GET_IRQ_STATUS		0x016
-#define DPSW_CMDID_CLEAR_IRQ_STATUS		0x017
+#define DPSW_CMDID_SET_IRQ                      ((0x010 << 4) | (0x1))
+#define DPSW_CMDID_GET_IRQ                      ((0x011 << 4) | (0x1))
+#define DPSW_CMDID_SET_IRQ_ENABLE               ((0x012 << 4) | (0x1))
+#define DPSW_CMDID_GET_IRQ_ENABLE               ((0x013 << 4) | (0x1))
+#define DPSW_CMDID_SET_IRQ_MASK                 ((0x014 << 4) | (0x1))
+#define DPSW_CMDID_GET_IRQ_MASK                 ((0x015 << 4) | (0x1))
+#define DPSW_CMDID_GET_IRQ_STATUS               ((0x016 << 4) | (0x1))
+#define DPSW_CMDID_CLEAR_IRQ_STATUS             ((0x017 << 4) | (0x1))
 
-#define DPSW_CMDID_SET_REFLECTION_IF		0x022
+#define DPSW_CMDID_SET_REFLECTION_IF            ((0x022 << 4) | (0x1))
 
-#define DPSW_CMDID_ADD_CUSTOM_TPID		0x024
+#define DPSW_CMDID_ADD_CUSTOM_TPID              ((0x024 << 4) | (0x1))
 
-#define DPSW_CMDID_REMOVE_CUSTOM_TPID		0x026
+#define DPSW_CMDID_REMOVE_CUSTOM_TPID           ((0x026 << 4) | (0x1))
 
-#define DPSW_CMDID_IF_SET_TCI			0x030
-#define DPSW_CMDID_IF_SET_STP			0x031
-#define DPSW_CMDID_IF_SET_ACCEPTED_FRAMES	0x032
-#define DPSW_CMDID_SET_IF_ACCEPT_ALL_VLAN	0x033
-#define DPSW_CMDID_IF_GET_COUNTER		0x034
-#define DPSW_CMDID_IF_SET_COUNTER		0x035
-#define DPSW_CMDID_IF_SET_TX_SELECTION		0x036
-#define DPSW_CMDID_IF_ADD_REFLECTION		0x037
-#define DPSW_CMDID_IF_REMOVE_REFLECTION		0x038
-#define DPSW_CMDID_IF_SET_FLOODING_METERING	0x039
-#define DPSW_CMDID_IF_SET_METERING		0x03A
-#define DPSW_CMDID_IF_SET_EARLY_DROP		0x03B
+#define DPSW_CMDID_IF_SET_TCI                   ((0x030 << 4) | (0x1))
+#define DPSW_CMDID_IF_SET_STP                   ((0x031 << 4) | (0x1))
+#define DPSW_CMDID_IF_SET_ACCEPTED_FRAMES       ((0x032 << 4) | (0x1))
+#define DPSW_CMDID_SET_IF_ACCEPT_ALL_VLAN       ((0x033 << 4) | (0x1))
+#define DPSW_CMDID_IF_GET_COUNTER               ((0x034 << 4) | (0x1))
+#define DPSW_CMDID_IF_SET_COUNTER               ((0x035 << 4) | (0x1))
+#define DPSW_CMDID_IF_SET_TX_SELECTION          ((0x036 << 4) | (0x1))
+#define DPSW_CMDID_IF_ADD_REFLECTION            ((0x037 << 4) | (0x1))
+#define DPSW_CMDID_IF_REMOVE_REFLECTION         ((0x038 << 4) | (0x1))
+#define DPSW_CMDID_IF_SET_FLOODING_METERING     ((0x039 << 4) | (0x1))
+#define DPSW_CMDID_IF_SET_METERING              ((0x03A << 4) | (0x1))
+#define DPSW_CMDID_IF_SET_EARLY_DROP            ((0x03B << 4) | (0x1))
 
-#define DPSW_CMDID_IF_ENABLE			0x03D
-#define DPSW_CMDID_IF_DISABLE			0x03E
+#define DPSW_CMDID_IF_ENABLE                    ((0x03D << 4) | (0x1))
+#define DPSW_CMDID_IF_DISABLE                   ((0x03E << 4) | (0x1))
 
-#define DPSW_CMDID_IF_GET_ATTR			0x042
+#define DPSW_CMDID_IF_GET_ATTR                  ((0x042 << 4) | (0x1))
 
-#define DPSW_CMDID_IF_SET_MAX_FRAME_LENGTH	0x044
-#define DPSW_CMDID_IF_GET_MAX_FRAME_LENGTH	0x045
-#define DPSW_CMDID_IF_GET_LINK_STATE		0x046
-#define DPSW_CMDID_IF_SET_FLOODING		0x047
-#define DPSW_CMDID_IF_SET_BROADCAST		0x048
-#define DPSW_CMDID_IF_SET_MULTICAST		0x049
-#define DPSW_CMDID_IF_GET_TCI			0x04A
+#define DPSW_CMDID_IF_SET_MAX_FRAME_LENGTH      ((0x044 << 4) | (0x1))
+#define DPSW_CMDID_IF_GET_MAX_FRAME_LENGTH      ((0x045 << 4) | (0x1))
+#define DPSW_CMDID_IF_GET_LINK_STATE            ((0x046 << 4) | (0x1))
+#define DPSW_CMDID_IF_SET_FLOODING              ((0x047 << 4) | (0x1))
+#define DPSW_CMDID_IF_SET_BROADCAST             ((0x048 << 4) | (0x1))
+#define DPSW_CMDID_IF_SET_MULTICAST             ((0x049 << 4) | (0x1))
+#define DPSW_CMDID_IF_GET_TCI                   ((0x04A << 4) | (0x1))
 
-#define DPSW_CMDID_IF_SET_LINK_CFG		0x04C
+#define DPSW_CMDID_IF_SET_LINK_CFG              ((0x04C << 4) | (0x1))
 
-#define DPSW_CMDID_VLAN_ADD			0x060
-#define DPSW_CMDID_VLAN_ADD_IF			0x061
-#define DPSW_CMDID_VLAN_ADD_IF_UNTAGGED		0x062
-#define DPSW_CMDID_VLAN_ADD_IF_FLOODING		0x063
-#define DPSW_CMDID_VLAN_REMOVE_IF		0x064
-#define DPSW_CMDID_VLAN_REMOVE_IF_UNTAGGED	0x065
-#define DPSW_CMDID_VLAN_REMOVE_IF_FLOODING	0x066
-#define DPSW_CMDID_VLAN_REMOVE			0x067
-#define DPSW_CMDID_VLAN_GET_IF			0x068
-#define DPSW_CMDID_VLAN_GET_IF_FLOODING		0x069
-#define DPSW_CMDID_VLAN_GET_IF_UNTAGGED		0x06A
-#define DPSW_CMDID_VLAN_GET_ATTRIBUTES		0x06B
+#define DPSW_CMDID_VLAN_ADD                     ((0x060 << 4) | (0x1))
+#define DPSW_CMDID_VLAN_ADD_IF                  ((0x061 << 4) | (0x1))
+#define DPSW_CMDID_VLAN_ADD_IF_UNTAGGED         ((0x062 << 4) | (0x1))
+#define DPSW_CMDID_VLAN_ADD_IF_FLOODING         ((0x063 << 4) | (0x1))
+#define DPSW_CMDID_VLAN_REMOVE_IF               ((0x064 << 4) | (0x1))
+#define DPSW_CMDID_VLAN_REMOVE_IF_UNTAGGED      ((0x065 << 4) | (0x1))
+#define DPSW_CMDID_VLAN_REMOVE_IF_FLOODING      ((0x066 << 4) | (0x1))
+#define DPSW_CMDID_VLAN_REMOVE                  ((0x067 << 4) | (0x1))
+#define DPSW_CMDID_VLAN_GET_IF                  ((0x068 << 4) | (0x1))
+#define DPSW_CMDID_VLAN_GET_IF_FLOODING         ((0x069 << 4) | (0x1))
+#define DPSW_CMDID_VLAN_GET_IF_UNTAGGED         ((0x06A << 4) | (0x1))
+#define DPSW_CMDID_VLAN_GET_ATTRIBUTES          ((0x06B << 4) | (0x1))
 
-#define DPSW_CMDID_FDB_GET_MULTICAST		0x080
-#define DPSW_CMDID_FDB_GET_UNICAST		0x081
-#define DPSW_CMDID_FDB_ADD			0x082
-#define DPSW_CMDID_FDB_REMOVE			0x083
-#define DPSW_CMDID_FDB_ADD_UNICAST		0x084
-#define DPSW_CMDID_FDB_REMOVE_UNICAST		0x085
-#define DPSW_CMDID_FDB_ADD_MULTICAST		0x086
-#define DPSW_CMDID_FDB_REMOVE_MULTICAST		0x087
-#define DPSW_CMDID_FDB_SET_LEARNING_MODE	0x088
-#define DPSW_CMDID_FDB_GET_ATTR			0x089
+#define DPSW_CMDID_FDB_GET_MULTICAST            ((0x080 << 4) | (0x1))
+#define DPSW_CMDID_FDB_GET_UNICAST              ((0x081 << 4) | (0x1))
+#define DPSW_CMDID_FDB_ADD                      ((0x082 << 4) | (0x1))
+#define DPSW_CMDID_FDB_REMOVE                   ((0x083 << 4) | (0x1))
+#define DPSW_CMDID_FDB_ADD_UNICAST              ((0x084 << 4) | (0x1))
+#define DPSW_CMDID_FDB_REMOVE_UNICAST           ((0x085 << 4) | (0x1))
+#define DPSW_CMDID_FDB_ADD_MULTICAST            ((0x086 << 4) | (0x1))
+#define DPSW_CMDID_FDB_REMOVE_MULTICAST         ((0x087 << 4) | (0x1))
+#define DPSW_CMDID_FDB_SET_LEARNING_MODE        ((0x088 << 4) | (0x1))
+#define DPSW_CMDID_FDB_GET_ATTR                 ((0x089 << 4) | (0x1))
 
-#define DPSW_CMDID_ACL_ADD			0x090
-#define DPSW_CMDID_ACL_REMOVE			0x091
-#define DPSW_CMDID_ACL_ADD_ENTRY		0x092
-#define DPSW_CMDID_ACL_REMOVE_ENTRY		0x093
-#define DPSW_CMDID_ACL_ADD_IF			0x094
-#define DPSW_CMDID_ACL_REMOVE_IF		0x095
-#define DPSW_CMDID_ACL_GET_ATTR			0x096
+#define DPSW_CMDID_ACL_ADD                      ((0x090 << 4) | (0x1))
+#define DPSW_CMDID_ACL_REMOVE                   ((0x091 << 4) | (0x1))
+#define DPSW_CMDID_ACL_ADD_ENTRY                ((0x092 << 4) | (0x1))
+#define DPSW_CMDID_ACL_REMOVE_ENTRY             ((0x093 << 4) | (0x1))
+#define DPSW_CMDID_ACL_ADD_IF                   ((0x094 << 4) | (0x1))
+#define DPSW_CMDID_ACL_REMOVE_IF                ((0x095 << 4) | (0x1))
+#define DPSW_CMDID_ACL_GET_ATTR                 ((0x096 << 4) | (0x1))
 
-#define DPSW_CMDID_CTRL_IF_GET_ATTR		0x0A0
-#define DPSW_CMDID_CTRL_IF_SET_POOLS		0x0A1
-#define DPSW_CMDID_CTRL_IF_ENABLE		0x0A2
-#define DPSW_CMDID_CTRL_IF_DISABLE		0x0A3
+#define DPSW_CMDID_CTRL_IF_GET_ATTR             ((0x0A0 << 4) | (0x1))
+#define DPSW_CMDID_CTRL_IF_SET_POOLS            ((0x0A1 << 4) | (0x1))
+#define DPSW_CMDID_CTRL_IF_ENABLE               ((0x0A2 << 4) | (0x1))
+#define DPSW_CMDID_CTRL_IF_DISABLE              ((0x0A3 << 4) | (0x1))
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPSW_CMD_OPEN(cmd, dpsw_id) \
@@ -229,17 +230,15 @@ do { \
 	MC_RSP_OP(cmd, 0, 24, 8,  uint8_t,  attr->num_fdbs);\
 	MC_RSP_OP(cmd, 0, 32, 16, uint16_t, attr->max_vlans);\
 	MC_RSP_OP(cmd, 0, 48, 16, uint16_t, attr->num_vlans);\
-	MC_RSP_OP(cmd, 1, 0,  16, uint16_t, attr->version.major);\
-	MC_RSP_OP(cmd, 1, 16, 16, uint16_t, attr->version.minor);\
-	MC_RSP_OP(cmd, 1, 32, 16, uint16_t, attr->max_fdb_entries);\
-	MC_RSP_OP(cmd, 1, 48, 16, uint16_t, attr->fdb_aging_time);\
-	MC_RSP_OP(cmd, 2, 0,  32, int,	 attr->id);\
-	MC_RSP_OP(cmd, 2, 32, 16, uint16_t, attr->mem_size);\
-	MC_RSP_OP(cmd, 2, 48, 16, uint16_t, attr->max_fdb_mc_groups);\
-	MC_RSP_OP(cmd, 3, 0,  64, uint64_t, attr->options);\
-	MC_RSP_OP(cmd, 4, 0,  8,  uint8_t, attr->max_meters_per_if);\
-	MC_RSP_OP(cmd, 4, 8,  4,  enum dpsw_component_type, \
+	MC_RSP_OP(cmd, 1, 0, 16, uint16_t, attr->max_fdb_entries);\
+	MC_RSP_OP(cmd, 1, 16, 16, uint16_t, attr->fdb_aging_time);\
+	MC_RSP_OP(cmd, 1, 32,  32, int,	 attr->id);\
+	MC_RSP_OP(cmd, 2, 0, 16, uint16_t, attr->mem_size);\
+	MC_RSP_OP(cmd, 2, 16, 16, uint16_t, attr->max_fdb_mc_groups);\
+	MC_RSP_OP(cmd, 2, 32,  8,  uint8_t, attr->max_meters_per_if);\
+	MC_RSP_OP(cmd, 2, 40,  4,  enum dpsw_component_type, \
 			attr->component_type);\
+	MC_RSP_OP(cmd, 3, 0,  64, uint64_t, attr->options);\
 } while (0)
 
 /*                cmd, param, offset, width, type, arg_name */
@@ -911,6 +910,13 @@ do { \
 	MC_CMD_OP(cmd, 6, 0,  16, uint16_t, cfg->pools[6].buffer_size);\
 	MC_CMD_OP(cmd, 4, 0,  32, int,      cfg->pools[7].dpbp_id); \
 	MC_CMD_OP(cmd, 6, 16, 16, uint16_t, cfg->pools[7].buffer_size);\
+} while (0)
+
+/*                cmd, param, offset, width, type,      arg_name */
+#define DPSW_RSP_GET_API_VERSION(cmd, major, minor) \
+do { \
+	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
+	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
 } while (0)
 
 #endif /* __FSL_DPSW_CMD_H */

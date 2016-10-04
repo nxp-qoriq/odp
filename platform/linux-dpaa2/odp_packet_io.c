@@ -920,7 +920,8 @@ int odp_pktio_stats(odp_pktio_t pktio,
 	struct fsl_mc_io *dpni;
 	struct dpaa2_dev_priv *dev_priv;
 	int32_t  retcode = -1;
-	uint64_t value;
+	union dpni_statistics value;
+	uint8_t	page0 = 0, page1 = 1, page2 = 2;
 
 	entry = get_pktio_entry(pktio);
 	if (entry == NULL) {
@@ -949,55 +950,43 @@ int odp_pktio_stats(odp_pktio_t pktio,
 	dpni = (struct fsl_mc_io *)(dev_priv->hw);
 
 	if (stats) {
-		retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-					    DPNI_CNT_ING_BYTE, &value);
+		/*Get Counters from page_0*/
+		retcode = dpni_get_statistics(dpni, CMD_PRI_LOW,
+					      dev_priv->token,
+					      page0, &value);
 		if (retcode)
 			goto error;
-		stats->in_octets = value;
-		/*total pkt received */
-		retcode = dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-					   DPNI_CNT_ING_FRAME, &value);
-		if (retcode)
-			goto error;
-		stats->in_ucast_pkts = value;
-		retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-					DPNI_CNT_ING_MCAST_FRAME, &value);
-		if (retcode)
-			goto error;
-		/* less the multicast pkts*/
-		stats->in_ucast_pkts -= value;
-		retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-					DPNI_CNT_ING_BCAST_FRAME, &value);
-		if (retcode)
-			goto error;
-		/* less the broadcast pkts*/
-		stats->in_ucast_pkts -= value;
 
-		retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-					DPNI_CNT_ING_FRAME_DROP, &value);
+		/*total bytes received */
+		stats->in_octets = value.page_0.ingress_all_bytes;
+		/*total pkt received */
+		stats->in_ucast_pkts = value.page_0.ingress_all_frames;
+		/* less the multicast pkts*/
+		stats->in_ucast_pkts -= value.page_0.ingress_multicast_frames;
+		/* less the broadcast pkts*/
+		stats->in_ucast_pkts -= value.page_0.ingress_broadcast_frames;
+
+		/*Get Counters from page_1*/
+		retcode =  dpni_get_statistics(dpni, CMD_PRI_LOW,
+					       dev_priv->token,
+					       page1, &value);
 		if (retcode)
 			goto error;
-		stats->in_discards = value;
-		retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-					    DPNI_CNT_ING_FRAME_DISCARD, &value);
+		/* Egress bytes count*/
+		stats->out_octets = value.page_1.egress_all_bytes;
+
+		/*Get Counters from page_2*/
+		retcode =  dpni_get_statistics(dpni, CMD_PRI_LOW,
+					       dev_priv->token,
+					       page2, &value);
 		if (retcode)
 			goto error;
-		stats->in_errors = value;
-		/*retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-					    DPNI_CNT_EGR_FRAME, &value);
-		if (retcode)
-			goto error;
-		*/
-		retcode = dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				 DPNI_CNT_EGR_BYTE, &value);
-		if (retcode)
-			goto error;
-		stats->out_octets = value;
-		retcode =  dpni_get_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-					    DPNI_CNT_EGR_FRAME_DISCARD, &value);
-		if (retcode)
-			goto error;
-		stats->out_errors = value;
+		/* Ingress drop frame count due to confiured rules*/
+		stats->in_discards = value.page_2.ingress_filtered_frames;
+		/* Ingress drop frame count due to error*/
+		stats->in_discards = value.page_2.ingress_discarded_frames;
+		/* Egress drop frame count due to error*/
+		stats->out_errors = value.page_2.egress_discarded_frames;
 		stats->out_discards = 0;
 		stats->out_ucast_pkts = 0;
 	}
@@ -1041,50 +1030,11 @@ int odp_pktio_stats_reset(odp_pktio_t pktio)
 	dev_priv = ndev->priv;
 	dpni = (struct fsl_mc_io *)(dev_priv->hw);
 
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_FRAME, 0);
+	/* Reset ingress packets */
+	retcode =  dpni_reset_statistics(dpni, CMD_PRI_LOW, dev_priv->token);
 	if (retcode)
 		goto error;
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_BYTE, 0);
-	if (retcode)
-		goto error;
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_BCAST_FRAME, 0);
-	if (retcode)
-		goto error;
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_BCAST_BYTES, 0);
-	if (retcode)
-		goto error;
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_MCAST_FRAME, 0);
-	if (retcode)
-		goto error;
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_MCAST_BYTE, 0);
-	if (retcode)
-		goto error;
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_FRAME_DROP, 0);
-	if (retcode)
-		goto error;
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_ING_FRAME_DISCARD, 0);
-	if (retcode)
-		goto error;
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_EGR_FRAME, 0);
-	if (retcode)
-		goto error;
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_EGR_BYTE, 0);
-	if (retcode)
-		goto error;
-	retcode =  dpni_set_counter(dpni, CMD_PRI_LOW, dev_priv->token,
-				    DPNI_CNT_EGR_FRAME_DISCARD, 0);
-	if (retcode)
-		goto error;
+
 	return retcode;
 error:
 	ODP_ERR("Operation not completed:Error Code = %d\n", retcode);

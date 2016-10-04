@@ -273,7 +273,7 @@ int32_t dpaa2_sec_setup_rx_vq(struct dpaa2_dev *dev,
 		}
 		if (vq_cfg->sync == ODP_SCHED_SYNC_ATOMIC) {
 			cfg.options = cfg.options |
-				DPNI_QUEUE_OPT_ORDER_PRESERVATION;
+				DPSECI_QUEUE_OPT_ORDER_PRESERVATION;
 			cfg.order_preservation_en = TRUE;
 			rx_vq->sync = vq_cfg->sync;
 		}

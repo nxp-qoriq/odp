@@ -242,7 +242,7 @@ int dpaa2_attach_frameq_to_conc(
 
 	/*Do settings to get the frame on a DPCON object*/
 	rx_queue_cfg.options		= DPCI_QUEUE_OPT_DEST |
-					  DPNI_QUEUE_OPT_USER_CTX;
+					  DPCI_QUEUE_OPT_USER_CTX;
 	rx_queue_cfg.dest_cfg.dest_type	= DPCI_DEST_DPCON;
 	rx_queue_cfg.dest_cfg.dest_id	= attr.obj_id;
 	rx_queue_cfg.dest_cfg.priority	= vq_param->prio;
