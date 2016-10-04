@@ -19,12 +19,13 @@ extern "C" {
 #include <odp/api/buffer.h>
 #include <odp/api/queue.h>
 #include <odp/api/thrmask.h>
+#include <odp_queue_internal.h>
 
 void odp_schedule_mask_set(odp_queue_t queue, int prio);
 
 odp_buffer_t odp_schedule_buffer_alloc(odp_queue_t queue);
 
-void odp_schedule_queue(odp_queue_t queue, int prio);
+void odp_schedule_queue(queue_entry_t *qentry, int prio, uint8_t vq_id);
 
 int32_t odp_add_queue_to_group(odp_schedule_group_t grp);
 

@@ -57,7 +57,7 @@ static int odp_init = FALSE;
 char *vfio_container;
 
 /*Environment variable to enable HASH based distribution*/
-uint32_t enable_hash = TRUE;
+uint32_t enable_hash = FALSE;
 
 /*===== sigproc =====*/
 /**
@@ -318,9 +318,6 @@ int odp_init_global(odp_instance_t *instance,
 
 	odp_global_data.log_fn = odp_override_log;
 	odp_global_data.abort_fn = odp_override_abort;
-
-	if (getenv("HASH_DIST"))
-		enable_hash = atoi(getenv("HASH_DIST"));
 
 	if (params != NULL) {
 		if (params->log_fn != NULL)

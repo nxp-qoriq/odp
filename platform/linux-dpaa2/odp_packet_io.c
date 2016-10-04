@@ -42,6 +42,9 @@
 #include <fsl_dpni_cmd.h>
 #include <fsl_mc_sys.h>
 
+#define ALL_BITS ((uint32_t)-1)
+#define DEFAULT_DIST_TUPLE (DPAA2_FDIST_IP_SA | DPAA2_FDIST_IP_DA)
+
 /* Actual mapped loopback device */
 char loop_device[10];
 
@@ -234,6 +237,78 @@ static int init_loop(pktio_entry_t *entry, odp_pktio_t id)
 	}
 
 	return 0;
+}
+
+static void odp_hash_dist(odp_pktio_t pktio,
+				const odp_pktin_queue_param_t *q_param)
+{
+	struct dpaa2_dev *ndev;
+	pktio_entry_t *pktio_entry;
+	uint32_t i, dist_tuple;
+	int32_t ret;
+	struct queues_config *q_config;
+
+	pktio_entry = get_pktio_entry(pktio);
+	if (!pktio_entry)
+		return;
+
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
+	q_config = dpaa2_eth_get_queues_config(ndev);
+
+	/* Set default hash protocol as IPv4/IPv6
+	*  if no hash protocol is given by user
+	*  */
+	dist_tuple = DEFAULT_DIST_TUPLE;
+
+	/* Adding support for Rx Side distribution.
+	*
+	* TODO: Handling of failure needs to be done while
+	* configuring for multiple TCs, and failures of any in
+	* between TC while configuring multiple TCs.
+	*
+	* Note: There is common configuration fo ipv4/ipv6 protocols.
+	* When user configures ipv4 protocol, ipv6 will also be
+	* enabled and vice versa.
+	* Separate configurations to be provided for ipv4 and ipv6
+	* protocols when support is added in MC.
+	* */
+	for (i = 0; i < q_config->num_tcs; i++) {
+		if (q_param->hash_proto.all_bits == ALL_BITS) {
+			/* All hash protocols are to be enabled */
+			dist_tuple = dist_tuple |
+				     DPAA2_FDIST_TCP_SP | DPAA2_FDIST_TCP_DP |
+				     DPAA2_FDIST_UDP_SP | DPAA2_FDIST_UDP_DP;
+		} else {
+			if (q_param->hash_proto.proto.ipv4_udp ||
+				q_param->hash_proto.proto.ipv6_udp)
+				dist_tuple = dist_tuple | DPAA2_FDIST_UDP_SP |
+						DPAA2_FDIST_UDP_DP;
+			if (q_param->hash_proto.proto.ipv4_tcp ||
+				q_param->hash_proto.proto.ipv6_tcp)
+				dist_tuple = dist_tuple | DPAA2_FDIST_TCP_SP |
+					     DPAA2_FDIST_TCP_DP;
+		}
+
+		ret = dpaa2_eth_setup_flow_distribution(ndev,
+					dist_tuple,
+					i,
+					q_config->tc_config[i].num_dist);
+
+		if (ret) {
+			ODP_ERR("Fail to configure RX dist\n");
+			return;
+		}
+	}
+
+	for (i = 0; i < q_param->num_queues; i++) {
+		ret = dpaa2_eth_setup_rx_vq(ndev, i, NULL);
+		if (DPAA2_FAILURE == ret) {
+			ODP_ERR("Fail to setup RX VQ\n");
+			return;
+		}
+	}
+
+	return;
 }
 
 odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
@@ -446,17 +521,15 @@ extern int32_t dpaa2_eth_recv(struct dpaa2_dev *dev,
 /**
  * Receive packets using dpaa2
  */
-static inline int recv_pkt_dpaa2(pkt_dpaa2_t * const pkt_dpaa2, odp_packet_t pkt_table[],
-		unsigned len)
+static inline int recv_pkt_dpaa2(odp_packet_t pkt_table[],
+				unsigned len, queue_entry_t *qentry)
 {
-	struct dpaa2_dev *dev = pkt_dpaa2->dev;
-	static int vq = 0;
-	return dpaa2_eth_recv(dev, dev->rx_vq[vq], len, pkt_table);
+	return dpaa2_eth_recv(NULL, qentry->s.priv, len, pkt_table);
 }
 
 int odp_pktin_recv(odp_pktin_queue_t queue, odp_packet_t pkt_table[], int len)
 {
-	pktio_entry_t *pktio_entry = get_pktio_entry(queue.pktio);
+	queue_entry_t *qentry = queue_to_qentry(queue.queue);
 
 	/* If ctrl+C signal is received, just exit the thread */
 	if (odp_unlikely(received_sigint)) {
@@ -465,11 +538,7 @@ int odp_pktin_recv(odp_pktin_queue_t queue, odp_packet_t pkt_table[], int len)
 		pthread_exit(NULL);
 	}
 
-	if (pktio_entry == NULL)
-		return -1;
-
-	return recv_pkt_dpaa2(&pktio_entry->s.pkt_dpaa2, pkt_table, len);
-
+	return recv_pkt_dpaa2(pkt_table, len, qentry);
 }
 
 int odp_pktout_send(odp_pktout_queue_t queue, const odp_packet_t pkt_table[], int len)
@@ -487,45 +556,28 @@ int odp_pktout_send(odp_pktout_queue_t queue, const odp_packet_t pkt_table[], in
 	return pkts;
 }
 
-int single_capability(odp_pktio_capability_t *capa)
-{
-	if (!capa)
-		return -1;
-
-	memset(capa, 0, sizeof(odp_pktio_capability_t));
-	capa->max_input_queues  = 1;
-	capa->max_output_queues = 1;
-	capa->set_op.op.promisc_mode = 1;
-
-	return 0;
-}
-
-int odp_pktio_inq_setdef(odp_pktio_t id, odp_queue_t queue)
+int odp_pktio_inq_set(odp_pktio_t id, queue_entry_t *qentry, uint8_t vq_id)
 {
 	pktio_entry_t *pktio_entry = get_pktio_entry(id);
-	queue_entry_t *qentry;
 	struct dpaa2_dev *ndev;
 
-	if (pktio_entry == NULL || queue == ODP_QUEUE_INVALID)
+	if (!pktio_entry || !qentry)
 		return -1;
 
-	qentry = queue_to_qentry(queue);
-
 	queue_lock(qentry);
-	lock_entry(pktio_entry);
 	ndev = pktio_entry->s.pkt_dpaa2.dev;
-	pktio_entry->s.inq_default = queue;
+
 	qentry->s.pktin = id;
 	qentry->s.pktout = id;
 	qentry->s.status = QUEUE_STATUS_READY;
-	qentry->s.priv = ndev->rx_vq[0];
+	qentry->s.priv = ndev->rx_vq[vq_id];
 	qentry->s.dequeue = pktin_dequeue;
 	qentry->s.dequeue_multi = pktin_deq_multi;
-	dpaa2_dev_set_vq_handle(ndev->rx_vq[0], (uint64_t)qentry->s.handle);
+	lock_entry(pktio_entry);
+	dpaa2_dev_set_vq_handle(ndev->rx_vq[vq_id], (uint64_t)qentry->s.handle);
 	unlock_entry(pktio_entry);
-
 	if (qentry->s.param.type == ODP_QUEUE_TYPE_SCHED) {
-		odp_schedule_queue(queue, qentry->s.param.sched.prio);
+		odp_schedule_queue(qentry, qentry->s.param.sched.prio, vq_id);
 		qentry->s.status = QUEUE_STATUS_SCHED;
 	}
 	queue_unlock(qentry);
@@ -625,7 +677,6 @@ int pktin_enqueue(queue_entry_t *qentry,
 odp_buffer_hdr_t *pktin_dequeue(queue_entry_t *qentry)
 {
 	dpaa2_mbuf_pt pkt_buf[1];
-	pktio_entry_t *pktio_entry = get_pktio_entry(qentry->s.pktin);
 
 	/* If ctrl+C signal is received, just exit the thread */
 	if (odp_unlikely(received_sigint)) {
@@ -634,10 +685,7 @@ odp_buffer_hdr_t *pktin_dequeue(queue_entry_t *qentry)
 		pthread_exit(NULL);
 	}
 
-	if (!pktio_entry)
-		return NULL;
-
-	if (recv_pkt_dpaa2(&pktio_entry->s.pkt_dpaa2, pkt_buf, 1) <= 0)
+	if (recv_pkt_dpaa2(pkt_buf, 1, qentry) <= 0)
 		return NULL;
 
 	return pkt_buf[0];
@@ -697,7 +745,6 @@ int pktin_enq_multi(queue_entry_t *qentry,
 int pktin_deq_multi(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr[], int num)
 {
 	int32_t pkts;
-	pktio_entry_t *pktio_entry = get_pktio_entry(qentry->s.pktin);
 
 	/* If ctrl+C signal is received, just exit the thread */
 	if (odp_unlikely(received_sigint)) {
@@ -708,10 +755,7 @@ int pktin_deq_multi(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr[], int num)
 	if (num > QUEUE_MULTI_MAX)
 		num = QUEUE_MULTI_MAX;
 
-	if (!pktio_entry)
-		return -1;
-
-	pkts = recv_pkt_dpaa2(&pktio_entry->s.pkt_dpaa2, buf_hdr, num);
+	pkts = recv_pkt_dpaa2(buf_hdr, num, qentry);
 	if (pkts <= 0)
 		goto done;
 done:
@@ -1052,9 +1096,7 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 {
 	int retcode;
 	uint32_t i;
-	odp_queue_t queue;
-	odp_pktio_capability_t capa;
-	char name[ODP_QUEUE_NAME_LEN] = {0};
+	queue_entry_t *queue;
 	pktio_entry_t *pktio_entry;
 	odp_pktin_queue_param_t q_param;
 
@@ -1074,44 +1116,39 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 		return -1;
 	}
 
-	retcode = odp_pktio_capability(pktio, &capa);
-	if (retcode) {
-		ODP_ERR("pktio %s: unable to read capabilities\n",
+	if (param->num_queues > 1 && !(param->hash_enable) &&
+		 !(param->classifier_enable)) {
+		ODP_ERR("pktio %s:  More than one input queues require either"
+			"flow hashing or classifier enabled.\n",
 			pktio_entry->s.name);
 		return -1;
 	}
 
-	if (param->num_queues > capa.max_input_queues) {
-		ODP_ERR("pktio %s: too many input queues\n", pktio_entry->s.name);
-		return -1;
-	}
-
-	/*Check for pktio parameters*/
-	switch (pktio_entry->s.param.in_mode) {
-	case ODP_PKTIN_MODE_DIRECT:
-		/*Nothing to do*/
-		break;
-	case ODP_PKTIN_MODE_SCHED:
+	if (pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_SCHED)
 		q_param.queue_param.type = ODP_QUEUE_TYPE_SCHED;
-	case ODP_PKTIN_MODE_QUEUE:
-			for (i = 0; i < q_param.num_queues; i++) {
-				sprintf(name, "pktio_%lu_inq_%d", odp_pktio_to_u64(pktio), i);
-				queue = odp_queue_create(name, &q_param.queue_param);
-				if (queue == ODP_QUEUE_INVALID) {
-					ODP_ERR("\n Invalid queue created\n");
-					return -1;
-				}
 
-				retcode = odp_pktio_inq_setdef(pktio, queue);
-				if (retcode < 0) {
-					ODP_ERR("\n Error in setting inq\n");
-					return -1;
-				}
+	if ((pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_SCHED) ||
+		(pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_QUEUE)) {
+		/* enable hash distribution */
+		if (q_param.hash_enable && q_param.num_queues > 1) {
+			enable_hash = TRUE;
+			odp_hash_dist(pktio, param);
 		}
-		break;
-	case ODP_PKTIN_MODE_DISABLED:
-		/*Nothing to do*/
-		break;
+
+		for (i = 0; i < q_param.num_queues; i++) {
+			queue = get_free_queue_entry();
+			if (!queue)
+				ODP_ERR("pktio %s: No free queue entry available\n",
+				pktio_entry->s.name);
+
+			queue->s.param.type = q_param.queue_param.type;
+
+			retcode = odp_pktio_inq_set(pktio, queue, i);
+			if (retcode < 0) {
+				ODP_ERR("\n Error in setting inq\n");
+				return -1;
+			}
+		}
 	}
 	return 0;
 }
@@ -1194,18 +1231,20 @@ int odp_pktin_queue(odp_pktio_t pktio, odp_pktin_queue_t queues[],
 {
 	int32_t i = -1;
 	pktio_entry_t *pktio_entry;
+	struct dpaa2_dev *ndev;
 	int num_queues;
 
 	pktio_entry = get_pktio_entry(pktio);
 	if (!pktio_entry)
 		return -1;
 
-	/*TODO: Implementation need to be enhanced for multi queue support*/
-	num_queues = 1;
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
+	num_queues = ndev->num_rx_vqueues;
 
 	if (pktio_entry->s.param.in_mode  == ODP_PKTIN_MODE_DIRECT) {
 		for (i = 0; i < num && i < num_queues; i++) {
-			queues[i].queue = odp_pktio_inq_getdef(pktio);
+			queues[i].queue =
+			(odp_queue_t)dpaa2_dev_get_vq_handle(ndev->rx_vq[i]);
 			queues[i].pktio = pktio;
 		}
 	}
@@ -1236,8 +1275,8 @@ int odp_pktout_queue(odp_pktio_t pktio, odp_pktout_queue_t queues[],
 
 int odp_pktio_capability(odp_pktio_t pktio, odp_pktio_capability_t *capa)
 {
-	/*FIXME: Need to implement pktio specific capability*/
 	pktio_entry_t *entry;
+	struct dpaa2_dev *ndev;
 
 	entry = get_pktio_entry(pktio);
 	if (!entry) {
@@ -1245,31 +1284,40 @@ int odp_pktio_capability(odp_pktio_t pktio, odp_pktio_capability_t *capa)
 		return -1;
 	}
 
-	return single_capability(capa);
+	ndev = entry->s.pkt_dpaa2.dev;
+
+	memset(capa, 0, sizeof(odp_pktio_capability_t));
+	capa->max_input_queues = ndev->num_rx_vqueues;
+	capa->max_output_queues = ndev->num_tx_vqueues;
+	capa->set_op.op.promisc_mode = odp_pktio_promisc_mode(pktio);
+
+	if (entry->s.type == ODP_PKTIO_TYPE_LOOPBACK)
+		capa->loop_supported = TRUE;
+
+	capa->config.pktin.all_bits = ALL_BITS;
+	capa->config.pktout.all_bits = ALL_BITS;
+
+	return 0;
 }
 
 int odp_pktin_event_queue(odp_pktio_t pktio, odp_queue_t queues[], int num)
 {
 	int32_t i = -1, num_queues;
 	pktio_entry_t *pktio_entry;
+	struct dpaa2_dev *ndev;
 
 	pktio_entry = get_pktio_entry(pktio);
 	if (!pktio_entry)
 		return -1;
 
-	/*TODO: Implementation need to be enhanced for multi queue support*/
-	num_queues = 1;
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
+	num_queues = ndev->num_rx_vqueues;
 
-	switch (pktio_entry->s.param.in_mode) {
-	case ODP_PKTIN_MODE_DIRECT:
-	case ODP_PKTIN_MODE_DISABLED:
-		/*Nothing to do*/
-		break;
-	case ODP_PKTIN_MODE_QUEUE:
-	case ODP_PKTIN_MODE_SCHED:
+	if ((pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_SCHED) ||
+		(pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_QUEUE)) {
 		for (i = 0; i < num && i < num_queues; i++)
-			queues[i] = odp_pktio_inq_getdef(pktio);
-		break;
+			queues[i] =
+			(odp_queue_t)dpaa2_dev_get_vq_handle(ndev->rx_vq[i]);
 	}
 	return i;
 }
@@ -1454,18 +1502,15 @@ void odp_pktio_print(odp_pktio_t id)
 int odp_pktin_recv_tmo(odp_pktin_queue_t queue, odp_packet_t packets[],
 						int num, uint64_t wait)
 {
-	pktio_entry_t *pktio_entry = get_pktio_entry(queue.pktio);
+	queue_entry_t *qentry = queue_to_qentry(queue.queue);
 	int32_t ret;
 	uint64_t wait_till;
-
-	if (pktio_entry == NULL)
-		return -1;
 
 	if (wait)
 		wait_till = dpaa2_time_get_cycles() + wait;
 
 	do {
-		ret = recv_pkt_dpaa2(&pktio_entry->s.pkt_dpaa2, packets, num);
+		ret = recv_pkt_dpaa2(packets, num, qentry);
 		if (ret > 0 || ret < 0)
 			break;
 		else if (ret == 0) {
@@ -1489,7 +1534,7 @@ int odp_pktin_recv_mq_tmo(const odp_pktin_queue_t queues[], unsigned num_q,
 					unsigned *from, odp_packet_t packets[],
 					int num, uint64_t wait)
 {
-	pktio_entry_t *pktio_entry;
+	queue_entry_t *qentry;
 	int32_t ret;
 	unsigned i = 0;
 	uint64_t wait_till;
@@ -1498,11 +1543,8 @@ int odp_pktin_recv_mq_tmo(const odp_pktin_queue_t queues[], unsigned num_q,
 		wait_till = dpaa2_time_get_cycles() + wait;
 
 	do {
-		pktio_entry = get_pktio_entry(queues[i++].pktio);
-		if (!pktio_entry)
-			ODP_DBG("pktio_entry unavailable for queue index %d\n", i);
-
-		ret = recv_pkt_dpaa2(&pktio_entry->s.pkt_dpaa2, packets, num);
+		qentry = queue_to_qentry(queues[i++].queue);
+		ret = recv_pkt_dpaa2(packets, num, qentry);
 		if (ret > 0 && from) {
 			*from = i - 1;
 			break;
