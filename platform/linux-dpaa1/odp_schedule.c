@@ -260,8 +260,7 @@ static inline uint64_t odp_schedule_dummy(odp_queue_t *out_queue, uint64_t wait,
 				unsigned int max_deq)
 {
 	/* Enable channels scheduling for worker thread only */
-	if (odp_thread_id)
-		qman_static_dequeue_add(sched_local.sdqcr);
+	qman_static_dequeue_add(sched_local.sdqcr);
 	fn_sch_recv_pkt = schedule_loop;
 	return fn_sch_recv_pkt(out_queue, wait, out_buf, max_num, max_deq);
 }
@@ -465,9 +464,22 @@ int odp_schedule_group_thrmask(odp_schedule_group_t group,
 int odp_schedule_group_info(odp_schedule_group_t group,
 			    odp_schedule_group_info_t *info)
 {
-        ODP_UNIMPLEMENTED();
-	return 0;
+	int ret = -1;
+
+	odp_spinlock_lock(&sched->grp_lock);
+
+	if (group < ODP_CONFIG_SCHED_GRPS &&
+	    group >= _ODP_SCHED_GROUP_NAMED &&
+	    sched->sched_grp[group].name[0] != 0) {
+		info->name    =  sched->sched_grp[group].name;
+		info->thrmask = *sched->sched_grp[group].mask;
+		ret = 0;
+	}
+
+	odp_spinlock_unlock(&sched->grp_lock);
+	return ret;
 }
+
 int odp_schedule_group_leave(odp_schedule_group_t group,
 			     const odp_thrmask_t *mask)
 {

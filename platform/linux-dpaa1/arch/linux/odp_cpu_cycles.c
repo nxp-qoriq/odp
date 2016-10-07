@@ -28,8 +28,8 @@ uint64_t odp_cpu_cycles_resolution(void)
 }
 uint64_t odp_cpu_cycles_diff(uint64_t c2, uint64_t c1)
 {
-	uint64_t ret = 0;
-	/* Done this to avoid compilation error for un-used variables. */
-	c1 = c2 - c1;
-	return ret;
+	if (odp_likely(c2 >= c1))
+		return c2 - c1;
+
+	return c2 + (odp_cpu_cycles_max() - c1) + 1;
 }

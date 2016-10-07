@@ -19,16 +19,26 @@
 #define VLAN_LEN_ERR	  4
 
 #define ETH_PRESENT_MASK  0x8000 /* bit 0 */
+#define ETH_BCAST_PRESENT_MASK  0x8060 /* bit 0 and 9-10 */
+#define ETH_MCAST_PRESENT_MASK  0x8040 /* bit 0 and 9 */
 #define L2_BIT_POS 15		/* bit 0 */
 #define ETH_BIT_POS L2_BIT_POS	/* bit 0 */
+#define ETH_BCAST_BIT_POS1 6	/* bit 9 */
+#define ETH_BCAST_BIT_POS2 5	/* bit 10 */
+#define ETH_MCAST_BIT_POS  ETH_BCAST_BIT_POS1	/* bit 9 */
 #define VLAN_PRESENT_MASK 0x4000 /* bit 1 */
 #define VLAN_BIT_POS (ETH_BIT_POS - 1) /* bit 1 */
 #define QINQ_PRESENT_MASK 0x100 /* bit 7 */
 #define VLAN_QINQ_BIT_POS (ETH_BIT_POS - 7) /* bit 7 */
 
 #define FIRST_IPV4_PRESENT_MASK 0x8000 /* bit 0 */
+#define FIRST_IPV4_BCAST_PRESENT_MASK 0x9800 /* bit 0 and 3-4 */
+#define FIRST_IPV4_MCAST_PRESENT_MASK 0x9000 /* bit 0 and 3 */
 #define L3_BIT_POS 15		/* bit 0 */
 #define FIRST_IPV4_BIT_POS 15		/* bit 0 */
+#define FIRST_IPV4_BCAST_BIT_POS1 13		/* bit 3 */
+#define FIRST_IPV4_BCAST_BIT_POS2 12		/* bit 4 */
+#define FIRST_IPV4_MCAST_BIT_POS FIRST_IPV4_BCAST_BIT_POS1 /* bit 3 */
 #define FIRST_IPV6_PRESENT_MASK 0x4000 /* bit 1 */
 #define FIRST_IPV6_BIT_POS (FIRST_IPV4_BIT_POS - 1) /* bit 1 */
 #define UNKNOWN_PROTO_MASK	0x0080 /* bit 8 */
@@ -97,6 +107,26 @@ int odp_packet_has_eth(odp_packet_t pkt)
 	return odp_be_to_cpu_16(pa->l2r) & ETH_PRESENT_MASK;
 }
 
+int odp_packet_has_eth_bcast(odp_packet_t pkt)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+
+	return odp_be_to_cpu_16(pa->l2r) & ETH_BCAST_PRESENT_MASK;
+}
+
+int odp_packet_has_eth_mcast(odp_packet_t pkt)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+
+	return odp_be_to_cpu_16(pa->l2r) & ETH_MCAST_PRESENT_MASK;
+}
+
 int odp_packet_has_jumbo(odp_packet_t pkt)
 {
 	return odp_packet_hdr(pkt)->jumbo;
@@ -139,6 +169,24 @@ int odp_packet_has_ipv4(odp_packet_t pkt)
 
 	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
 	return odp_be_to_cpu_16(pa->l3r) & FIRST_IPV4_PRESENT_MASK;
+}
+
+int odp_packet_has_ip_bcast(odp_packet_t pkt)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+	return odp_be_to_cpu_16(pa->l3r) & FIRST_IPV4_BCAST_PRESENT_MASK;
+}
+
+int odp_packet_has_ip_mcast(odp_packet_t pkt)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+	return odp_be_to_cpu_16(pa->l3r) & FIRST_IPV4_MCAST_PRESENT_MASK;
 }
 
 int odp_packet_has_ipv6(odp_packet_t pkt)
@@ -215,6 +263,33 @@ int odp_packet_has_icmp(odp_packet_t pkt)
 	       (odp_be_to_cpu_16(pa->nxthdr) == ODPH_IPPROTO_ICMP);
 }
 
+int odp_packet_has_l4_error(odp_packet_t pkt)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+	return odp_be_to_cpu_16(pa->l4r) & L4_ERROR_MASK;
+}
+
+int odp_packet_has_l3_error(odp_packet_t pkt)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+	return odp_be_to_cpu_16(pa->l3r) & L3_ERROR_MASK;
+}
+
+int odp_packet_has_l2_error(odp_packet_t pkt)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+	return odp_be_to_cpu_16(pa->l2r) & L2_ERROR_MASK;
+}
+
 /* Set Input Flags */
 
 void odp_packet_has_l2_set(odp_packet_t pkt, int val)
@@ -253,6 +328,29 @@ void odp_packet_has_eth_set(odp_packet_t pkt, int val)
 
 	pa->l2r = pa->l2r & odp_cpu_to_be_16((uint16_t)~ETH_PRESENT_MASK);
 	pa->l2r = pa->l2r | odp_cpu_to_be_16(val << ETH_BIT_POS);
+}
+
+void odp_packet_has_eth_bcast_set(odp_packet_t pkt, int val)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+
+	pa->l2r = pa->l2r & odp_cpu_to_be_16((uint16_t)~ETH_BCAST_PRESENT_MASK);
+	pa->l2r = pa->l2r | odp_cpu_to_be_16(val << ETH_BCAST_BIT_POS1);
+	pa->l2r = pa->l2r | odp_cpu_to_be_16(val << ETH_BCAST_BIT_POS2);
+}
+
+void odp_packet_has_eth_mcast_set(odp_packet_t pkt, int val)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+
+	pa->l2r = pa->l2r & odp_cpu_to_be_16((uint16_t)~ETH_MCAST_PRESENT_MASK);
+	pa->l2r = pa->l2r | odp_cpu_to_be_16(val << ETH_MCAST_BIT_POS);
 }
 
 void odp_packet_has_jumbo_set(odp_packet_t pkt, int val)
@@ -308,6 +406,33 @@ void odp_packet_has_ipv4_set(odp_packet_t pkt, int val)
 	pa->l3r = pa->l3r & odp_cpu_to_be_16(
 				(uint16_t)~FIRST_IPV4_PRESENT_MASK);
 	pa->l3r = pa->l3r | odp_cpu_to_be_16(val << FIRST_IPV4_BIT_POS);
+}
+
+void odp_packet_has_ip_bcast_set(odp_packet_t pkt, int val)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+
+	pa->l3r = pa->l3r & odp_cpu_to_be_16(
+				(uint16_t)~FIRST_IPV4_BCAST_PRESENT_MASK);
+	pa->l3r = pa->l3r | odp_cpu_to_be_16(val << FIRST_IPV4_BIT_POS);
+	pa->l3r = pa->l3r | odp_cpu_to_be_16(val << FIRST_IPV4_BCAST_BIT_POS1);
+	pa->l3r = pa->l3r | odp_cpu_to_be_16(val << FIRST_IPV4_BCAST_BIT_POS2);
+}
+
+void odp_packet_has_ip_mcast_set(odp_packet_t pkt, int val)
+{
+	fm_prs_result_t *pa;
+	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
+
+	pa = GET_PRS_RESULT(pkt_hdr->buf_hdr, pa);
+
+	pa->l3r = pa->l3r & odp_cpu_to_be_16(
+				(uint16_t)~FIRST_IPV4_MCAST_PRESENT_MASK);
+	pa->l3r = pa->l3r | odp_cpu_to_be_16(val << FIRST_IPV4_BIT_POS);
+	pa->l3r = pa->l3r | odp_cpu_to_be_16(val << FIRST_IPV4_MCAST_BIT_POS);
 }
 
 void odp_packet_has_ipv6_set(odp_packet_t pkt, int val)

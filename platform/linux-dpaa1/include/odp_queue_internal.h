@@ -44,6 +44,7 @@ extern "C" {
 #define QUEUE_STATUS_READY    1
 #define QUEUE_STATUS_NOTSCHED 2
 #define QUEUE_STATUS_SCHED    3
+#define QUEUE_STATUS_DESTROYED    4
 
 #define CPU_BACKOFF_CYCLES 512
 /* forward declaration */

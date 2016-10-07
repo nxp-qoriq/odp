@@ -1488,7 +1488,7 @@ int odp_pktio_stats(odp_pktio_t pktio ODP_UNUSED,
 int odp_pktio_index(odp_pktio_t pktio ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
+	return -1;
 }
 
 void odp_pktio_config_init(odp_pktio_config_t *config)
@@ -1505,7 +1505,7 @@ int odp_pktio_config(odp_pktio_t id ODP_UNUSED, const odp_pktio_config_t *config
 int odp_pktio_info(odp_pktio_t id ODP_UNUSED, odp_pktio_info_t *info ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
+	return -1;
 }
 
 void odp_pktio_print(odp_pktio_t id ODP_UNUSED)
@@ -1530,7 +1530,7 @@ int odp_pktin_recv_mq_tmo(const odp_pktin_queue_t queues[] ODP_UNUSED, unsigned 
 int odp_pktio_link_status(odp_pktio_t id ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
+	return -1;
 }
 uint64_t odp_pktin_wait_time(uint64_t nsec ODP_UNUSED)
 {
@@ -1554,5 +1554,5 @@ odp_time_t odp_pktin_ts_from_ns(odp_pktio_t id ODP_UNUSED, uint64_t ns ODP_UNUSE
 int odp_pktio_stats_reset(odp_pktio_t pktio ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
+	return -1;
 }
