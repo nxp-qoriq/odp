@@ -99,16 +99,8 @@ create_dpni() {
 
 	$restool dprc sync
 
-	# Restrictions: max-tcs must be 1, max-senders must be 8.
-	# Set mac addr to all-zero, allowing the Eth driver to randomly
-	# allocate one.
-	dpni=$($restool --script dpni create		\
-		--mac-addr="$mac_addr"			\
-		--max-senders="$max_senders"		\
-		--max-tcs="$max_tcs"			\
-		--max-dist-per-tc="$max_dist_per_tc"	\
-		--options="$options"			\
-	)
+	# creating dpni with default params
+	dpni=$($restool --script dpni create --fs-entries=1)
 	if [ -z "$dpni" ]; then
 		echo "Error: dpni object was not created!"
 		return 1
@@ -126,11 +118,7 @@ create_dpni() {
 }
 
 process_addni() {
-	mac_addr=00:00:00:00:00:00
 	max_dist_per_tc=8
-	max_senders=8
-	max_tcs=1
-	options=DPNI_OPT_MULTICAST_FILTER,DPNI_OPT_UNICAST_FILTER,DPNI_OPT_DIST_HASH,DPNI_OPT_DIST_FS
 	label=
 
 	SYS_DPRC="/sys/bus/fsl-mc/drivers/fsl_mc_dprc"

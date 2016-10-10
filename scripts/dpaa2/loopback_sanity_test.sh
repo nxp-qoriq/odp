@@ -987,8 +987,10 @@ then
 	append_newline 3
 	ip netns add knins
 	ip link set $KETH netns knins
+	ip netns exec knins ifconfig $KETH hw ether 00:00:00:00:00:01
 	ip netns exec knins ifconfig $KETH 192.168.111.1
 	echo " Starting the ping test ..."
+	ifconfig $NI hw ether 00:00:00:00:00:02
 	ping 192.168.111.1 -c $ping_packets | tee log
 	RESULT=`grep -o "\w*\.\w*%\|\w*%" log`
 	echo
@@ -1002,6 +1004,9 @@ then
 	sleep 3
 	append_newline 5
 	rm log
+	unconfigure_ethif
+	sleep 2
+	configure_ethif
 	echo
 	echo
 	echo
