@@ -179,7 +179,7 @@ create_aiop_container()
 {
 	log_debug "Creating AIOP Container"
 	ac_DPRC=
-	restool_cmd "dprc create dprc.1 --options=DPRC_CFG_OPT_TOPOLOGY_CHANGES_ALLOWED,DPRC_CFG_OPT_IOMMU_BYPASS,DPRC_CFG_OPT_SPAWN_ALLOWED,DPRC_CFG_OPT_ALLOC_ALLOWED,DPRC_CFG_OPT_AIOP,DPRC_CFG_OPT_OBJ_CREATE_ALLOWED,DPRC_CFG_OPT_IRQ_CFG_ALLOWED" ac_DPRC None
+	restool_cmd "dprc create dprc.1 --options=DPRC_CFG_OPT_TOPOLOGY_CHANGES_ALLOWED,DPRC_CFG_OPT_SPAWN_ALLOWED,DPRC_CFG_OPT_ALLOC_ALLOWED,DPRC_CFG_OPT_AIOP,DPRC_CFG_OPT_OBJ_CREATE_ALLOWED,DPRC_CFG_OPT_IRQ_CFG_ALLOWED" ac_DPRC None
 	log_info "Created AIOP Container: $ac_DPRC"
 
 	log_debug "Creating DPBP1: restool dpbp create"
@@ -220,7 +220,7 @@ create_aiopt_container()
 		log_error "AIOP Container doesn't exist"
 	fi
 	log_debug "Creating DPAIOP Object"
-	restool_cmd "dpaiop create --aiop-id=0 --aiop-container=$ac_DPRC" None atc_DPRC
+	restool_cmd "dpaiop create --aiop-container=$ac_DPRC" None atc_DPRC
 
 	log_debug "Creating DPAIOP Object"
 	restool_cmd "dpmcp create" None atc_DPRC
@@ -240,11 +240,20 @@ create_app_container()
 	# Some MACROs which can be toggled
 	# for DPNI
 	ACTUAL_MAC="00:00:00:00:00:08"
-	MAX_SENDERS=8
-	DPNI_OPTIONS="DPNI_OPT_MULTICAST_FILTER,DPNI_OPT_UNICAST_FILTER,DPNI_OPT_DIST_HASH,DPNI_OPT_DIST_FS,DPNI_OPT_FS_MASK_SUPPORT"
+	MAX_QUEUES=8
+	#/* Supported boards and options*/
+	board_type=$(uname -n | cut -c3-6)
+	if [[ $board_type == "1088" ]]
+	then
+		export DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE"
+	elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" ]]
+	then
+		export DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE,DPNI_OPT_HAS_KEY_MASKING"
+	else
+		echo "Invalid board type $board_type"
+		exit
+	fi
 	MAX_TCS=1
-	MAX_DIST_PER_TC=8
-	MAX_DIST_KEY_SIZE=32
 	DPCON_PRIORITIES=8
 	DPIO_PRIORITIES=8
 	DPCI_PRIORITIES=2
@@ -257,12 +266,9 @@ create_app_container()
 	export DPRC=$app_DPRC
 
 	log_debug "Creating DPNI"
-	restool_cmd "dpni create --mac-addr=$ACTUAL_MAC \
-				--max-senders=$MAX_SENDERS \
-				--options=$DPNI_OPTIONS \
-				--max-tcs=$MAX_TCS \
-				--max-dist-per-tc=$MAX_DIST_PER_TC \
-				--max-dist-key-size=$MAX_DIST_KEY_SIZE \
+	restool_cmd "dpni create --options=$DPNI_OPTIONS \
+				--num-tcs=$MAX_TCS \
+				--num-queues=$MAX_QUEUES \
 				" None app_DPRC
 	# TODO: Not linking it with any DPMAC - this is dummy
 
