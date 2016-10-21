@@ -189,6 +189,7 @@ static inline void packet_init(pool_entry_t *pool ODP_UNUSED,
 	memset(pkt_hdr->buf_hdr.addr[0], 0, pool->s.headroom);
 
 	 /* Set metadata items that initialize to non-zero values */
+	pkt_hdr->l2_offset = ODP_PACKET_OFFSET_INVALID;
 	pkt_hdr->l3_offset = ODP_PACKET_OFFSET_INVALID;
 	pkt_hdr->l4_offset = ODP_PACKET_OFFSET_INVALID;
 	pkt_hdr->frame_len = size;
