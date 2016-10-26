@@ -374,19 +374,19 @@ void odp_timer_pool_destroy(odp_timer_pool_t tpid)
 	odp_timer_pool_del(tpid);
 }
 
-uint64_t odp_timer_tick_to_ns(odp_timer_pool_t tpid ODP_UNUSED, uint64_t ticks)
+uint64_t odp_timer_tick_to_ns(odp_timer_pool_t tpid, uint64_t ticks)
 {
-	return ticks;
+	return ticks * tpid->param.res_ns;
 }
 
-uint64_t odp_timer_ns_to_tick(odp_timer_pool_t tpid ODP_UNUSED, uint64_t ns)
+uint64_t odp_timer_ns_to_tick(odp_timer_pool_t tpid, uint64_t ns)
 {
-	return ns;
+	return (uint64_t)(ns / tpid->param.res_ns);
 }
 
-uint64_t odp_timer_current_tick(odp_timer_pool_t tpid ODP_UNUSED)
+uint64_t odp_timer_current_tick(odp_timer_pool_t tpid)
 {
-	return dpaa2_time_get_cycles();
+	return (dpaa2_time_get_cycles() / tpid->param.res_ns);
 }
 
 int odp_timer_pool_info(odp_timer_pool_t tpid,
@@ -516,7 +516,7 @@ int odp_timer_set_abs(odp_timer_t hdl,
 		}
 		core_mask |= check << lcore_id;
 	}
-	cur_tick = dpaa2_time_get_cycles();
+	cur_tick = odp_timer_current_tick(tp);
 	if (odp_unlikely(abs_tck < cur_tick + tp->min_rel_tck))
 		return ODP_TIMER_TOOEARLY;
 	if (odp_unlikely(abs_tck > cur_tick + tp->max_rel_tck))
@@ -530,7 +530,7 @@ int odp_timer_set_abs(odp_timer_t hdl,
 
 	info->ev = *tmo_ev;
 	*tmo_ev = ODP_EVENT_INVALID;
-	dpaa2_timer_abs_reset(tim, abs_tck, lcore_id,
+	dpaa2_timer_abs_reset(tim, abs_tck * tp->param.res_ns, lcore_id,
 			  callback_func_tim, info);
 	return ODP_TIMER_SUCCESS;
 }
@@ -585,7 +585,7 @@ int odp_timer_set_rel(odp_timer_t hdl,
 	info->ev = *tmo_ev;
 
 	*tmo_ev = ODP_EVENT_INVALID;
-	dpaa2_timer_reset(tim, rel_tck, 0, lcore_id,
+	dpaa2_timer_reset(tim, rel_tck * tp->param.res_ns, 0, lcore_id,
 			  callback_func_tim, info);
 	return ODP_TIMER_SUCCESS;
 }
@@ -605,7 +605,7 @@ int odp_timer_cancel(odp_timer_t hdl, odp_event_t *tmo_ev)
 		return ODP_TIMER_SUCCESS;
 	} else {
 		timer->expire = ODP_TICKS_INVALID; /* Invalid expiration ticks */
-		ODP_PRINT("Timer already expired or inactive\n");
+		ODP_DBG("Timer already expired or inactive\n");
 		return ODP_TIMER_NOEVENT;
 	}
 }
@@ -661,7 +661,7 @@ int odp_timeout_fresh(odp_timeout_t tmo)
 
 	odp_timer *timer = &tp->timers[index];
 
-	return timer->expire == hdr->expiration;
+	return (timer->expire / tp->param.res_ns) == hdr->expiration;
 }
 
 
