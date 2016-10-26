@@ -129,17 +129,19 @@ static int32_t odp_offload_rules(odp_pktio_t pktio)
 					    fs_rule->rule, &action_cfg);
 		if (retcode < 0)
 			goto pmr_add_failure;
+		idx++;
 	}
 	if (entry->s.cls.l3_precedence) {
 		TAILQ_FOREACH(fs_rule, &l3_rule_list[index], next) {
 			fs_rule->rule->key_size = key_cfg_len;
-		action_cfg.flow_id = fs_rule->flow_id;
+			action_cfg.flow_id = fs_rule->flow_id;
 			retcode = dpni_add_fs_entry(dpni, CMD_PRI_LOW,
 						    dev_priv->token,
 							fs_rule->tc_id, idx,
 					fs_rule->rule, &action_cfg);
 			if (retcode < 0)
 				goto l3_rule_add_failure;
+			idx++;
 		}
 		TAILQ_FOREACH(fs_rule, &l2_rule_list[index], next) {
 			fs_rule->rule->key_size = key_cfg_len;
@@ -150,6 +152,7 @@ static int32_t odp_offload_rules(odp_pktio_t pktio)
 					fs_rule->rule, &action_cfg);
 			if (retcode < 0)
 				goto l2_rule_add_failure;
+			idx++;
 		}
 	} else {
 		TAILQ_FOREACH(fs_rule, &l2_rule_list[index], next) {
@@ -161,6 +164,7 @@ static int32_t odp_offload_rules(odp_pktio_t pktio)
 					fs_rule->rule, &action_cfg);
 			if (retcode < 0)
 				goto l2_rule_add_failure;
+			idx++;
 		}
 		TAILQ_FOREACH(fs_rule, &l3_rule_list[index], next) {
 			fs_rule->rule->key_size = key_cfg_len;
@@ -171,6 +175,7 @@ static int32_t odp_offload_rules(odp_pktio_t pktio)
 					fs_rule->rule, &action_cfg);
 			if (retcode < 0)
 				goto l3_rule_add_failure;
+			idx++;
 		}
 	}
 	return 0;
