@@ -254,8 +254,8 @@ create_app_container()
 		exit
 	fi
 	MAX_TCS=1
-	DPCON_PRIORITIES=8
-	DPIO_PRIORITIES=8
+	DPCON_PRIORITIES=2
+	DPIO_PRIORITIES=2
 	DPCI_PRIORITIES=2
 
 	log_debug "Creating APP container"
