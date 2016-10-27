@@ -1161,6 +1161,7 @@ void packet_test_concatsplit(void)
 	_packet_compare_offset(pkt, 0, pkt, pkt_len, pkt_len);
 
 	CU_ASSERT(odp_packet_split(&pkt, pkt_len, &pkt2) == 0);
+	CU_ASSERT_FATAL(pkt2 != ODP_PACKET_INVALID);
 	CU_ASSERT(pkt != pkt2);
 	CU_ASSERT(odp_packet_data(pkt) != odp_packet_data(pkt2));
 	CU_ASSERT(odp_packet_len(pkt) == odp_packet_len(pkt2));
