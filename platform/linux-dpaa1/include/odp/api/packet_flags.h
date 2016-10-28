@@ -35,72 +35,9 @@ static inline int odp_packet_has_flow_hash(odp_packet_t pkt ODP_UNUSED)
 	return 0;
 }
 
-
 static inline void odp_packet_has_flow_hash_clr(odp_packet_t pkt ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-}
-
-static inline int odp_packet_has_eth_bcast(odp_packet_t pkt ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
-static inline int odp_packet_has_eth_mcast(odp_packet_t pkt ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
-static inline  int odp_packet_has_ip_bcast(odp_packet_t pkt ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
-static inline  int odp_packet_has_ip_mcast(odp_packet_t pkt ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
-static inline void odp_packet_has_eth_bcast_set(odp_packet_t pkt ODP_UNUSED, int val ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-}
-
-static inline void odp_packet_has_eth_mcast_set(odp_packet_t pkt ODP_UNUSED, int val ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-}
-
-static inline void odp_packet_has_ip_bcast_set(odp_packet_t pkt ODP_UNUSED, int val ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-}
-
-static inline void odp_packet_has_ip_mcast_set(odp_packet_t pkt ODP_UNUSED, int val ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-}
-
-static inline int odp_packet_has_l2_error(odp_packet_t pkt ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
-static inline int odp_packet_has_l3_error(odp_packet_t pkt ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
-static inline int odp_packet_has_l4_error(odp_packet_t pkt ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
 }
 
 static inline int odp_packet_has_ts(odp_packet_t pkt ODP_UNUSED)

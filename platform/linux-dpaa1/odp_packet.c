@@ -466,10 +466,12 @@ int odp_packet_add_data(odp_packet_t *pkt_ptr, uint32_t offset,
 					&pkt_hdr->buf_hdr.ref_count));
 			copy_packet_parser_metadata(pkt_hdr, new_hdr);
 			odp_packet_free(pkt);
+			*pkt_ptr = newpkt;
+			return 1;
 		}
 	}
 
-	return 1;
+	return -1;
 }
 
 int odp_packet_rem_data(odp_packet_t *pkt_ptr, uint32_t offset,
@@ -511,10 +513,12 @@ int odp_packet_rem_data(odp_packet_t *pkt_ptr, uint32_t offset,
 					&pkt_hdr->buf_hdr.ref_count));
 			copy_packet_parser_metadata(pkt_hdr, new_hdr);
 			odp_packet_free(pkt);
+			*pkt_ptr = newpkt;
+			return 1;
 		}
 	}
 
-	return 1;
+	return -1;
 }
 
 /*
@@ -534,6 +538,11 @@ odp_packet_t odp_packet_copy(odp_packet_t pkt, odp_pool_t pool)
 		odp_packet_hdr_t *newhdr = odp_packet_hdr(newpkt);
 		uint8_t *newstart, *srcstart;
 
+		if (newhdr->buf_hdr.uarea_size < srchdr->buf_hdr.uarea_size) {
+			odp_packet_free(newpkt);
+			return ODP_PACKET_INVALID;
+		}
+
 		/* Must copy metadata first, followed by packet data */
 		newstart = (uint8_t *)newhdr->buf_hdr.addr[0] + DEFAULT_ICEOF;
 		srcstart = (uint8_t *)srchdr->buf_hdr.addr[0] + DEFAULT_ICEOF;
@@ -549,6 +558,29 @@ odp_packet_t odp_packet_copy(odp_packet_t pkt, odp_pool_t pool)
 
 		if (_odp_packet_copy_to_packet(pkt, 0,
 					       newpkt, 0, pktlen) != 0) {
+			odp_packet_free(newpkt);
+			newpkt = ODP_PACKET_INVALID;
+		}
+		if (newhdr->buf_hdr.uarea_addr != NULL &&
+			srchdr->buf_hdr.uarea_addr != NULL)
+			memcpy(newhdr->buf_hdr.uarea_addr,
+			srchdr->buf_hdr.uarea_addr, newhdr->buf_hdr.uarea_size <=
+			srchdr->buf_hdr.uarea_size ? newhdr->buf_hdr.uarea_size :
+			srchdr->buf_hdr.uarea_size);
+	}
+
+	return newpkt;
+}
+
+odp_packet_t odp_packet_copy_part(odp_packet_t pkt, uint32_t offset,
+				  uint32_t len, odp_pool_t pool)
+{
+	odp_packet_hdr_t *srchdr = odp_packet_hdr(pkt);
+	odp_packet_t newpkt = odp_packet_alloc(pool, len);
+
+	if (newpkt != ODP_PACKET_INVALID) {
+		if (_odp_packet_copy_to_packet(pkt, offset,
+					       newpkt, 0, len) < 0) {
 			odp_packet_free(newpkt);
 			newpkt = ODP_PACKET_INVALID;
 		}
@@ -590,6 +622,123 @@ int odp_packet_copy_from_mem(odp_packet_t pkt, uint32_t offset,
 	memcpy(mapaddr, srcaddr, len);
 
 	return 0;
+}
+
+int odp_packet_copy_data(odp_packet_t pkt, uint32_t dst_offset,
+			 uint32_t src_offset, uint32_t len)
+{
+	odp_packet_hdr_t *pkthdr = odp_packet_hdr(pkt);
+	void *srcmap;
+	void *dstmap;
+
+	/* Check for no overlapping */
+	if ((src_offset < dst_offset && (src_offset + len) > dst_offset) ||
+	    (dst_offset < src_offset && (dst_offset + len) > src_offset))
+		return -1;
+
+	/* Check copying does not exceeds packet length */
+	if (src_offset + len > pkthdr->frame_len ||
+	    dst_offset + len > pkthdr->frame_len)
+		return -1;
+
+	srcmap = packet_map(pkthdr, src_offset, NULL);
+	dstmap = packet_map(pkthdr, dst_offset, NULL);
+	memcpy(dstmap, srcmap, len);
+
+	return 0;
+}
+
+int odp_packet_move_data(odp_packet_t pkt, uint32_t dst_offset,
+			 uint32_t src_offset, uint32_t len)
+{
+	uint32_t overlap_len = 0, non_overlap_len = 0, i;
+	odp_packet_hdr_t *pkthdr = odp_packet_hdr(pkt);
+	char *srcmap;
+	char *dstmap;
+
+	/* Check copying does not exceeds packet length */
+	if (src_offset + len > pkthdr->frame_len ||
+	    dst_offset + len > pkthdr->frame_len)
+		return -1;
+
+	srcmap = packet_map(pkthdr, src_offset, NULL);
+	dstmap = packet_map(pkthdr, dst_offset, NULL);
+
+	/* Case: no overlapping */
+	if ((src_offset < dst_offset && (src_offset + len) < dst_offset) ||
+	    (dst_offset < src_offset && (dst_offset + len) < src_offset)) {
+		memcpy(dstmap, srcmap, len);
+		return 0;
+	}
+
+	/* Case: Overlapping */
+	if (dst_offset > src_offset) {
+		non_overlap_len = dst_offset - src_offset;
+		overlap_len = len - non_overlap_len;
+
+		for (i = 1; i <= overlap_len; i++)
+			*(dstmap + len - i) = *(srcmap + len - i);
+		memcpy(dstmap, srcmap, non_overlap_len);
+	} else {
+		for (i = 0; i < len; i++)
+			*(dstmap + i) = *(srcmap + i);
+	}
+	return 0;
+}
+
+int odp_packet_copy_from_pkt(odp_packet_t dst, uint32_t dst_offset,
+			     odp_packet_t src, uint32_t src_offset,
+			     uint32_t len)
+{
+	return _odp_packet_copy_to_packet(src, src_offset, dst, dst_offset, len);
+}
+
+int odp_packet_split(odp_packet_t *pkt, uint32_t len,
+					odp_packet_t *tail)
+{
+	odp_packet_hdr_t *pkthdr = odp_packet_hdr(*pkt);
+	uint32_t pktlen = pkthdr->frame_len;
+	odp_packet_t newpkt = ODP_PACKET_INVALID;
+
+	if (len >= pktlen)
+		return -1;
+
+	newpkt = odp_packet_alloc(pkthdr->buf_hdr.pool_hdl, pktlen - len);
+	_odp_packet_copy_to_packet(*pkt, len, newpkt, 0, pktlen - len);
+
+	pkthdr->frame_len = len;
+	*tail = newpkt;
+	return 0;
+}
+
+int odp_packet_concat(odp_packet_t *dst, odp_packet_t src)
+{
+	odp_packet_hdr_t *src_pkthdr = odp_packet_hdr(src);
+	odp_packet_hdr_t *dst_pkthdr = odp_packet_hdr(*dst);
+	uint32_t src_pktlen = src_pkthdr->frame_len;
+	uint32_t dst_pktlen = dst_pkthdr->frame_len;
+	odp_packet_t newpkt = ODP_PACKET_INVALID;
+	newpkt = odp_packet_alloc(dst_pkthdr->buf_hdr.pool_hdl, src_pktlen + dst_pktlen);
+
+	if (_odp_packet_copy_to_packet(*dst, 0, newpkt, 0, dst_pktlen))
+		return -1;
+
+	if (_odp_packet_copy_to_packet(src, 0, newpkt, dst_pktlen, src_pktlen))
+		return -1;
+
+	_odp_packet_copy_md_to_packet(*dst, newpkt);
+	odp_packet_reset(src, src_pktlen);
+	*dst = newpkt;
+	/* Not sure whether to return 0/1 */
+	return 0;
+}
+
+int odp_packet_input_index(odp_packet_t pkt)
+{
+	odp_packet_hdr_t *pkthdr = odp_packet_hdr(pkt);
+	if (pkthdr->input == ODP_PKTIO_INVALID)
+		return -1;
+	return pkthdr->input;
 }
 
 /*
@@ -715,12 +864,6 @@ void odp_packet_free_multi(const odp_packet_t pkt[] ODP_UNUSED, int num ODP_UNUS
 	ODP_UNIMPLEMENTED();
 }
 
-int odp_packet_input_index(odp_packet_t pkt ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
 void odp_packet_ts_set(odp_packet_t pkt ODP_UNUSED, odp_time_t timestamp ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
@@ -744,74 +887,34 @@ int odp_packet_extend_head(odp_packet_t *pkt ODP_UNUSED, uint32_t len ODP_UNUSED
 			   void **data_ptr ODP_UNUSED, uint32_t *seg_len ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
+	return -1;
 }
 
 int odp_packet_trunc_head(odp_packet_t *pkt ODP_UNUSED, uint32_t len ODP_UNUSED,
 			  void **data_ptr ODP_UNUSED, uint32_t *seg_len ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
+	return -1;
 }
 
 int odp_packet_extend_tail(odp_packet_t *pkt ODP_UNUSED, uint32_t len ODP_UNUSED,
 			   void **data_ptr ODP_UNUSED, uint32_t *seg_len ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
+	return -1;
 }
 int odp_packet_trunc_tail(odp_packet_t *pkt ODP_UNUSED, uint32_t len ODP_UNUSED,
 			  void **tail_ptr ODP_UNUSED, uint32_t *tailroom ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
-int odp_packet_copy_from_pkt(odp_packet_t dst ODP_UNUSED, uint32_t dst_offset ODP_UNUSED,
-			     odp_packet_t src ODP_UNUSED, uint32_t src_offset ODP_UNUSED,
-			     uint32_t len ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
-int odp_packet_concat(odp_packet_t *dst ODP_UNUSED, odp_packet_t src ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
-int odp_packet_split(odp_packet_t *pkt ODP_UNUSED, uint32_t len ODP_UNUSED,
-							odp_packet_t *tail ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
-
-odp_packet_t odp_packet_copy_part(odp_packet_t pkt ODP_UNUSED, uint32_t offset ODP_UNUSED,
-				  uint32_t len ODP_UNUSED, odp_pool_t pool ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
+	return -1;
 }
 
 int odp_packet_align(odp_packet_t *pkt ODP_UNUSED, uint32_t offset ODP_UNUSED,
 							uint32_t len ODP_UNUSED, uint32_t align ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
+	return -1;
 }
 
-int odp_packet_move_data(odp_packet_t pkt ODP_UNUSED, uint32_t dst_offset ODP_UNUSED,
-			 uint32_t src_offset ODP_UNUSED, uint32_t len ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
 
-int odp_packet_copy_data(odp_packet_t pkt ODP_UNUSED, uint32_t dst_offset ODP_UNUSED,
-			 uint32_t src_offset ODP_UNUSED, uint32_t len ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}

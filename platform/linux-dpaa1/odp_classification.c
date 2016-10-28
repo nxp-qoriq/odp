@@ -1079,7 +1079,7 @@ odp_cos_t odp_cls_cos_create(const char *name, odp_cls_cos_param_t *param)
 				len = ODP_COS_NAME_LEN - 1;
 			strncpy(cos_tbl->cos[i].s.name, name,
 				len + 1);
-			cos_tbl->cos[i].s.name[len + 1] = 0;
+			cos_tbl->cos[i].s.name[len] = 0;
 			cos_tbl->cos[i].s.taken = 1;
 			cos_tbl->cos[i].s.src_pktio = ODP_PKTIO_INVALID;
 			cos_tbl->cos[i].s.queue = param->queue;
@@ -4331,7 +4331,7 @@ int odp_pktio_headroom_set(odp_pktio_t pktio_in, uint32_t  headroom)
 
 	ODP_UNIMPLEMENTED();
 
-	return 0;
+	return -1;
 }
 
 unsigned odp_pmr_terms_avail(void)
@@ -4375,13 +4375,13 @@ int odp_cos_drop_set(odp_cos_t cos_id, odp_cls_drop_t drop_policy)
 
 	ODP_UNIMPLEMENTED();
 
-	return 0;
+	return -1;
 }
 
 int odp_cls_cos_pool_set(odp_cos_t cos_id ODP_UNUSED, odp_pool_t pool_id ODP_UNUSED)
 {
-        ODP_UNIMPLEMENTED();
-        return 0;
+	ODP_UNIMPLEMENTED();
+	return -1;
 }
 
 /* clean all left pmrs, l2 & l3 priority pmrs, default scheme */
@@ -4599,7 +4599,7 @@ odp_queue_t odp_cos_queue(odp_cos_t cos_id ODP_UNUSED)
 int odp_cls_capability(odp_cls_capability_t *capability ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return 0;
+	return ODP_COS_INVALID;
 }
 
 odp_cls_drop_t odp_cos_drop(odp_cos_t cos_id ODP_UNUSED)

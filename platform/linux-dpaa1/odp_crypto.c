@@ -158,6 +158,9 @@ static inline unsigned int icv_len(odp_auth_alg_t auth_alg)
 	case ODP_AUTH_ALG_SHA1_96:
 		icv_len = 20;
 		break;
+	case ODP_AUTH_ALG_SHA256_128:
+		icv_len = 32;
+		break;
 	default:
 		icv_len = 0;
 	}
@@ -971,12 +974,20 @@ static int create_ipsec_ses_shdesc(crypto_ses_entry_t *ses,
 				sizeof(odph_esphdr_t) +
 				ses->s.cipher.iv_len;*/
 
-	if (ses->s.cipher.cipher_alg == ODP_CIPHER_ALG_AES128_CBC)
+	switch (ses->s.cipher.cipher_alg) {
+	case ODP_CIPHER_ALG_AES128_CBC:
 		caam_alg_c = OP_PCL_IPSEC_AES_CBC;
-	else if (ses->s.cipher.cipher_alg == ODP_CIPHER_ALG_3DES_CBC)
+		break;
+	case ODP_CIPHER_ALG_3DES_CBC:
 		caam_alg_c = OP_PCL_IPSEC_3DES;
-	else
-		ODP_ERR("Non supoorted cipher algo\n");
+		break;
+	case ODP_CIPHER_ALG_NULL:
+		caam_alg_c = OP_PCL_IPSEC_NULL;
+		break;
+	default:
+		ODP_ERR("Non supoorted cipher algo: Setting to NULL cipher\n");
+		caam_alg_c = OP_PCL_IPSEC_NULL;
+	}
 
 	switch (ses->s.auth.auth_alg) {
 
@@ -996,8 +1007,12 @@ static int create_ipsec_ses_shdesc(crypto_ses_entry_t *ses,
 		caam_alg_a = OP_PCL_IPSEC_HMAC_MD5_96;
 		ses->s.sk_algtype = OP_ALG_ALGSEL_MD5;
 		break;
+	case ODP_AUTH_ALG_NULL:
+		caam_alg_a = OP_PCL_IPSEC_HMAC_NULL;
+		break;
 	default:
-		ODP_ERR("Non supoorted auth algo\n");
+		ODP_ERR("Non supoorted auth algo: Setting to NULL auth\n");
+		caam_alg_a = OP_PCL_IPSEC_HMAC_NULL;
 	}
 
 	if (rta_sec_era < RTA_SEC_ERA_6) {
@@ -1875,6 +1890,7 @@ compl_queue_fail:
 ses_shdesc_fail:
 	ODP_DBG(" ses_shdesc_fail\n");
 	ses->s.status = SES_STATUS_FREE;
+	UNLOCK(&lock);
 ses_alloc_fail:
 	ODP_DBG(" ses_alloc_fail\n");
 	*status = err_to_status(ret);
@@ -2129,8 +2145,34 @@ int odp_crypto_operation(struct odp_crypto_op_params *params,
 	return ret;
 }
 
-int odp_crypto_capability(odp_crypto_capability_t *capa ODP_UNUSED)
+int odp_crypto_capability(odp_crypto_capability_t *capa)
 {
-	ODP_UNIMPLEMENTED();
+	/* Initialize crypto capability structure */
+	memset(capa, 0, sizeof(odp_crypto_capability_t));
+
+	capa->ciphers.bit.null = 1;
+	capa->ciphers.bit.des = 1;
+	capa->ciphers.bit.trides_cbc  = 1;
+	capa->ciphers.bit.aes128_cbc  = 1;
+	capa->ciphers.bit.aes128_gcm  = 0;
+
+	capa->auths.bit.null = 1;
+	capa->auths.bit.md5_96 = 1;
+	capa->auths.bit.sha256_128 = 1;
+	capa->auths.bit.aes128_gcm  = 0;
+
+	capa->hw_ciphers.bit.null = 1;
+	capa->hw_ciphers.bit.des = 1;
+	capa->hw_ciphers.bit.trides_cbc  = 1;
+	capa->hw_ciphers.bit.aes128_cbc  = 1;
+	capa->hw_ciphers.bit.aes128_gcm  = 0;
+
+	capa->hw_auths.bit.null = 1;
+	capa->hw_auths.bit.md5_96 = 1;
+	capa->hw_auths.bit.sha256_128 = 1;
+	capa->hw_auths.bit.aes128_gcm  = 0;
+
+	capa->max_sessions = ODP_CONFIG_CRYPTO_SES;
+
 	return 0;
 }

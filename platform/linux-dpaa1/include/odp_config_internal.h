@@ -38,6 +38,11 @@ extern "C" {
  */
 #define ODP_CONFIG_QUEUES       1024
 
+/*
+ * Number of ordered locks per queue
+ */
+#define ODP_CONFIG_MAX_ORDERED_LOCKS_PER_QUEUE 0
+
 /**
  * Number of scheduling priorities
  */
@@ -94,6 +99,11 @@ extern "C" {
  * consider any unused portion of the last segment of a packet as tailroom
  */
 #define ODP_CONFIG_PACKET_TAILROOM 256
+
+/*
+ * Maximum number of segments per packet
+ */
+#define ODP_CONFIG_PACKET_MAX_SEGS 1
 
 /**
  * Maximum packet segment length
