@@ -31,6 +31,7 @@
 #include <odp_packet_internal.h>
 
 uint32_t dpaa2_mbuf_head_room;
+uint32_t dpaa2_mbuf_tail_room = 128;
 
 /*!
  * @details	Initialize a buffer pool list. This API should be called

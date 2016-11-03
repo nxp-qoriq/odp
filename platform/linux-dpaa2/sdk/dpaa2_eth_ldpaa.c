@@ -288,9 +288,11 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 				DPNI_BUF_LAYOUT_OPT_TIMESTAMP |
 				DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
 				DPNI_BUF_LAYOUT_OPT_DATA_HEAD_ROOM |
+				DPNI_BUF_LAYOUT_OPT_DATA_TAIL_ROOM |
 				DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE;
 	layout.pass_frame_status = TRUE;
 	layout.data_head_room = dpaa2_mbuf_head_room;
+	layout.data_tail_room = dpaa2_mbuf_tail_room;
 	layout.private_data_size = dpaa2_mbuf_sw_annotation;
 	layout.pass_timestamp = TRUE;
 	layout.pass_parser_result = TRUE;

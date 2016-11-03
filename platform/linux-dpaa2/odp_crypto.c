@@ -34,6 +34,7 @@
 #include <flib/desc/pdcp.h>
 #include <flib/desc/algo.h>
 #include <fsl_dpseci.h>
+#include <odp/api/plat/sdk/eth/dpaa2_eth_ldpaa_annot.h>
 
 #include <string.h>
 #include <pthread.h>
@@ -1389,6 +1390,134 @@ static inline int build_auth_fd(crypto_ses_entry_t *session,
 	return 0;
 }
 
+static inline int build_proto_sg_fd(crypto_ses_entry_t *session, dpaa2_mbuf_pt mbuf,
+		odp_crypto_data_range_t *range, struct qbman_fd *fd)
+{
+	struct ctxt_priv *priv;
+	struct qbman_fle *fle, *out_fle, *in_fle, *sge, *out_sge, *in_sge;
+	struct sec_flow_context *flc;
+	struct dpaa2_mbuf *cur_seg = mbuf, *seg = mbuf;
+	int no_of_seg = 0, seg_index = 0;
+
+	/* Total number of segment in mbuf */
+	while (seg) {
+		no_of_seg++;
+		seg = seg->next_sg;
+	}
+
+	if ((mbuf->priv_meta_off - DPAA2_MBUF_HW_ANNOTATION) >=
+			2*sizeof(struct qbman_fle)) {
+		/* FLE pointing to SW annotation addr */
+		fle = (struct qbman_fle *)((void *)mbuf->hw_annot - DPAA2_FD_PTA_SIZE);
+		memset(fle, 0, 2*sizeof(*fle));
+		DPAA2_DBG(SEC, "fle not allocated separately");
+	} else {
+		fle = dpaa2_data_zmalloc(NULL, (2*sizeof(struct qbman_fle)),
+				ODP_CACHE_LINE_SIZE);
+		if (!fle) {
+			DPAA2_ERR(SEC, "Failed to allocate fle\n");
+			return -1;
+		}
+		DPAA2_DBG(SEC, "fle allocated separately");
+	}
+
+	/* sge pointing to hw_annot addr + hw annot size */
+	sge = (struct qbman_fle *)((void *)mbuf->hw_annot + DPAA2_MBUF_HW_ANNOTATION);
+	memset(sge, 0, (2*no_of_seg*(sizeof(struct qbman_fle))));
+
+	/* OUT FLE points to FLE ADDR */
+	out_fle = (struct qbman_fle *)fle;
+
+	/* IN FLE starts after OUT FLE ends */
+	in_fle = (struct qbman_fle *)(fle + 1);
+
+	/* OUT SGE points to SGE ADDR*/
+	out_sge = (struct qbman_fle *)sge;
+
+	/* IN SGE starts after OUT SGE ends */
+	in_sge = (struct qbman_fle *)(sge + no_of_seg);
+
+	/* Setting BPID in FD, FLE and SGE */
+	if (odp_likely(mbuf->bpid < MAX_BPID)) {
+		DPAA2_SET_FD_BPID(fd, mbuf->bpid);
+		DPAA2_SET_FLE_BPID(out_fle, mbuf->bpid);
+		DPAA2_SET_FLE_BPID(in_fle, mbuf->bpid);
+	} else {
+		DPAA2_SET_FD_IVP(fd);
+		DPAA2_SET_FLE_IVP(out_fle);
+		DPAA2_SET_FLE_IVP(in_fle);
+	}
+
+	/* Save the shared descriptor */
+	priv = session->ctxt;
+	flc = &priv->flc_desc[0].flc;
+
+	/* Set Output FLE ADDR */
+	DPAA2_SET_FLE_ADDR(out_fle, out_sge);
+
+	/* Set Input FLE ADDR */
+	DPAA2_SET_FLE_ADDR(in_fle, in_sge);
+
+	/* Set Output FLE SG-EXT */
+	DPAA2_SET_FLE_SG_EXT(out_fle);
+
+	/* Set Input FLE SG-EXT */
+	DPAA2_SET_FLE_SG_EXT(in_fle);
+
+	/* Set offset of first output sge */
+	DPAA2_SET_FLE_OFFSET(out_sge, range->offset);
+
+	/* Set offset of first input sge */
+	DPAA2_SET_FLE_OFFSET(in_sge, range->offset);
+
+	while (cur_seg) {
+		DPAA2_SET_FLE_ADDR((out_sge + seg_index), cur_seg->data);
+		(out_sge + seg_index)->length = cur_seg->frame_len;
+		DPAA2_SET_FLE_ADDR((in_sge + seg_index), cur_seg->data);
+		(in_sge + seg_index)->length = cur_seg->frame_len;
+		cur_seg = cur_seg->next_sg;
+		seg_index++;
+	}
+
+	/* Set OUT SGE first seg length */
+	out_sge->length = mbuf->end_off - dpaa2_mbuf_head_room - range->offset;
+
+	/* Set IN SGE first seg length */
+	in_sge->length = mbuf->frame_len - range->offset;
+
+	if (seg_index == 1) {
+		/* Set Output SGE first/last seg length */
+		out_sge->length = mbuf->end_off - dpaa2_mbuf_head_room + dpaa2_mbuf_tail_room - range->offset;
+		/* Set Output FLE length */
+		out_fle->length = (out_sge + seg_index - 1)->length;
+	} else {
+		/* Set Output SGE last seg length */
+		(out_sge + seg_index - 1)->length = mbuf->end_off + dpaa2_mbuf_tail_room;
+		/* Set Output FLE length */
+		out_fle->length = (mbuf->end_off * seg_index) - dpaa2_mbuf_head_room + dpaa2_mbuf_tail_room;
+	}
+
+	/* Set Input FLE length */
+	in_fle->length = mbuf->tot_frame_len - range->offset;
+
+	/* Set FIN BIT in Input SGE last seg */
+	DPAA2_SET_FLE_FIN((in_sge + seg_index - 1));
+
+	/* Set FIN BIT in Output SGE last seg */
+	DPAA2_SET_FLE_FIN((out_sge + seg_index - 1));
+
+	/* Set FIN BIT in Input FLE */
+	DPAA2_SET_FLE_FIN(in_fle);
+
+	/* Configure FD */
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+	DPAA2_SET_FD_LEN(fd, (in_fle->length));
+	DPAA2_SET_FD_FLC(fd, ((uint64_t)flc));
+	DPAA2_SET_FD_ADDR(fd, fle);
+
+	return 0;
+}
+
 static inline int build_proto_fd(crypto_ses_entry_t *session, dpaa2_mbuf_pt mbuf,
 		odp_crypto_data_range_t *range, struct qbman_fd *fd)
 {
@@ -1660,7 +1789,12 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 	case DPAA2_SEC_IPSEC:
 	case DPAA2_SEC_PDCP:
 			offset = params->cipher_range.offset;
-			ret = build_proto_fd(session, mbuf,
+			if (odp_likely(!BIT_ISSET_AT_POS(mbuf->eth_flags,
+					DPAA2BUF_IS_SEGMENTED)))
+				ret = build_proto_fd(session, mbuf,
+					     &params->cipher_range, &fd);
+			else
+				ret = build_proto_sg_fd(session, mbuf,
 					     &params->cipher_range, &fd);
 			break;
 	case DPAA2_SEC_CIPHER:
