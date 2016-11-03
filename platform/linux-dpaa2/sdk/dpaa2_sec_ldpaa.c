@@ -32,6 +32,7 @@
 #include <odp/api/hints.h>
 #include <odp/api/plat/event_types.h>
 #include <odp_buffer_internal.h>
+#include <odp/api/plat/sdk/eth/dpaa2_eth_ldpaa_annot.h>
 
 #ifdef ODP_IPSEC_DEBUG
 #include <odp_crypto_internal.h>
@@ -199,10 +200,14 @@ void *dpaa2_sec_cb_dqrr_fd_to_mbuf(
 	struct qbman_fle *fle;
 	fle = (struct qbman_fle *)DPAA2_GET_FD_ADDR(fd);
 	/*First check FLE format i.e. contigous or S/G ?*/
-	if (DPAA2_IS_SET_FLE_SG_EXT(fle))
-		return dpaa2_sec_sg_fd_to_mbuf(fd);
-	else
-		return dpaa2_sec_contig_fd_to_mbuf(fd);
+	if (DPAA2_IS_SET_FLE_SG_EXT(fle)) {
+		struct qbman_fle *sge;
+		sge = (struct qbman_fle *)DPAA2_GET_FLE_ADDR(fle);
+		if (((void *)fle + DPAA2_MBUF_HW_ANNOTATION +
+				DPAA2_FD_PTA_SIZE) == (void *)sge)
+					return dpaa2_sec_sg_fd_to_mbuf(fd);
+	}
+	return dpaa2_sec_contig_fd_to_mbuf(fd);
 }
 
 int32_t dpaa2_sec_attach_bp_list(struct dpaa2_dev *dev,
