@@ -529,8 +529,6 @@ static inline int recv_pkt_dpaa2(odp_packet_t pkt_table[],
 
 int odp_pktin_recv(odp_pktin_queue_t queue, odp_packet_t pkt_table[], int len)
 {
-	queue_entry_t *qentry = queue_to_qentry(queue.queue);
-
 	/* If ctrl+C signal is received, just exit the thread */
 	if (odp_unlikely(received_sigint)) {
 		if (odp_term_local())
@@ -538,7 +536,10 @@ int odp_pktin_recv(odp_pktin_queue_t queue, odp_packet_t pkt_table[], int len)
 		pthread_exit(NULL);
 	}
 
-	return recv_pkt_dpaa2(pkt_table, len, qentry);
+	if (!queue)
+		return -1;
+
+	return dpaa2_eth_recv(NULL, (void *)queue, len, pkt_table);
 }
 
 int odp_pktout_send(odp_pktout_queue_t queue, const odp_packet_t pkt_table[], int len)
@@ -1193,9 +1194,7 @@ int odp_pktin_queue(odp_pktio_t pktio, odp_pktin_queue_t queues[],
 
 	if (pktio_entry->s.param.in_mode  == ODP_PKTIN_MODE_DIRECT) {
 		for (i = 0; i < num && i < num_queues; i++) {
-			queues[i].queue =
-			(odp_queue_t)dpaa2_dev_get_vq_handle(ndev->rx_vq[i]);
-			queues[i].pktio = pktio;
+			queues[i] = ndev->rx_vq[i];
 		}
 	}
 	return i;
@@ -1452,15 +1451,17 @@ void odp_pktio_print(odp_pktio_t id)
 int odp_pktin_recv_tmo(odp_pktin_queue_t queue, odp_packet_t packets[],
 						int num, uint64_t wait)
 {
-	queue_entry_t *qentry = queue_to_qentry(queue.queue);
 	int32_t ret;
 	uint64_t wait_till;
+
+	if (!queue)
+		return -1;
 
 	if (wait)
 		wait_till = dpaa2_time_get_cycles() + wait;
 
 	do {
-		ret = recv_pkt_dpaa2(packets, num, qentry);
+		ret = dpaa2_eth_recv(NULL, (void *)queue, num, packets);
 		if (ret > 0 || ret < 0)
 			break;
 		else if (ret == 0) {
@@ -1484,7 +1485,6 @@ int odp_pktin_recv_mq_tmo(const odp_pktin_queue_t queues[], unsigned num_q,
 					unsigned *from, odp_packet_t packets[],
 					int num, uint64_t wait)
 {
-	queue_entry_t *qentry;
 	int32_t ret;
 	unsigned i = 0;
 	uint64_t wait_till;
@@ -1493,8 +1493,7 @@ int odp_pktin_recv_mq_tmo(const odp_pktin_queue_t queues[], unsigned num_q,
 		wait_till = dpaa2_time_get_cycles() + wait;
 
 	do {
-		qentry = queue_to_qentry(queues[i++].queue);
-		ret = recv_pkt_dpaa2(packets, num, qentry);
+		ret = dpaa2_eth_recv(NULL, (void *)queues[i++], num, packets);
 		if (ret > 0 && from) {
 			*from = i - 1;
 			break;

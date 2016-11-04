@@ -29,10 +29,7 @@ extern "C" {
 
 typedef ODP_HANDLE_T(odp_pktio_t);
 
-typedef struct odp_pktin_queue_s {
-	odp_pktio_t pktio; /**< @internal pktio handle */
-	odp_queue_t queue;	/**< @internal pktio queue index */
-} odp_pktin_queue_t;
+typedef	ODP_HANDLE_T(odp_pktin_queue_t);
 
 /** @internal */
 typedef struct odp_pktout_queue_s {
