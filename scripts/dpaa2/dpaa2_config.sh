@@ -57,6 +57,9 @@ export DPCI_COUNT=12
 
 ################## APPLICATION RELATED VARIABLES ################
 
+#/* To enable the promiscous mode*/
+# export ENABLE_PROMISC=1
+
 #/ *In case of running ODP on the Virtual Machine the Stashing
 # * Destination gets set in the H/W w.r.t. the Virtual CPU ID's.
 # * As a W.A. environment variable HOST_START_CPU tells which the

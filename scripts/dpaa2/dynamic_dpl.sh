@@ -114,6 +114,13 @@ script help :----->
 
 
 	/**DPSECI**:-->
+		DPSECI_COUNT        = DPSECI objects count
+					Set the parameter using below command:
+					'export DPSECI_COUNT=<Num of dpseci objects>'
+					where "Number of dpseci objects" is an
+					integer value.
+					e.g export DPSECI_COUNT=4"
+
 		DPSECI_QUEUES       = number of rx/tx queues.
 					Set the parameter using below command:
 					'export DPSECI_QUEUES=<Num of Queues>'
@@ -240,6 +247,10 @@ get_dpbp_parameters() {
 #/* Function, to intialize the DPSECI related parameters
 #*/
 get_dpseci_parameters() {
+	if [[ -z "$DPSECI_COUNT" ]]
+	then
+	       DPSECI_COUNT=1
+	fi
 	if [[ -z "$DPSECI_QUEUES" ]]
 	then
 		DPSECI_QUEUES=8
@@ -249,6 +260,7 @@ get_dpseci_parameters() {
 		DPSECI_PRIORITIES="2,2,2,2,2,2,2,2"
 	fi
 	echo "DPSECI parameters :-->" >> dynamic_dpl_logs
+	echo -e "\tDPSECI_COUNT = "$DPSECI_COUNT >> dynamic_dpl_logs
 	echo -e "\tDPSECI_QUEUES = "$DPSECI_QUEUES >> dynamic_dpl_logs
 	echo -e "\tDPSECI_PRIORITIES = "$DPSECI_PRIORITIES >> dynamic_dpl_logs
 	echo >> dynamic_dpl_logs
@@ -421,6 +433,8 @@ then
 				ACTUAL_MAC="00:00:00:00:02:"$num
 			fi
 			OBJ=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES | head -1 | cut -f1 -d ' ')
+			restool dprc sync
+			restool dpni update $OBJ --mac-addr=$ACTUAL_MAC
 			echo $OBJ "created with MAC addr = "$ACTUAL_MAC >> dynamic_dpl_logs
 			MAC_ADDR1=$ACTUAL_MAC
 			MAC_OCTET2=3
@@ -448,6 +462,8 @@ then
 			ACTUAL_MAC="00:00:00:00:"$MAC_OCTET2":"$MAC_OCTET1
 		fi
 		DPNI=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES | head -1 | cut -f1 -d ' ')
+		restool dprc sync
+		restool dpni update $DPNI --mac-addr=$ACTUAL_MAC
 		echo -e '\t'$DPNI "created with MAC addr = "$ACTUAL_MAC >> dynamic_dpl_logs
 		export DPNI$num=$DPNI
 		MAC_ADDR2=$ACTUAL_MAC
@@ -546,6 +562,8 @@ then
 	#/* Creating a loop device */
 	LOOP_IF=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES | head -1 | cut -f1 -d ' ')
 	restool dprc sync
+	restool dpni update $LOOP_IF --mac-addr=00:00:00:11:11:11
+	restool dprc sync
 	TEMP=$(restool dprc connect dprc.1 --endpoint1=$LOOP_IF --endpoint2=$LOOP_IF)
 	restool dprc sync
 	echo -e '\t'$LOOP_IF" Linked with "$LOOP_IF >> dynamic_dpl_logs
@@ -585,12 +603,14 @@ then
 	done;
 
 	#/* DPSECI objects creation*/
-	DPSEC=$(restool dpseci create --num-queues=$DPSECI_QUEUES --priorities=$DPSECI_PRIORITIES | head -1 | cut -f1 -d ' ')
-	echo $DPSEC "Created" >> dynamic_dpl_logs
-	restool dprc sync
-	TEMP=$(restool dprc assign dprc.1 --object=$DPSEC --child=$DPRC --plugged=1)
-	echo $DPSEC "assigned to " $DPRC >> dynamic_dpl_logs
-	restool dprc sync
+	for i in $(seq 1 ${DPSECI_COUNT}); do
+		DPSEC=$(restool dpseci create --num-queues=$DPSECI_QUEUES --priorities=$DPSECI_PRIORITIES | head -1 | cut -f1 -d ' ')
+		echo $DPSEC "Created" >> dynamic_dpl_logs
+		restool dprc sync
+		TEMP=$(restool dprc assign dprc.1 --object=$DPSEC --child=$DPRC --plugged=1)
+		echo $DPSEC "assigned to " $DPRC >> dynamic_dpl_logs
+		restool dprc sync
+	done;
 
 	#/* DPIO objects creation*/
 	for i in $(seq 1 ${DPIO_COUNT}); do

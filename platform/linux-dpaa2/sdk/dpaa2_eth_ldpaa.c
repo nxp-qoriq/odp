@@ -332,12 +332,15 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 	}
 
 	/* Setting the promiscuous mode */
-	retcode = dpni_set_unicast_promisc(dpni_dev, CMD_PRI_LOW, dev_priv->token, 1);
-	if (retcode < 0) {
-		DPAA2_ERR(ETH, "Unable to enable promiscuous mode");
-		goto get_attr_failure;
+	if (getenv("ENABLE_PROMISC")) {
+		retcode = dpni_set_unicast_promisc(dpni_dev, CMD_PRI_LOW, dev_priv->token, 1);
+		if (retcode < 0) {
+			DPAA2_ERR(ETH, "Unable to enable promiscuous mode");
+			goto get_attr_failure;
+		}
+		epriv->cfg.hw_features |= DPAA2_PROMISCUOUS_ENABLE;
+		ODP_PRINT("Promiscous mode enabled at device = %s\n", dev->dev_string);
 	}
-	epriv->cfg.hw_features |= DPAA2_PROMISCUOUS_ENABLE;
 
 	return DPAA2_SUCCESS;
 
