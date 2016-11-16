@@ -182,10 +182,10 @@ get_dpni_parameters() {
 		board_type=$(uname -n | cut -c3-6)
 		if [[ $board_type == "1088" ]]
 		then
-			DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE"
+			DPNI_OPTIONS=""
 		elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" ]]
 		then
-			DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE,DPNI_OPT_HAS_KEY_MASKING"
+			DPNI_OPTIONS="DPNI_OPT_HAS_KEY_MASKING"
 		else
 			echo "Invalid board type"
 			exit

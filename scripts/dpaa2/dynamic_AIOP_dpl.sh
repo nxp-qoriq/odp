@@ -245,10 +245,10 @@ create_app_container()
 	board_type=$(uname -n | cut -c3-6)
 	if [[ $board_type == "1088" ]]
 	then
-		export DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE"
+		export DPNI_OPTIONS=""
 	elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" ]]
 	then
-		export DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE,DPNI_OPT_HAS_KEY_MASKING"
+		export DPNI_OPTIONS="DPNI_OPT_HAS_KEY_MASKING"
 	else
 		echo "Invalid board type $board_type"
 		exit

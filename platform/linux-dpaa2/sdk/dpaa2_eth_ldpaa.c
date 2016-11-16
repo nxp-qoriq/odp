@@ -331,6 +331,17 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 		goto get_attr_failure;
 	}
 
+	/*Disabling tx-confirmation. With this setting no tx-confirmation
+	queues will be created at H/W*/
+	retcode = dpni_set_tx_confirmation_mode(dpni_dev, CMD_PRI_LOW,
+						dev_priv->token,
+						DPNI_CONF_DISABLE);
+	if (retcode) {
+		DPAA2_ERR(ETH, "Error in setting tx conf settings\n"
+			"ErrorCode = %d", retcode);
+		goto get_attr_failure;
+	}
+
 	/* Setting the promiscuous mode */
 	if (getenv("ENABLE_PROMISC")) {
 		retcode = dpni_set_unicast_promisc(dpni_dev, CMD_PRI_LOW, dev_priv->token, 1);
@@ -1002,16 +1013,11 @@ int32_t dpaa2_eth_setup_tx_vq(struct dpaa2_dev *dev, uint32_t num,
 	struct fsl_mc_io *dpni = dev_priv->hw;
 	struct dpni_queue tx_flow_cfg;
 	struct dpni_queue tx_flow_attr;
-	struct dpni_queue tx_conf_cfg;
-	struct dpni_queue tx_conf_attr;
 	struct dpaa2_vq *eth_tx_vq;
-	struct dpaa2_vq *conf_err_vq;
 	uint8_t options = 0;
 	struct dpni_queue_id qid;
 
 	memset(&tx_flow_cfg, 0, sizeof(struct dpni_queue));
-	memset(&tx_conf_cfg, 0, sizeof(struct dpni_queue));
-
 	for (flow_id = 0; flow_id < num; flow_id++) {
 		retcode = dpni_set_queue(dpni, CMD_PRI_LOW, dev_priv->token,
 					 DPNI_QUEUE_TX, 0, flow_id,
@@ -1036,64 +1042,7 @@ int32_t dpaa2_eth_setup_tx_vq(struct dpaa2_dev *dev, uint32_t num,
 		eth_tx_vq->flow_id = flow_id;
 		eth_tx_vq->fq_type = DPAA2_FQ_TYPE_TX;
 		eth_tx_vq->fqid = qid.fqid;
-
-		retcode = dpni_set_queue(dpni, CMD_PRI_LOW, dev_priv->token,
-					 DPNI_QUEUE_TX_CONFIRM, 0, flow_id,
-					 options, &tx_conf_cfg);
-		if (retcode) {
-			DPAA2_ERR(ETH, "Error in setting the tx flow\n"
-						"ErrorCode = %d", retcode);
-				return DPAA2_FAILURE;
-		}
-		memset(&qid, 0, sizeof(struct dpni_queue_id));
-		retcode = dpni_get_queue(dpni, CMD_PRI_LOW, dev_priv->token,
-					 DPNI_QUEUE_TX_CONFIRM, 0, flow_id,
-					&tx_conf_attr, &qid);
-		if (retcode) {
-			DPAA2_ERR(ETH, "Error in getting the tx flow\n"
-						"ErrorCode = %d", retcode);
-			return DPAA2_FAILURE;
-		}
-
-		conf_err_vq = (struct dpaa2_vq *)(dev->err_vq[flow_id]);
-		conf_err_vq->flow_id = flow_id;
-		conf_err_vq->fq_type = DPAA2_FQ_TYPE_TX_CONF_ERR;
-		conf_err_vq->qmfq.cb = dpaa2_eth_cb_dqrr_tx_conf_err;
-		conf_err_vq->fqid = qid.fqid;
-		DPAA2_INFO(ETH, "tx-conf-err FQID = %d\nFlowID = %d",
-				conf_err_vq->fqid, conf_err_vq->flow_id);
 	}
-
-	/*TODO : Commenting below code as there is no support for common
-		tx-conf and error queue*/
-	/*Set tx-conf and error configuration*/
-	retcode = dpni_set_tx_confirmation_mode(dpni, CMD_PRI_LOW,
-						dev_priv->token,
-						DPNI_CONF_DISABLE);
-	if (retcode) {
-		DPAA2_ERR(ETH, "Error in setting tx conf settings\n"
-					"ErrorCode = %x", retcode);
-		return DPAA2_FAILURE;
-	}
-#if 0
-	struct dpaa2_vq *def_err_vq;
-	/*Get Common tx-conf and error frame queue id correspond to each dpni*/
-	retcode = dpni_get_queue(dpni, CMD_PRI_LOW, dev_priv->token,
-				 DPNI_QUEUE_TX_CONFIRM, 0, flow_id,
-					&tx_conf_attr);
-	retcode = dpni_get_tx_conf(dpni, CMD_PRI_LOW, dev_priv->token,
-				   DPNI_COMMON_TX_CONF, &tx_conf_attr);
-	if (retcode) {
-		DPAA2_ERR(ETH, "Error in getting common error fq attributes\n"
-					"ErrorCode = %d", retcode);
-		return DPAA2_FAILURE;
-	}
-	def_err_vq = (struct dpaa2_vq *)(dev->err_vq[DEF_TX_CONF_ERR_VQ_INDEX]);
-	def_err_vq->fq_type = DPAA2_FQ_TYPE_TX_CONF_ERR;
-	def_err_vq->fqid = tx_conf_attr.queue_attr.fqid;
-	def_err_vq->qmfq.cb = dpaa2_eth_cb_dqrr_tx_conf_err;
-	DPAA2_INFO(ETH, "Default Error frame queue ID = %d\n", def_err_vq->fqid);
-#endif
 	return DPAA2_SUCCESS;
 }
 
