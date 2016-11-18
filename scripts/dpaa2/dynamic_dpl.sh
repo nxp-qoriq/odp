@@ -195,6 +195,10 @@ get_dpni_parameters() {
 	then
 		MAX_DIST_KEY_SIZE=32
 	fi
+	if [[ -z "$FS_ENTRIES" ]]
+	then
+		FS_ENTRIES=16
+	fi
 	echo >> dynamic_dpl_logs
 	echo  "DPNI parameters :-->" >> dynamic_dpl_logs
 	echo -e "\tMAX_QUEUES = "$MAX_QUEUES >> dynamic_dpl_logs
@@ -432,7 +436,7 @@ then
 			else
 				ACTUAL_MAC="00:00:00:00:02:"$num
 			fi
-			OBJ=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES | head -1 | cut -f1 -d ' ')
+			OBJ=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES --fs-entries=$FS_ENTRIES | head -1 | cut -f1 -d ' ')
 			restool dprc sync
 			restool dpni update $OBJ --mac-addr=$ACTUAL_MAC
 			echo $OBJ "created with MAC addr = "$ACTUAL_MAC >> dynamic_dpl_logs
@@ -461,7 +465,7 @@ then
 		else
 			ACTUAL_MAC="00:00:00:00:"$MAC_OCTET2":"$MAC_OCTET1
 		fi
-		DPNI=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES | head -1 | cut -f1 -d ' ')
+		DPNI=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES --fs-entries=$FS_ENTRIES | head -1 | cut -f1 -d ' ')
 		restool dprc sync
 		restool dpni update $DPNI --mac-addr=$ACTUAL_MAC
 		echo -e '\t'$DPNI "created with MAC addr = "$ACTUAL_MAC >> dynamic_dpl_logs
@@ -560,7 +564,7 @@ then
 
 	restool dprc sync
 	#/* Creating a loop device */
-	LOOP_IF=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES | head -1 | cut -f1 -d ' ')
+	LOOP_IF=$(restool dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES --fs-entries=$FS_ENTRIES | head -1 | cut -f1 -d ' ')
 	restool dprc sync
 	restool dpni update $LOOP_IF --mac-addr=00:00:00:11:11:11
 	restool dprc sync
