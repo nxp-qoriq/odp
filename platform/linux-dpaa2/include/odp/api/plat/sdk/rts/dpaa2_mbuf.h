@@ -585,7 +585,7 @@ static inline uint8_t *dpaa2_mbuf_push(
 	DPAA2_TRACE(BUF);
 
 	if (length > dpaa2_mbuf_headroom(mbuf)) {
-		DPAA2_WARN(BUF, "Not enough headroom");
+		DPAA2_ERR(BUF, "Not enough headroom");
 		return NULL;
 	}
 
@@ -613,6 +613,11 @@ static inline uint8_t *dpaa2_mbuf_pull(
 		uint32_t length)
 {
 	DPAA2_TRACE(BUF);
+
+	if (length > mbuf->frame_len) {
+		DPAA2_ERR(BUF, "No enough area is available\n");
+		return NULL;
+	}
 
 	mbuf->data += length;
 

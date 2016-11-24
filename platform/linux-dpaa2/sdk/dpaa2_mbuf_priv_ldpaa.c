@@ -247,7 +247,8 @@ struct dpaa2_bp_list *dpaa2_mbuf_create_bp_list(
 		/* Set parameters of buffer pool list */
 		bp_list->buf_pool[pool_index].buf_size = buf_size;
 		bp_list->buf_pool[pool_index].num_bufs = num_bufs;
-		bp_list->buf_pool[pool_index].size = bp_list_cfg->buf_pool[pool_index].size;
+		bp_list->buf_pool[pool_index].size = buf_size -
+			bp_list_cfg->buf_pool[pool_index].meta_data_size;
 		bp_list->buf_pool[pool_index].bpid = bpid;
 		bp_list->buf_pool[pool_index].odp_user_area =
 					bp_list_cfg->buf_pool[pool_index].odp_user_area;

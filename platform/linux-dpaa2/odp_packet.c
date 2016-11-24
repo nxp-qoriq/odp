@@ -36,10 +36,10 @@ odp_packet_t odp_packet_alloc(odp_pool_t pool_hdl, uint32_t len)
 {
 	pool_entry_t *pool = odp_pool_to_entry(pool_hdl);
 	struct dpaa2_mbuf *first_seg = NULL, *next_seg = NULL, *cur_seg = NULL;
-	uint32_t num_bufs = 0;
-	uint32_t length = len;
-	uint32_t buf_size = bpid_info[pool->s.bpid].size;
+	int32_t length = len;
+	int32_t buf_size, tot_buf_size;
 	uint32_t is_first_seg = true;
+	uint32_t seg_required = false;
 	uint64_t hw_annot = 0;
 
 	if (!pool || (pool->s.params.type != ODP_POOL_PACKET)) {
@@ -47,58 +47,51 @@ odp_packet_t odp_packet_alloc(odp_pool_t pool_hdl, uint32_t len)
 		return ODP_PACKET_INVALID;
 	}
 
-	while (length) {
-		num_bufs++;
-		if (length >= buf_size)
-			length = length - buf_size;
-		else
-			break;
-	}
-	/*If more than one buffer is required then packet will be segmeneted and
-	an extra buffer is needed to contain Scatter gather table*/
-	if (num_bufs > 1)
-		num_bufs++;
+	tot_buf_size = bpid_info[pool->s.bpid].size;
+	buf_size = tot_buf_size - (DPAA2_MBUF_SW_ANNOTATION +
+				DPAA2_MBUF_HW_ANNOTATION);
+						/*+ Tailroom*/
 
 	first_seg = dpaa2_mbuf_alloc_from_bpid(pool->s.bpid);
 	if (!first_seg) {
 		ODP_ERR("Error in mbuf alloc for len =%d\n", len);
 		return ODP_PACKET_INVALID;
 	}
-	length = len;
-	if (length >= buf_size) {
+	length = len + dpaa2_mbuf_head_room;
+	len = 0;
+	if (length > buf_size) {
 		first_seg->frame_len = buf_size;
 		first_seg->tot_frame_len = buf_size;
 		first_seg->data = first_seg->head;
+		seg_required = true;
 	} else {
 		first_seg->frame_len = length;
 		first_seg->tot_frame_len = length;
 	}
-	num_bufs--;
 	next_seg = first_seg;
-	len = 0;
-	while (num_bufs) {
+	while (seg_required && length > 0) {
 		cur_seg = dpaa2_mbuf_alloc_from_bpid(pool->s.bpid);
 		if (is_first_seg) {
 			hw_annot = (uint64_t)first_seg->hw_annot;
 			first_seg = cur_seg;
+			first_seg->tot_frame_len = 0;
 			is_first_seg = false;
 		}
 		cur_seg->head = cur_seg->head - cur_seg->priv_meta_off;
 		cur_seg->data = cur_seg->head;
-		if (length >= buf_size) {
-			cur_seg->frame_len = buf_size;
-			length = length - buf_size;
-		} else {
-			cur_seg->frame_len = length;
-		}
-		len += cur_seg->frame_len;
+		length = length - tot_buf_size;
+		cur_seg->frame_len = tot_buf_size;
 		next_seg->next_sg = cur_seg;
 		next_seg = cur_seg;
-		num_bufs--;
+		first_seg->tot_frame_len += tot_buf_size;
 	}
-	if (first_seg->next_sg) {
-		first_seg->tot_frame_len = len;
+
+	if (seg_required && first_seg) {
+		cur_seg->frame_len = length + tot_buf_size;
+		first_seg->tot_frame_len -= (tot_buf_size - cur_seg->frame_len);
+		first_seg->tot_frame_len -= dpaa2_mbuf_head_room;
 		first_seg->data = first_seg->head + dpaa2_mbuf_head_room;
+		first_seg->frame_len -= dpaa2_mbuf_head_room;
 		first_seg->hw_annot = hw_annot;
 		BIT_SET_AT_POS(first_seg->eth_flags, DPAA2BUF_IS_SEGMENTED);
 	}
@@ -175,7 +168,7 @@ uint32_t odp_packet_buf_len(odp_packet_t pkt)
 uint32_t odp_packet_seg_len(odp_packet_t pkt)
 {
 	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)odp_packet_hdr(pkt);
-	/*TODO - need to implement for multi-seg case - the data pointer may be in 2nd segment*/
+
 	return pkt_hdr->frame_len;
 }
 
