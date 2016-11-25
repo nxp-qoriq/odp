@@ -577,8 +577,19 @@ static odp_pktio_t create_pktio(const char *dev, odp_pool_t pool,
 
 	odp_pktin_queue_param_init(&pktin_param);
 
-	if (mode == APPL_MODE_PKT_SCHED)
+	if (mode == APPL_MODE_PKT_SCHED) {
+		odp_pktio_capability_t capa;
+
+		ret = odp_pktio_capability(pktio, &capa);
+		if (ret != 0)
+			EXAMPLE_ABORT("Error: Unable to get pktio capability %s\n", dev);
+
 		pktin_param.queue_param.sched.sync = ODP_SCHED_SYNC_ATOMIC;
+		pktin_param.queue_param.type = ODP_QUEUE_TYPE_SCHED;
+		pktin_param.num_queues = capa.max_input_queues;
+		if (pktin_param.num_queues > 1)
+			pktin_param.hash_enable = 1;
+	}
 
 	if (odp_pktin_queue_config(pktio, &pktin_param))
 		EXAMPLE_ABORT("Error: pktin config failed for %s\n", dev);

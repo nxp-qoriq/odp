@@ -142,6 +142,7 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool)
 	uint8_t src_mac[ODPH_ETHADDR_LEN];
 	char src_mac_str[MAX_STRING];
 	odp_pktin_queue_param_t pktin_param;
+	odp_pktio_capability_t capa;
 
 	odp_pktio_param_init(&pktio_param);
 
@@ -156,6 +157,13 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool)
 	pktin_param.queue_param.sched.group = ODP_SCHED_GROUP_ALL;
 	pktin_param.queue_param.sched.prio = ODP_SCHED_PRIO_DEFAULT;
 	pktin_param.queue_param.type = ODP_QUEUE_TYPE_SCHED;
+	ret = odp_pktio_capability(pktio, &capa);
+	if (ret != 0)
+		EXAMPLE_ABORT("Error: Unable to get pktio capability %s\n", name);
+
+	pktin_param.num_queues = capa.max_input_queues;
+	if (pktin_param.num_queues > 1)
+		pktin_param.hash_enable = 1;
 
 	if (odp_pktin_queue_config(pktio, &pktin_param))
 		EXAMPLE_ABORT("Error: pktin config failed for %s\n", name);
