@@ -9,6 +9,7 @@
 
 #include <odp/api/packet.h>
 #include <odp_packet_internal.h>
+#include <odp_pool_internal.h>
 #include <odp_debug_internal.h>
 #include <odp/api/hints.h>
 #include <odp/api/byteorder.h>
@@ -23,6 +24,7 @@
 #include <stdio.h>
 #include <dpaa2_mbuf_priv_ldpaa.h>
 #include <dpaa2_mbuf_priv.h>
+#include <dpaa2_eth_ldpaa_annot.h>
 /*
  *
  * Alloc and free
@@ -33,25 +35,68 @@
 odp_packet_t odp_packet_alloc(odp_pool_t pool_hdl, uint32_t len)
 {
 	pool_entry_t *pool = odp_pool_to_entry(pool_hdl);
-	struct dpaa2_mbuf *mbuf;
+	struct dpaa2_mbuf *first_seg = NULL, *next_seg = NULL, *cur_seg = NULL;
+	int32_t length = len;
+	int32_t buf_size, tot_buf_size;
+	uint32_t is_first_seg = true;
+	uint32_t seg_required = false;
+	uint64_t hw_annot = 0;
 
-	odp_packet_t pkt;
-
-	if (pool->s.params.type != ODP_POOL_PACKET)
+	if (!pool || (pool->s.params.type != ODP_POOL_PACKET)) {
+		ODP_ERR("\nInvalid packet pool handle\n", length);
 		return ODP_PACKET_INVALID;
+	}
 
+	tot_buf_size = bpid_info[pool->s.bpid].size;
+	buf_size = tot_buf_size - (DPAA2_MBUF_SW_ANNOTATION +
+				DPAA2_MBUF_HW_ANNOTATION);
+						/*+ Tailroom*/
 
-	pkt = (odp_packet_t)dpaa2_mbuf_alloc_from_bpid(
-				pool->s.bpid, len);
-	if (!pkt) {
+	first_seg = dpaa2_mbuf_alloc_from_bpid(pool->s.bpid);
+	if (!first_seg) {
 		ODP_ERR("Error in mbuf alloc for len =%d\n", len);
 		return ODP_PACKET_INVALID;
 	}
-	mbuf = (struct dpaa2_mbuf *)pkt;
-	mbuf->frame_len = len;
-	mbuf->tot_frame_len = mbuf->frame_len;
+	length = len + dpaa2_mbuf_head_room;
+	len = 0;
+	if (length > buf_size) {
+		first_seg->frame_len = buf_size;
+		first_seg->tot_frame_len = buf_size;
+		first_seg->data = first_seg->head;
+		seg_required = true;
+	} else {
+		first_seg->frame_len = length;
+		first_seg->tot_frame_len = length;
+	}
+	next_seg = first_seg;
+	while (seg_required && length > 0) {
+		cur_seg = dpaa2_mbuf_alloc_from_bpid(pool->s.bpid);
+		if (is_first_seg) {
+			hw_annot = (uint64_t)first_seg->hw_annot;
+			first_seg = cur_seg;
+			first_seg->tot_frame_len = 0;
+			is_first_seg = false;
+		}
+		cur_seg->head = cur_seg->head - cur_seg->priv_meta_off;
+		cur_seg->data = cur_seg->head;
+		length = length - tot_buf_size;
+		cur_seg->frame_len = tot_buf_size;
+		next_seg->next_sg = cur_seg;
+		next_seg = cur_seg;
+		first_seg->tot_frame_len += tot_buf_size;
+	}
 
-	return pkt;
+	if (seg_required && first_seg) {
+		cur_seg->frame_len = length + tot_buf_size;
+		first_seg->tot_frame_len -= (tot_buf_size - cur_seg->frame_len);
+		first_seg->tot_frame_len -= dpaa2_mbuf_head_room;
+		first_seg->data = first_seg->head + dpaa2_mbuf_head_room;
+		first_seg->frame_len -= dpaa2_mbuf_head_room;
+		first_seg->hw_annot = hw_annot;
+		BIT_SET_AT_POS(first_seg->eth_flags, DPAA2BUF_IS_SEGMENTED);
+	}
+
+	return (odp_packet_t)first_seg;
 }
 
 void odp_packet_free(odp_packet_t pkt)
@@ -70,7 +115,7 @@ int odp_packet_reset(odp_packet_t pkt, uint32_t len)
 	if (len > (odp_packet_buf_len(pkt) - odp_packet_headroom(pkt)))
 		return -1;
 
-	dpaa2_mbuf_reset(mbuf);
+	dpaa2_mbuf_reset(mbuf, len);
 	mbuf->tot_frame_len = len;
 	if (!mbuf->next_sg)
 		mbuf->frame_len = mbuf->tot_frame_len;
@@ -114,14 +159,16 @@ void *odp_packet_head(odp_packet_t pkt)
 uint32_t odp_packet_buf_len(odp_packet_t pkt)
 {
 	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)odp_packet_hdr(pkt);
-	/*todo  take care of seg case */
-	return pkt_hdr->end_off;
+
+	return pkt_hdr->tot_frame_len
+			+ dpaa2_mbuf_headroom((dpaa2_mbuf_pt)pkt_hdr)
+			+ dpaa2_mbuf_tailroom((dpaa2_mbuf_pt)pkt_hdr);
 }
 
 uint32_t odp_packet_seg_len(odp_packet_t pkt)
 {
 	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)odp_packet_hdr(pkt);
-	/*TODO - need to implement for multi-seg case - the data pointer may be in 2nd segment*/
+
 	return pkt_hdr->frame_len;
 }
 
@@ -163,29 +210,47 @@ void *odp_packet_push_tail(odp_packet_t pkt, uint32_t len)
 
 void *odp_packet_pull_tail(odp_packet_t pkt, uint32_t len)
 {
-	int32_t ret;
+	dpaa2_mbuf_pt pkt_hdr = (dpaa2_mbuf_pt)odp_packet_hdr(pkt);
+	dpaa2_mbuf_pt last_seg = dpaa2_mbuf_lastseg((dpaa2_mbuf_pt)pkt_hdr);
 
-	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
-	ret = dpaa2_mbuf_pull_tail((struct dpaa2_mbuf *)pkt_hdr, len, FALSE);
+	DPAA2_TRACE(BUF);
+	if (last_seg->frame_len >= (int32_t)len) {
+		last_seg->frame_len -= len;
+		pkt_hdr->tot_frame_len -= len;
+	} else {
+		return NULL;
+	}
 
-	if (!ret)
-		return pkt->data + pkt->frame_len;
-
-	return NULL;
+	return last_seg->data + last_seg->frame_len;
 }
 
 void *odp_packet_offset(odp_packet_t pkt, uint32_t offset, uint32_t *len,
 			odp_packet_seg_t *seg)
 {
-	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
+	dpaa2_mbuf_pt pkt_hdr = (dpaa2_mbuf_pt)odp_packet_hdr(pkt);
+	odp_packet_seg_t cur_seg;
 
-	void *buf = dpaa2_mbuf_offset(
-		(struct dpaa2_mbuf *)pkt_hdr, offset, len, seg);
+	DPAA2_TRACE(BUF);
 
-	if (seg && *seg == NULL)
-		*seg = ODP_PACKET_SEG_INVALID;
+	/* offset is more than the total frame length */
+	if (pkt_hdr->tot_frame_len < offset)
+		return NULL;
 
-	return buf;
+	cur_seg = odp_packet_first_seg(pkt);
+	while (cur_seg) {
+		if (cur_seg->frame_len >= offset)
+			break;
+
+		offset -= cur_seg->frame_len;
+		cur_seg = odp_packet_next_seg(pkt, cur_seg);
+	}
+
+	if (seg)
+		*seg = cur_seg;
+	if (len)
+		*len = cur_seg->frame_len - offset;
+
+	return cur_seg->data + offset;
 }
 
 /*
@@ -246,7 +311,9 @@ void odp_packet_user_u64_set(odp_packet_t pkt, uint64_t ctx)
 
 int odp_packet_is_segmented(odp_packet_t pkt)
 {
-	return !(dpaa2_mbuf_is_contiguous(pkt));
+	dpaa2_mbuf_pt mbuf = (dpaa2_mbuf_pt)pkt;
+
+	return ((mbuf->tot_frame_len > mbuf->frame_len) ? TRUE : FALSE);
 }
 
 int odp_packet_num_segs(odp_packet_t pkt)
@@ -272,8 +339,6 @@ odp_packet_seg_t odp_packet_last_seg(odp_packet_t pkt)
 
 odp_packet_seg_t odp_packet_next_seg(odp_packet_t pkt ODP_UNUSED, odp_packet_seg_t seg)
 {
-	if ((seg == ODP_SEGMENT_INVALID)  || (seg->next_sg == ODP_SEGMENT_INVALID))
-		return ODP_SEGMENT_INVALID;
 	return seg->next_sg ? (odp_packet_seg_t)seg->next_sg : ODP_PACKET_SEG_INVALID;
 }
 
@@ -286,11 +351,17 @@ odp_packet_seg_t odp_packet_next_seg(odp_packet_t pkt ODP_UNUSED, odp_packet_seg
 
 void *odp_packet_seg_data(odp_packet_t pkt ODP_UNUSED, odp_packet_seg_t seg)
 {
+	if (seg == ODP_SEGMENT_INVALID)
+		return NULL;
+
 	return seg->data;
 }
 
 uint32_t odp_packet_seg_data_len(odp_packet_t pkt ODP_UNUSED, odp_packet_seg_t seg)
 {
+	if (seg == ODP_SEGMENT_INVALID)
+		return -1;
+
 	return seg->frame_len;
 }
 
@@ -391,13 +462,29 @@ int odp_packet_rem_data(odp_packet_t *pkt_ptr ODP_UNUSED, uint32_t offset ODP_UN
 
 odp_packet_t odp_packet_copy(odp_packet_t pkt, odp_pool_t pool)
 {
-	struct dpaa2_mbuf *srchdr = (struct dpaa2_mbuf *)odp_packet_hdr(pkt);
-	uint32_t pktlen = srchdr->tot_frame_len;
-	odp_packet_t newpkt = odp_packet_alloc(pool, pktlen);
-	struct dpaa2_mbuf *dsthdr = (struct dpaa2_mbuf *)odp_packet_hdr(newpkt);
+	struct dpaa2_mbuf *srchdr, *dsthdr;
+	odp_packet_t newpkt;
 
-	if (dpaa2_mbuf_copy(dsthdr, srchdr))
+	if (!pool_type_is_packet(pool)) {
+		DPAA2_ERR(BUF, "\nPool is not packet pool\n");
 		return ODP_PACKET_INVALID;
+	}
+
+	srchdr = (struct dpaa2_mbuf *)odp_packet_hdr(pkt);
+	/*Allocate a new packet*/
+	newpkt = odp_packet_alloc(pool, srchdr->tot_frame_len);
+	if (newpkt == ODP_PACKET_INVALID) {
+		DPAA2_ERR(BUF, "\nPacket allocation failure\n");
+		return ODP_PACKET_INVALID;
+	}
+
+	dsthdr = (struct dpaa2_mbuf *)odp_packet_hdr(newpkt);
+
+	if (dpaa2_mbuf_copy(dsthdr, srchdr)) {
+		DPAA2_ERR(BUF, "\nPacket copy failure\n");
+		return ODP_PACKET_INVALID;
+	}
+
 	return newpkt;
 }
 

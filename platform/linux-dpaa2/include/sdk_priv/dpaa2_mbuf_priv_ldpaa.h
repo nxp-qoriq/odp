@@ -59,15 +59,6 @@ struct buf_pool {
 #define BMAN_STOCKPILE_HIGH 14u /* when fill is >= this, release to hw */
 #define BMAN_STOCKPILE_SIZE  7u  /* buffer to be exchanged with hw in one command */
 
-struct bp_info {
-	uint32_t size;
-	uint16_t odp_user_area;
-	uint16_t meta_data_size;
-	uint32_t buf_size;
-	uint16_t bpid;
-	uint16_t stockpile;
-};
-
 struct bpsp {
 	/* stockpile state - NULL unless BMAN_POOL_FLAG_STOCKPILE is set */
 	uint64_t *sp;
@@ -110,7 +101,6 @@ void dpaa2_mbuf_dpbp_disable_all(void);
 
 int dpaa2_mbuf_dpbp_close_all(void);
 
-extern struct bp_info bpid_info[];
 /*! Global per thread buffer stockpile info */
 extern __thread struct bpsp *th_bpsp_info[];
 

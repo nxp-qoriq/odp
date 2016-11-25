@@ -190,6 +190,8 @@ static inline pool_entry_t *odp_buf_to_pool(odp_buffer_hdr_t *buf)
  */
 odp_pool_t odp_debug_pool_lookup(const char *name);
 
+int pool_type_is_packet(odp_pool_t pool);
+
 #ifdef __cplusplus
 }
 #endif

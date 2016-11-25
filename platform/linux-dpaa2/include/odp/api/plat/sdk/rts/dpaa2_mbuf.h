@@ -114,6 +114,17 @@ extern void *dpaa2_mbuf_shell_mpool;
 extern uint32_t dpaa2_mbuf_head_room;
 extern uint32_t dpaa2_mbuf_tail_room;
 
+struct bp_info {
+	uint32_t size;
+	uint16_t odp_user_area;
+	uint16_t meta_data_size;
+	uint32_t buf_size;
+	uint16_t bpid;
+	uint16_t stockpile;
+};
+
+extern struct bp_info bpid_info[];
+
 /*!
  * Buffer pool configuration structure. User need to give DPAA2 the
  * 'num', and 'size'. Optionally user shall fill 'align' if buffer alignment is
@@ -232,51 +243,11 @@ static inline dpaa2_mbuf_pt dpaa2_mbuf_lastseg(
 	DPAA2_TRACE(BUF);
 
 	if (tmp) {
-		while (tmp->next_sg != NULL)
+		while (tmp->next_sg)
 			tmp = tmp->next_sg;
 	}
 
 	return tmp;
-}
-
-/*!
- * @details	Reset a DPAA2 buffer structure to default values
- *
- * @param[in]	mbuf - dpaa2 buffer
- *
- * @returns	none
- *
- */
-static inline void dpaa2_mbuf_reset(
-		dpaa2_mbuf_pt mbuf)
-{
-	struct dpaa2_mbuf *tmp = mbuf;
-	DPAA2_TRACE(BUF);
-	/* TODO optimize it */
-	while (tmp != NULL) {
-		/*
-		 * Reset parser metadata.  Note that we clear via memset to make
-		 * this routine indepenent of any additional adds to packet metadata.
-		 */
-		const size_t start_offset = ODP_OFFSETOF(struct dpaa2_mbuf, flags);
-		const size_t len = ODP_OFFSETOF(struct dpaa2_mbuf, next_sg);
-		uint8_t *start;
-
-		start = (uint8_t *)tmp + start_offset;
-		memset(start, 0, len - start_offset);
-
-		/* Set metadata items that initialize to non-zero values */
-		/* TODO headroom?*/
-		tmp->data = tmp->head + dpaa2_mbuf_head_room;
-		tmp->frame_len = tmp->end_off - (tmp->head - tmp->data);
-		mbuf->tot_frame_len += tmp->frame_len;
-
-		tmp = tmp->next_sg;
-	}
-
-	/* reset the the annotation data */
-	if (mbuf->priv_meta_off)
-		memset(mbuf->head - mbuf->priv_meta_off, 0, mbuf->priv_meta_off);
 }
 
 /*!
@@ -299,21 +270,6 @@ static inline void dpaa2_mbuf_shell_reset(
 	}
 }
 /**************************** Configuration API's ****************************/
-/*!
- * @details	Configures the DPAA2 buffer library e.g. for SG allocation,
- *		inline dpaa2 buffer allocation etc. This API should be called
- *		once during initialization
- *
- * @param[in]	cfg_flags - Flags for DPAA2 buffer library configuration.
- *		User shall use 'DPAA2_CFG_SG_SUPPORT',
- *		'DPAA2_CFG_ALLOC_INLINE' for cfg_flags
- *
- * @returns	none
- *
- */
-void dpaa2_mbuf_lib_config(
-		uint32_t cfg_flags);
-
 /*!
  * @details	Initialize a buffer pool list. This API must be
  *		called after an IO context is already affined to the thread
@@ -345,7 +301,6 @@ void dpaa2_mbuf_pool_list_deinit(void *bp_list);
  * @details	Allocate a DPAA2 buffer of given size from given 'dev'.
  *		If the size is larger than the single available buffer,
  *		Scatter Gather frame will be allocated
- *		(provided support is enabled at 'dpaa2_mbuf_lib_config')
  *		This API must be called after an IO context is already
  *		affined to the thread via API dpaa2_thread_affine_io_context().
  *
@@ -367,16 +322,11 @@ dpaa2_mbuf_pt dpaa2_mbuf_alloc(
  * @param[in]	bpid - buffer pool id (which was filled in by DPAA2 at
  *		'dpaa2_mbuf_create_bp_list'
  *
- * @param[in]	length - if single buffer length is greater than the buffer size
- *		it may allocate SG list. length 0 means to allocate buffer
- *		of the size of buffer pool size.
- *
  * @returns	dpaa2 buffer on success; NULL on failure.
  *
  */
 dpaa2_mbuf_pt dpaa2_mbuf_alloc_from_bpid(
-		uint16_t bpid,
-		int length);
+		uint16_t bpid);
 
 /*!
  * @details	Allocate a DPAA2 buffer shell without the data frame.
@@ -431,6 +381,60 @@ void dpaa2_mbuf_free(
 void dpaa2_mbuf_free_shell(
 		dpaa2_mbuf_pt mbuf);
 
+
+/*!
+ * @details	Reset a DPAA2 buffer structure to default values
+ *
+ * @param[in]	mbuf - dpaa2 buffer
+ *
+ * @returns	none
+ *
+ */
+static inline void dpaa2_mbuf_reset(dpaa2_mbuf_pt mbuf, uint32_t len)
+{
+	struct dpaa2_mbuf *tmp = mbuf;
+
+	DPAA2_TRACE(BUF);
+	uint32_t offset = dpaa2_mbuf_head_room;
+	uint32_t length = len;
+	uint32_t buf_size;
+
+	buf_size = bpid_info[mbuf->bpid].size;
+
+	/* TODO optimize it */
+	while (length) {
+		/*
+		 * Reset parser metadata.  Note that we clear via memset to make
+		 * this routine indepenent of any additional adds to packet metadata.
+		 */
+		const size_t start_offset = ODP_OFFSETOF(struct dpaa2_mbuf, flags);
+		const size_t len = ODP_OFFSETOF(struct dpaa2_mbuf, next_sg);
+		uint8_t *start;
+
+		start = (uint8_t *)tmp + start_offset;
+		memset(start, 0, len - start_offset);
+
+		/* Set metadata items that initialize to non-zero values */
+		/* TODO headroom?*/
+		tmp->data = tmp->head + offset;
+		offset = 0;
+		if (length >= buf_size) {
+			tmp->frame_len = buf_size;
+			length = length - buf_size;
+		} else {
+			tmp->frame_len = length;
+			length = 0;
+		}
+		mbuf->tot_frame_len += tmp->frame_len;
+		tmp = tmp->next_sg;
+	}
+
+	if (tmp)
+		dpaa2_mbuf_free(tmp);
+	/* reset the the annotation data */
+	if (mbuf->priv_meta_off)
+		memset(mbuf->head - mbuf->priv_meta_off, 0, mbuf->priv_meta_off);
+}
 
 /*!
  * @details	Free a list of DPAA2 buffers
@@ -490,7 +494,6 @@ static inline int32_t dpaa2_mbuf_tailroom(
 	dpaa2_mbuf_pt tmp = dpaa2_mbuf_lastseg(mbuf);
 
 	DPAA2_TRACE(BUF);
-/*TODO SG support -  difference from current frame to last frame */
 	return tmp->end_off - dpaa2_mbuf_headroom(tmp) - tmp->frame_len;
 }
 
@@ -583,7 +586,7 @@ static inline uint8_t *dpaa2_mbuf_push(
 	DPAA2_TRACE(BUF);
 
 	if (length > dpaa2_mbuf_headroom(mbuf)) {
-		DPAA2_WARN(BUF, "Not enough headroom");
+		DPAA2_ERR(BUF, "Not enough headroom");
 		return NULL;
 	}
 
@@ -611,6 +614,11 @@ static inline uint8_t *dpaa2_mbuf_pull(
 		uint32_t length)
 {
 	DPAA2_TRACE(BUF);
+
+	if (length > mbuf->frame_len) {
+		DPAA2_ERR(BUF, "No enough area is available\n");
+		return NULL;
+	}
 
 	mbuf->data += length;
 
@@ -640,48 +648,19 @@ static inline uint8_t *dpaa2_mbuf_pull(
 static inline uint8_t *dpaa2_mbuf_push_tail(
 		dpaa2_mbuf_pt mbuf,
 		uint32_t length,
-		uint8_t alloc)
+		uint8_t alloc ODP_UNUSED)
 {
-	dpaa2_mbuf_pt tmp;
+	dpaa2_mbuf_pt last_seg = dpaa2_mbuf_lastseg(mbuf);
 	uint8_t *tail;
 
 	DPAA2_TRACE(BUF);
-
-	/* Get the last segment */
-	tmp = dpaa2_mbuf_lastseg(mbuf);
-
-	tail = tmp->data + tmp->frame_len;
-	if (dpaa2_mbuf_tailroom(tmp) < (int32_t)length) {
-		if (alloc) {
-			DPAA2_WARN(BUF, "Alloc not supported - No tailroom");
-			return NULL;
-		} else {
-			DPAA2_WARN(BUF, "Not enough tailroom");
-			return NULL;
-		}
+	tail = dpaa2_mbuf_tail(mbuf);
+	if (dpaa2_mbuf_tailroom(mbuf) >= (int32_t)length) {
+			last_seg->frame_len += length;
+			mbuf->tot_frame_len += length;
 	}
-
-	tmp->frame_len += length;
-	tmp->tot_frame_len += length;
 	return tail;
 }
-
-/*!
- * @details	Trim the DPAA2 buffer by given size.
- *
- * @param[in]	mbuf - dpaa2 buffer
- *
- * @param[in]	length - length by which the buffer is to be trimmed
- *
- * @param[in]	free_extra - free the remaining segments if any
- *
- * @returns	DPAA2_SUCCESS on success; DPAA2_FAILURE otherwise
- *
- */
-int dpaa2_mbuf_pull_tail(
-		dpaa2_mbuf_pt mbuf,
-		uint32_t length,
-		uint8_t free_extra);
 
 /**
  * mbuf offset pointer
@@ -777,25 +756,6 @@ int dpaa2_mbuf_data_copy_out(
  *
  */
 uint32_t dpaa2_mbuf_get_max_pools(void);
-
-
-/*!
- * @details	Test if DPAA2 buffer is contiguous (i.e have only one segment).
- *
- * @param[in]	mbuf - dpaa2 buffer
- *
- * @returns	TRUE if dpaa2 buffer is contiguous;
- *		FALSE otherwise
- *
- */
-static inline int dpaa2_mbuf_is_contiguous(
-		const dpaa2_mbuf_pt mbuf)
-{
-	DPAA2_TRACE(BUF);
-
-	return mbuf->next_sg ? FALSE : TRUE;
-}
-
 
 /*!
  * @details	Get the start of the frame (addr) of a segment

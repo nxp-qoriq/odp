@@ -1169,6 +1169,8 @@ static void *dpaa2_eth_sg_fd_to_mbuf(
 
 	/*Get annotation pointer*/
 	fd_addr = (uint64_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
+	cur_seg = DPAA2_INLINE_MBUF_FROM_BUF(fd_addr,
+			bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
 
 	/*Get Scatter gather table address*/
 	sgt = (struct dpaa2_sg_entry *)(fd_addr + DPAA2_GET_FD_OFFSET(fd));
@@ -1180,6 +1182,9 @@ static void *dpaa2_eth_sg_fd_to_mbuf(
 	/*First Scatter gather entry*/
 	first_seg = DPAA2_INLINE_MBUF_FROM_BUF(sg_addr,
 			bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
+	cur_seg->head = (uint8_t *)sgt;
+	cur_seg->data = cur_seg->head;
+	cur_seg->next_sg = first_seg;
 	/*Prepare all the metadata for first segment*/
 	dpaa2_inline_mbuf_reset(first_seg);
 	_odp_buffer_type_set(first_seg, ODP_EVENT_PACKET);
@@ -1220,6 +1225,9 @@ static void *dpaa2_eth_sg_fd_to_mbuf(
 		cur_seg->next_sg = next_seg;
 		cur_seg = next_seg;
 	}
+
+	first_seg->end_off = bpid_info[DPAA2_GET_FD_BPID(fd)].size -
+				(DPAA2_FD_PTA_SIZE + DPAA2_MBUF_HW_ANNOTATION);
 
 	/* Detect jumbo frames */
 	if (first_seg->tot_frame_len > ODPH_ETH_LEN_MAX)
@@ -1263,6 +1271,8 @@ static void *dpaa2_eth_contig_fd_to_mbuf(
 	mbuf->data	= (uint8_t *)fd_addr + DPAA2_GET_FD_OFFSET(fd);
 	mbuf->frame_len	= DPAA2_GET_FD_LEN(fd);
 	mbuf->tot_frame_len = mbuf->frame_len;
+	mbuf->end_off = bpid_info[DPAA2_GET_FD_BPID(fd)].size -
+				(DPAA2_FD_PTA_SIZE + DPAA2_MBUF_HW_ANNOTATION);
 
 	/* Detect jumbo frames */
 	if (mbuf->frame_len > ODPH_ETH_LEN_MAX)

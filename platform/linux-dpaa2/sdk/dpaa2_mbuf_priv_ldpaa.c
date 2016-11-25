@@ -11,6 +11,7 @@
 /* Standard header files */
 #include <stdio.h>
 #include <pthread.h>
+#include <unistd.h>
 
 /* DPAA2 header files */
 #include <odp/api/std_types.h>
@@ -22,6 +23,7 @@
 #include <dpaa2_io_portal_priv.h>
 #include <dpaa2_mpool.h>
 #include <dpaa2_internal.h>
+#include <dpaa2_eth_ldpaa_annot.h>
 /* MC header files */
 #include <fsl_dpbp.h>
 
@@ -245,7 +247,8 @@ struct dpaa2_bp_list *dpaa2_mbuf_create_bp_list(
 		/* Set parameters of buffer pool list */
 		bp_list->buf_pool[pool_index].buf_size = buf_size;
 		bp_list->buf_pool[pool_index].num_bufs = num_bufs;
-		bp_list->buf_pool[pool_index].size = bp_list_cfg->buf_pool[pool_index].size;
+		bp_list->buf_pool[pool_index].size = buf_size -
+			bp_list_cfg->buf_pool[pool_index].meta_data_size;
 		bp_list->buf_pool[pool_index].bpid = bpid;
 		bp_list->buf_pool[pool_index].odp_user_area =
 					bp_list_cfg->buf_pool[pool_index].odp_user_area;
@@ -484,11 +487,87 @@ dpaa2_mbuf_pt dpaa2_mbuf_alloc_sg_from_bpid(
  * @returns	DPAA2_SUCCESS on success; DPAA2_FAILURE otherwise
  *
  */
-int dpaa2_mbuf_sg_copy(
-		dpaa2_mbuf_pt to_buf ODP_UNUSED,
-		dpaa2_mbuf_pt from_buf ODP_UNUSED)
+int dpaa2_mbuf_sg_copy(dpaa2_mbuf_pt to_buf, dpaa2_mbuf_pt from_buf)
 {
+	struct dpaa2_mbuf *src = from_buf;
+	struct dpaa2_mbuf *dst = to_buf;
+	uint32_t len;
+	uint32_t headroom;
+
 	DPAA2_TRACE(BUF);
+
+	src = DPAA2_INLINE_MBUF_FROM_BUF(from_buf->hw_annot - DPAA2_FD_PTA_SIZE,
+					 bpid_info[src->bpid].meta_data_size);
+	dst = DPAA2_INLINE_MBUF_FROM_BUF(to_buf->hw_annot - DPAA2_FD_PTA_SIZE,
+					 bpid_info[src->bpid].meta_data_size);
+
+	dst->bpid = src->bpid;
+	dst->end_off = src->end_off;
+	dst->priv_meta_off = src->priv_meta_off;
+	dst->frame_len = src->frame_len;
+	dst->tot_frame_len = src->tot_frame_len;
+	dst->timestamp = src->timestamp;
+	dst->atomic_cntxt = src->atomic_cntxt;
+	dst->flags = src->flags;
+	dst->usr_flags = src->usr_flags;
+	dst->eth_flags = src->eth_flags;
+	dst->hash_val = src->hash_val;
+	dst->vq = src->vq;
+	dst->drv_priv_cnxt = src->drv_priv_cnxt;
+	dst->buf_pool = src->buf_pool;
+	dst->drv_priv_resv[0] = src->drv_priv_resv[0];
+	dst->drv_priv_resv[1] = src->drv_priv_resv[1];
+	dst->user_cnxt_ptr = src->user_cnxt_ptr;
+	dst->atomic_cntxt = src->atomic_cntxt;
+#ifdef ODP_IPSEC_DEBUG
+	dst->drv_priv_cnxt1 = src->drv_priv_cnxt1;
+#endif
+
+	/*Copy user area first*/
+	len = bpid_info[from_buf->bpid].odp_user_area;
+	memcpy(dst->user_priv_area, src->user_priv_area, len);
+
+	/*Calculate total length to be copied*/
+	len = src->priv_meta_off + src->end_off;
+	memcpy((uint8_t *)(dst->head - dst->priv_meta_off),
+	       (uint8_t *)(src->head - src->priv_meta_off), len);
+
+	src = from_buf;
+	dst = to_buf;
+	while (src) {
+		dst->bpid = src->bpid;
+		dst->end_off = src->end_off;
+		dst->priv_meta_off = src->priv_meta_off;
+		dst->frame_len = src->frame_len;
+		dst->tot_frame_len = src->tot_frame_len;
+		dst->timestamp = src->timestamp;
+		dst->atomic_cntxt = src->atomic_cntxt;
+		dst->flags = src->flags;
+		dst->usr_flags = src->usr_flags;
+		dst->eth_flags = src->eth_flags;
+		dst->hash_val = src->hash_val;
+		dst->vq = src->vq;
+		dst->drv_priv_cnxt = src->drv_priv_cnxt;
+		dst->buf_pool = src->buf_pool;
+		dst->drv_priv_resv[0] = src->drv_priv_resv[0];
+		dst->drv_priv_resv[1] = src->drv_priv_resv[1];
+		dst->user_cnxt_ptr = src->user_cnxt_ptr;
+		dst->atomic_cntxt = src->atomic_cntxt;
+#ifdef ODP_IPSEC_DEBUG
+		dst->drv_priv_cnxt1 = src->drv_priv_cnxt1;
+#endif
+		/*Copy user area first*/
+		len = bpid_info[from_buf->bpid].odp_user_area;
+		memcpy(dst->user_priv_area, src->user_priv_area, len);
+
+		headroom = src->data - src->head;
+		len = headroom + src->frame_len;
+		/*Copy all data*/
+		memcpy((dst->data - headroom), (src->data - headroom), len);
+
+		src = src->next_sg;
+		dst = dst->next_sg;
+	}
 
 	return DPAA2_SUCCESS;
 }
