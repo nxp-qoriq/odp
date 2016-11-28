@@ -89,7 +89,7 @@ static struct sigevent notification;
 /** @def SHM_PKT_POOL_SIZE
  * @brief Size of the shared memory block
  */
-#define SHM_PKT_POOL_SIZE      (512 * 2048)
+#define SHM_PKT_POOL_SIZE      (1856 * 2048)
 
 /** @def SHM_PKT_POOL_BUF_SIZE
  * @brief Buffer size of the packet pool buffer

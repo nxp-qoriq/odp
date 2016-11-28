@@ -1092,7 +1092,7 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 				ODP_ERR("pktio %s: No free queue entry available\n",
 				pktio_entry->s.name);
 
-			queue->s.param.type = q_param.queue_param.type;
+			memcpy(&queue->s.param, &q_param.queue_param, sizeof(odp_pktin_queue_param_t));
 
 			retcode = odp_pktio_inq_set(pktio, queue, i);
 			if (retcode < 0) {
