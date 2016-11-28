@@ -1,4 +1,5 @@
 /* Copyright 2008-2012 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -1201,6 +1202,63 @@ inline int qman_p_poll_dqrr(struct qman_portal *p, unsigned int limit)
 }
 EXPORT_SYMBOL(qman_p_poll_dqrr);
 
+struct qm_dqrr_entry *qman_dequeue(struct qman_fq *fq)
+{
+	struct qman_portal *p = get_poll_portal();
+	const struct qm_dqrr_entry *dq;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	struct qm_dqrr_entry *shadow;
+#endif
+
+	qm_dqrr_pvb_update(&p->p);
+	dq = qm_dqrr_current(&p->p);
+	if (!dq) {
+		put_poll_portal();
+		return NULL;
+	}
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	shadow = &p->shadow_dqrr[DQRR_PTR2IDX(dq)];
+	*shadow = *dq;
+	dq = shadow;
+	shadow->fqid = be32_to_cpu(shadow->fqid);
+	shadow->contextB = be32_to_cpu(shadow->contextB);
+	shadow->seqnum = be16_to_cpu(shadow->seqnum);
+	hw_fd_to_cpu(&shadow->fd);
+#endif
+
+	if (!(dq->stat & QM_DQRR_STAT_FD_VALID)) {
+		/* Invalid DQRR - put the portal and consume the DQRR.
+		 * Return NULL to user as no packet is seen */
+		put_poll_portal();
+		qman_dqrr_consume(fq, (struct qm_dqrr_entry *)dq);
+		return NULL;
+	}
+
+	if (dq->stat & QM_DQRR_STAT_FQ_EMPTY)
+		fq_clear(fq, QMAN_FQ_STATE_NE);
+
+	put_poll_portal();
+
+	return (struct qm_dqrr_entry *)dq;
+}
+EXPORT_SYMBOL(qman_dequeue);
+
+void qman_dqrr_consume(struct qman_fq *fq,
+		       struct qm_dqrr_entry *dq)
+{
+	struct qman_portal *p = get_poll_portal();
+
+	if (dq->stat & QM_DQRR_STAT_DQCR_EXPIRED)
+		clear_vdqcr(p, fq);
+
+	qm_dqrr_cdc_consume_1ptr(&p->p, dq, 0);
+	qm_dqrr_next(&p->p);
+
+	put_poll_portal();
+}
+EXPORT_SYMBOL(qman_dqrr_consume);
+
 int qman_poll_dqrr(unsigned int limit)
 {
 	struct qman_portal *p = get_poll_portal();
@@ -1879,6 +1937,31 @@ int qman_query_fq(struct qman_fq *fq, struct qm_fqd *fqd)
 }
 EXPORT_SYMBOL(qman_query_fq);
 
+int qman_query_fq_has_pkts(struct qman_fq *fq)
+{
+	struct qm_mc_command *mcc;
+	struct qm_mc_result *mcr;
+	struct qman_portal *p = get_affine_portal();
+
+	unsigned long irqflags __maybe_unused;
+	int ret = 0;
+	u8 res;
+
+	PORTAL_IRQ_LOCK(p, irqflags);
+	mcc = qm_mc_start(&p->p);
+	mcc->queryfq.fqid = cpu_to_be32(fq->fqid);
+	qm_mc_commit(&p->p, QM_MCC_VERB_QUERYFQ_NP);
+	while (!(mcr = qm_mc_result(&p->p)))
+		cpu_relax();
+	res = mcr->result;
+	if (res == QM_MCR_RESULT_OK)
+		ret = !!mcr->queryfq_np.frm_cnt;
+	PORTAL_IRQ_UNLOCK(p, irqflags);
+	put_affine_portal();
+	return ret;
+}
+EXPORT_SYMBOL(qman_query_fq_has_pkts);
+
 int qman_query_fq_np(struct qman_fq *fq, struct qm_mcr_queryfq_np *np)
 {
 	struct qm_mc_command *mcc;
@@ -2137,6 +2220,30 @@ int qman_p_volatile_dequeue(struct qman_portal *p, struct qman_fq *fq,
 	return 0;
 }
 EXPORT_SYMBOL(qman_p_volatile_dequeue);
+
+int qman_set_vdq(struct qman_fq *fq, u16 num)
+{
+	struct qman_portal *p;
+	uint32_t vdqcr;
+	int ret;
+
+	vdqcr = QM_VDQCR_EXACT;
+	vdqcr |= QM_VDQCR_NUMFRAMES_SET(num);
+
+	if ((fq->state != qman_fq_state_parked) &&
+	    (fq->state != qman_fq_state_retired))
+		return -EINVAL;
+	if (fq_isset(fq, QMAN_FQ_STATE_VDQCR))
+		return -EBUSY;
+	vdqcr = (vdqcr & ~QM_VDQCR_FQID_MASK) | fq->fqid;
+
+	ret = set_vdqcr(&p, fq, vdqcr);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+EXPORT_SYMBOL(qman_set_vdq);
 
 int qman_volatile_dequeue(struct qman_fq *fq, u32 flags __maybe_unused,
 				u32 vdqcr)
@@ -2412,6 +2519,83 @@ int qman_enqueue(struct qman_fq *fq, const struct qm_fd *fd, u32 flags)
 	return 0;
 }
 EXPORT_SYMBOL(qman_enqueue);
+
+int qman_enqueue_multi(struct qman_fq *fq,
+		       const struct qm_fd *fd,
+		int frames_to_send)
+{
+	struct qman_portal *p = get_affine_portal();
+	struct qm_portal *portal = &p->p;
+	register struct qm_eqcr *eqcr = &portal->eqcr;
+	struct qm_eqcr_entry *eq = eqcr->cursor, *prev_eq;
+
+	unsigned long irqflags __maybe_unused;
+	u8 i, diff, old_ci, sent = 0;
+
+	PORTAL_IRQ_LOCK(p, (*irqflags));
+
+	/* Update the available entries if no entry is free */
+	if (!eqcr->available) {
+		old_ci = eqcr->ci;
+		eqcr->ci = qm_cl_in(EQCR_CI) & (QM_EQCR_SIZE - 1);
+		diff = qm_cyc_diff(QM_EQCR_SIZE, old_ci, eqcr->ci);
+		eqcr->available += diff;
+		if (!diff) {
+			PORTAL_IRQ_UNLOCK(p, (*irqflags));
+			put_affine_portal();
+			return 0;
+		}
+	}
+
+	/* try to send as many frames as possible */
+	while (eqcr->available && frames_to_send--) {
+		eq->fqid = cpu_to_be32(fq->fqid);
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+		eq->tag = cpu_to_be32(fq->key);
+#else
+		eq->tag = cpu_to_be32((u32)(uintptr_t)fq);
+#endif
+		eq->fd.opaque_addr = fd->opaque_addr;
+		eq->fd.addr = cpu_to_be40(fd->addr);
+		eq->fd.status = cpu_to_be32(fd->status);
+		eq->fd.opaque = cpu_to_be32(fd->opaque);
+
+		eq = (void *)((unsigned long)(eq + 1) &
+			(~(unsigned long)(QM_EQCR_SIZE << 6)));
+		eqcr->available--;
+		sent++;
+		fd++;
+	}
+	lwsync();
+
+	/* in order for flushes to complete faster */
+	/*For that we use a following trick: we record all lines in 32 bit word */
+	eq = eqcr->cursor;
+	for (i = 0; i < sent; i++) {
+		eq->__dont_write_directly__verb =
+			QM_EQCR_VERB_CMD_ENQUEUE | eqcr->vbit;
+		prev_eq = eq;
+		eq = (void *)((unsigned long)(eq + 1) &
+			(~(unsigned long)(QM_EQCR_SIZE << 6)));
+		if (unlikely((prev_eq + 1) != eq))
+			eqcr->vbit ^= QM_EQCR_VERB_VBIT;
+	}
+
+	/* We need  to flush all the lines but without load/store operations between them */
+	eq = eqcr->cursor;
+	for (i = 0; i < sent; i++) {
+		dcbf(eq);
+		eq = (void *)((unsigned long)(eq + 1) &
+			(~(unsigned long)(QM_EQCR_SIZE << 6)));
+	}
+	/* Update cursor for the next call */
+	eqcr->cursor = eq;
+
+	PORTAL_IRQ_UNLOCK(p, irqflags);
+	put_affine_portal();
+	return sent;
+}
+EXPORT_SYMBOL(qman_enqueue_multi);
 
 int qman_p_enqueue_orp(struct qman_portal *p, struct qman_fq *fq,
 				const struct qm_fd *fd, u32 flags,

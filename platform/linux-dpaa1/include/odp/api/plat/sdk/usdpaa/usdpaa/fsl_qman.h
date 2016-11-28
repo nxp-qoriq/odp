@@ -1,4 +1,5 @@
 /* Copyright 2008-2012 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -1890,6 +1891,37 @@ const cpumask_t *qman_affine_cpus(void);
  * member of the mask returned from qman_affine_cpus().
  */
 u16 qman_affine_channel(int cpu);
+
+/**
+ * qman_set_vdq - Issue a volatile dequeue command
+ * @fq: Frame Queue on which the volatile dequeue command is issued
+ * @num: Number of Frames requested for volatile dequeue
+ *
+ * This function will issue a volatile dequeue command to the QMAN.
+ */
+int qman_set_vdq(struct qman_fq *fq, u16 num);
+
+/**
+ * qman_dequeue - Get the DQRR entry after volatile dequeue command
+ * @fq: Frame Queue on which the volatile dequeue command is issued
+ *
+ * This function will return the DQRR entry after a volatile dequeue command
+ * is issued. It will keep returning NULL until there is no packet available on
+ * the DQRR.
+ */
+struct qm_dqrr_entry *qman_dequeue(struct qman_fq *fq);
+
+/**
+ * qman_dqrr_consume - Consume the DQRR entriy after volatile dequeue
+ * @fq: Frame Queue on which the volatile dequeue command is issued
+ * @dq: DQRR entry to consume. This is the one which is provided by the
+ *    'qbman_dequeue' command.
+ *
+ * This will comsume the DQRR enrey and make it available for next volatile
+ * dequeue.
+ */
+void qman_dqrr_consume(struct qman_fq *fq,
+		       struct qm_dqrr_entry *dq);
 
 /**
  * qman_poll_dqrr - process DQRR (fast-path) entries
