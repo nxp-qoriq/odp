@@ -97,6 +97,34 @@ struct dpaa2_mem_config {
  * These routines are called with help of below MACRO's
  */
 
+static phys_addr_t dpaa2_mem_vtop(void *vaddr)
+{
+	const struct dpaa2_memseg *memseg = dpaa2_eal_get_physmem_layout();
+	int i;
+
+	for (i = 0; i < DPAA2_MAX_MEMSEG && memseg[i].addr != NULL; i++) {
+		if (vaddr >= memseg[i].addr && vaddr <
+			memseg[i].addr + memseg[i].len)
+			return memseg[i].phys_addr + (vaddr - memseg[i].addr);
+	}
+
+	return (phys_addr_t)(NULL);
+}
+
+static void *dpaa2_mem_ptov(phys_addr_t paddr)
+{
+	const struct dpaa2_memseg *memseg = dpaa2_eal_get_physmem_layout();
+	int i;
+
+	for (i = 0; i < DPAA2_MAX_MEMSEG && memseg[i].addr != NULL; i++) {
+		if (paddr >= memseg[i].phys_addr && paddr <
+			memseg[i].phys_addr + memseg[i].len)
+			return memseg[i].addr + (paddr - memseg[i].phys_addr);
+	}
+
+	return NULL;
+}
+
 /**
  * macro to convert Virtual address to IOVA
  */
@@ -126,33 +154,6 @@ struct dpaa2_mem_config {
 #define DPAA2_MODIFY_IOVA_TO_VADDR(_mem, _type)
 #endif
 
-static ODP_UNUSED phys_addr_t dpaa2_mem_vtop(void *vaddr)
-{
-	const struct dpaa2_memseg *memseg = dpaa2_eal_get_physmem_layout();
-	int i;
-
-	for (i = 0; i < DPAA2_MAX_MEMSEG && memseg[i].addr != NULL; i++) {
-		if (vaddr >= memseg[i].addr && vaddr <
-			memseg[i].addr + memseg[i].len)
-			return memseg[i].phys_addr + (vaddr - memseg[i].addr);
-	}
-
-	return (phys_addr_t)(NULL);
-}
-
-static ODP_UNUSED void *dpaa2_mem_ptov(phys_addr_t paddr)
-{
-	const struct dpaa2_memseg *memseg = dpaa2_eal_get_physmem_layout();
-	int i;
-
-	for (i = 0; i < DPAA2_MAX_MEMSEG && memseg[i].addr != NULL; i++) {
-		if (paddr >= memseg[i].phys_addr && paddr <
-			memseg[i].phys_addr + memseg[i].len)
-			return memseg[i].addr + (paddr - memseg[i].phys_addr);
-	}
-
-	return NULL;
-}
 
 #ifdef __cplusplus
 }

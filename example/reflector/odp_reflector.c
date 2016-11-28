@@ -102,7 +102,7 @@ static args_t *args;
 static odp_pool_t pool;
 
 /* helper funcs */
-static void swap_pkt_addrs(odp_packet_t pkt_tbl[], unsigned len);
+static void swap_spkt_addrs(odp_packet_t pkt);
 static odp_packet_t copy_pkt_addrs(odp_packet_t spkt);
 
 static void parse_args(int argc, char *argv[], appl_args_t *appl_args);
@@ -182,6 +182,27 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool)
 	       mac_addr_str(src_mac_str, src_mac));
 
 	return pktio;
+}
+
+static void swap_spkt_addrs(odp_packet_t pkt)
+{
+	odph_ethhdr_t *eth = (odph_ethhdr_t *)odp_packet_l2_ptr(pkt, NULL);
+
+	if (!eth)
+		return;
+	odph_ethaddr_t tmp_addr = eth->dst;
+
+	eth->dst = eth->src;
+	eth->src = tmp_addr;
+
+	if (odp_packet_has_ipv4(pkt)) {
+		odph_ipv4hdr_t *ip = (odph_ipv4hdr_t *)
+			odp_packet_l3_ptr(pkt, NULL);
+		odp_u32be_t ip_tmp_addr = ip->src_addr;
+
+		ip->src_addr = ip->dst_addr;
+		ip->dst_addr = ip_tmp_addr;
+	}
 }
 
 /**
@@ -313,7 +334,7 @@ static void *pktio_thread(void *arg)
 		pkt = odp_packet_from_event(ev);
 
 		/* Swap Eth MACs and possibly IP-addrs before sending back */
-		swap_pkt_addrs(&pkt, 1);
+		swap_spkt_addrs(pkt);
 
 		/* Enqueue the packet for output */
 		pktio_tmp = odp_packet_input(pkt);
@@ -505,45 +526,6 @@ int main(int argc, char *argv[])
 	printf("Exit\n\n");
 
 	return 0;
-}
-
-
-/**
- * Swap eth src<->dst and IP src<->dst addresses
- *
- * @param pkt_tbl  Array of packets
- * @param len      Length of pkt_tbl[]
- */
-
-static void swap_pkt_addrs(odp_packet_t pkt_tbl[], unsigned len)
-{
-	odp_packet_t pkt;
-	odph_ethhdr_t *eth;
-	odph_ethaddr_t tmp_addr;
-	odph_ipv4hdr_t *ip;
-	odp_u32be_t ip_tmp_addr; /* tmp ip addr */
-	unsigned i;
-
-	for (i = 0; i < len; ++i) {
-		pkt = pkt_tbl[i];
-		if (odp_packet_has_eth(pkt)) {
-			eth = (odph_ethhdr_t *)odp_packet_l2_ptr(pkt, NULL);
-
-			tmp_addr = eth->dst;
-			eth->dst = eth->src;
-			eth->src = tmp_addr;
-
-			if (odp_packet_has_ipv4(pkt)) {
-				/* IPv4 */
-				ip = (odph_ipv4hdr_t *)
-					odp_packet_l3_ptr(pkt, NULL);
-
-				ip_tmp_addr  = ip->src_addr;
-				ip->src_addr = ip->dst_addr;
-				ip->dst_addr = ip_tmp_addr;
-			}
-		}
-	}
 }
 
 static odp_packet_t copy_pkt_addrs(odp_packet_t spkt)
