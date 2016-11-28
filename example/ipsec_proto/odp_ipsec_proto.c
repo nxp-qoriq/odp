@@ -348,23 +348,20 @@ static void initialize_intf(char *intf)
 	odp_pktout_queue_t pktout;
 	odp_queue_t inq_def;
 	int ret;
+	char *poll_mode;
 	uint8_t src_mac[ODPH_ETHADDR_LEN];
 	char src_mac_str[MAX_STRING];
 	odp_pktio_param_t pktio_param;
 	odp_pktin_queue_param_t pktin_param;
 
 	odp_pktio_param_init(&pktio_param);
-	odp_pktin_queue_param_init(&pktin_param);
 
 	/*SM: Now there are no poll queues need to change this later */
-	if (getenv("ODP_IPSEC_USE_POLL_QUEUES")) {
+	poll_mode = getenv("ODP_IPSEC_USE_POLL_QUEUES");
+	if (poll_mode)
 		pktio_param.in_mode = ODP_PKTIN_MODE_QUEUE;
-	} else {
+	else
 		pktio_param.in_mode = ODP_PKTIN_MODE_SCHED;
-		pktin_param.queue_param.type = ODP_QUEUE_TYPE_SCHED;
-		pktin_param.queue_param.sched.sync = ODP_SCHED_SYNC_ATOMIC;
-		pktin_param.queue_param.sched.prio = ODP_SCHED_PRIO_DEFAULT;
-	}
 
 	/*
 	 * Open a packet IO instance for thread and get default output queue
@@ -374,10 +371,24 @@ static void initialize_intf(char *intf)
 		EXAMPLE_ABORT("Error: pktio create failed for %s\n", intf);
 	}
 
-	/*
-	 * Create and set the default INPUT queue associated with the 'pktio'
-	 * resource
-	 */
+
+	odp_pktin_queue_param_init(&pktin_param);
+	if (!poll_mode) {
+		odp_pktio_capability_t capa;
+
+		ret = odp_pktio_capability(pktio, &capa);
+		if (ret != 0)
+			EXAMPLE_ABORT("Error: Unable to get pktio capability %s\n", intf);
+
+		pktin_param.queue_param.type = ODP_QUEUE_TYPE_SCHED;
+		pktin_param.queue_param.sched.sync = ODP_SCHED_SYNC_ATOMIC;
+		pktin_param.queue_param.sched.prio = ODP_SCHED_PRIO_DEFAULT;
+		pktin_param.num_queues = capa.max_input_queues;
+
+		if (pktin_param.num_queues > 1)
+			pktin_param.hash_enable = 1;
+	}
+
 	if (odp_pktin_queue_config(pktio, &pktin_param))
 		EXAMPLE_ABORT("Error: pktin config failed for %s\n", intf);
 
