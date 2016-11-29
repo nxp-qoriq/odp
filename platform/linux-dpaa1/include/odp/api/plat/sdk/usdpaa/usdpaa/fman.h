@@ -1,4 +1,5 @@
 /* Copyright (c) 2010-2012 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -71,6 +72,8 @@
 #define FMAN_PORT_IC_OFFSET_UNITS	0x10
 
 #define QMI_PORT_REGS_OFFSET		0x400
+
+#define FMAN_ENABLE_BPOOL_DEPLETION	0xF00000F0
 
 /* Represents the different flavour of network interface */
 enum fman_mac_type {
@@ -592,6 +595,22 @@ void fman_if_set_fdoff(const struct fman_if *p, uint32_t fd_offset);
 
 /* Set interface next invoked action for dequeue operation */
 void fman_if_set_dnia(const struct fman_if *p, uint32_t nia);
+
+/* Get Flow Control threshold parameters on specific interface */
+int fman_if_get_fc_threshold(struct fman_if *p);
+
+/* Enable and Set Flow Control threshold parameters on specific interface */
+int fman_if_set_fc_threshold(struct fman_if *p,
+			u32 high_water, u32 low_water, u32 bpid);
+
+/* Get Flow Control pause quanta on specific interface */
+int fman_if_get_fc_quanta(struct fman_if *p);
+
+/* Set Flow Control pause quanta on specific interface */
+int fman_if_set_fc_quanta(struct fman_if *p, u16 pause_quanta);
+
+/* discard error packets on rx */
+void fman_if_discard_rx_errors(struct fman_if *p);
 
 /* Enable/disable Rx on all interfaces */
 static inline void fman_if_enable_all_rx(void)

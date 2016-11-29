@@ -1,4 +1,5 @@
 /* Copyright (c) 2008-2011 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -471,6 +472,30 @@ int bm_pool_set(u32 bpid, const u32 *thresholds)
 					__generate_thresh(thresholds[2], 0));
 	out_be32(bman_ccsr_map + POOL_HWDXT(bpid),
 					__generate_thresh(thresholds[3], 1));
+	return 0;
+}
+
+#define BMAN_LOW_DEFAULT_THRESH		0x40
+#define BMAN_HIGH_DEFAULT_THRESH		0x80
+int bm_pool_set_hw_threshold(u32 bpid, const u32 low_thresh, const u32 high_thresh)
+{
+	if (!bman_ccsr_map)
+		return -ENODEV;
+	if (bpid >= bman_pool_max)
+		return -EINVAL;
+	if (high_thresh < low_thresh)
+		return -EINVAL;
+	if (low_thresh && high_thresh) {
+		out_be32(bman_ccsr_map + POOL_HWDET(bpid),
+			 __generate_thresh(low_thresh, 0));
+		out_be32(bman_ccsr_map + POOL_HWDXT(bpid),
+			 __generate_thresh(high_thresh, 1));
+	} else {
+		out_be32(bman_ccsr_map + POOL_HWDET(bpid),
+			 __generate_thresh(BMAN_LOW_DEFAULT_THRESH, 0));
+		out_be32(bman_ccsr_map + POOL_HWDXT(bpid),
+			 __generate_thresh(BMAN_HIGH_DEFAULT_THRESH, 1));
+	}
 	return 0;
 }
 #endif

@@ -1371,5 +1371,89 @@ void fman_if_set_dnia(const struct fman_if *p, uint32_t nia)
 	fmqm_pndn = &((struct fman_port_qmi_regs *)__if->qmioh_map)->fmqm_pndn;
 
 	out_be32(fmqm_pndn, nia);
+}
 
+int fman_if_get_fc_threshold(struct fman_if *p)
+{
+	struct __fman_if *__if = container_of(p, struct __fman_if, __if);
+	unsigned *fmbm_mpd;
+
+	assert(ccsr_map_fd != -1);
+
+	if (__if->__if.mac_type == fman_offline ||
+	    __if->__if.mac_type == fman_onic ||
+	    __if->__if.mac_type == fman_mac_less)
+		return -1;
+
+	fmbm_mpd = &((struct rx_bmi_regs *)__if->bmirx_map)->fmbm_mpd;
+	return in_be32(fmbm_mpd);
+}
+
+int fman_if_set_fc_threshold(struct fman_if *p, u32 high_water, u32 low_water, u32 bpid)
+{
+	struct __fman_if *__if = container_of(p, struct __fman_if, __if);
+	unsigned *fmbm_mpd;
+	int ret;
+
+	assert(ccsr_map_fd != -1);
+
+	if (__if->__if.mac_type == fman_offline ||
+	    __if->__if.mac_type == fman_onic ||
+	    __if->__if.mac_type == fman_mac_less)
+		return -1;
+
+	ret = bm_pool_set_hw_threshold(bpid, low_water, high_water);
+	if (ret)
+		return ret;
+
+	fmbm_mpd = &((struct rx_bmi_regs *)__if->bmirx_map)->fmbm_mpd;
+	out_be32(fmbm_mpd, FMAN_ENABLE_BPOOL_DEPLETION);
+}
+
+int fman_if_get_fc_quanta(struct fman_if *p)
+{
+	struct __fman_if *__if = container_of(p, struct __fman_if, __if);
+
+	assert(ccsr_map_fd != -1);
+
+	if (__if->__if.mac_type == fman_offline ||
+	    __if->__if.mac_type == fman_onic ||
+	    __if->__if.mac_type == fman_mac_less)
+		return -1;
+
+	return in_be32(&((struct memac_regs *)__if->ccsr_map)->pause_quanta[0]);
+}
+
+int fman_if_set_fc_quanta(struct fman_if *p, u16 pause_quanta)
+{
+	struct __fman_if *__if = container_of(p, struct __fman_if, __if);
+
+	assert(ccsr_map_fd != -1);
+
+	if (__if->__if.mac_type == fman_offline ||
+	    __if->__if.mac_type == fman_onic ||
+	    __if->__if.mac_type == fman_mac_less)
+		return -1;
+
+	out_be32(&((struct memac_regs *)__if->ccsr_map)->pause_quanta[0], pause_quanta);
+	return 0;
+}
+
+void fman_if_discard_rx_errors(struct fman_if *p)
+{
+	struct __fman_if *__if = container_of(p, struct __fman_if, __if);
+	unsigned *fmbm_rfsdm, *fmbm_rfsem;
+
+	if (__if->__if.mac_type == fman_mac_less ||
+	    __if->__if.mac_type == fman_onic ||
+	    __if->__if.mac_type == fman_offline)
+		return;
+
+	fmbm_rfsem = &((struct rx_bmi_regs *)__if->bmirx_map)->fmbm_rfsem;
+	out_be32(fmbm_rfsem, 0);
+	/* Configure the discard mask to discard the error packets which have
+	 * DMA errors, Frame size error, Header error etc. The mask 0x010CE3F0
+	 * is to configured discard all the errors which come in the FD[STATUS] */
+	fmbm_rfsdm = &((struct rx_bmi_regs *)__if->bmirx_map)->fmbm_rfsdm;
+	out_be32(fmbm_rfsdm, 0x010CE3F0);
 }
