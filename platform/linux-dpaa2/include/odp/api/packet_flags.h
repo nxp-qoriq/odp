@@ -64,10 +64,9 @@ static inline int odp_packet_has_vlan(odp_packet_t pkt)
 
 static inline int odp_packet_has_ipv4(odp_packet_t pkt)
 {
-	struct dpaa2_mbuf *pkt_hdr = (struct dpaa2_mbuf *)pkt;
 	odp_packet_metadata_t *annotation;
 
-	DPAA2_GET_MBUF_HW_ANNOT(pkt_hdr, annotation);
+	DPAA2_GET_MBUF_HW_ANNOT(pkt, annotation);
 	return BIT_ISSET_AT_POS(annotation->word4, L3_IPV4_1_PRESENT);
 }
 

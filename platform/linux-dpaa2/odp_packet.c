@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <dpaa2_mbuf_priv_ldpaa.h>
 #include <dpaa2_mbuf_priv.h>
+#include <dpaa2_vq.h>
 #include <dpaa2_eth_ldpaa_annot.h>
 /*
  *
@@ -270,14 +271,14 @@ odp_pool_t odp_packet_pool(odp_packet_t pkt)
 odp_pktio_t odp_packet_input(odp_packet_t pkt)
 {
 	struct dpaa2_mbuf *mbuf = (struct dpaa2_mbuf *)pkt;
-	struct dpaa2_dev *dev;
+	struct dpaa2_vq *vq = (struct dpaa2_vq *)mbuf->vq;
 
-	dev = dpaa2_dev_from_vq(mbuf->vq);
-	if (!dev) {
+	if (vq) {
+		return (odp_pktio_t)vq->dev->pktio;
+	} else {
 		ODP_ERR("Device pointer is NULL\n");
 		return ODP_PKTIO_INVALID;
 	}
-	return (odp_pktio_t)dev->pktio;
 }
 
 void *odp_packet_user_ptr(odp_packet_t pkt)

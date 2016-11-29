@@ -285,17 +285,17 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 	}
 	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
 	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
-				DPNI_BUF_LAYOUT_OPT_TIMESTAMP |
 				DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
 				DPNI_BUF_LAYOUT_OPT_DATA_HEAD_ROOM |
 				DPNI_BUF_LAYOUT_OPT_DATA_TAIL_ROOM |
+				DPNI_BUF_LAYOUT_OPT_DATA_ALIGN |
 				DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE;
 	layout.pass_frame_status = TRUE;
 	layout.data_head_room = dpaa2_mbuf_head_room;
 	layout.data_tail_room = dpaa2_mbuf_tail_room;
 	layout.private_data_size = dpaa2_mbuf_sw_annotation;
-	layout.pass_timestamp = TRUE;
 	layout.pass_parser_result = TRUE;
+	layout.data_align = 64;
 	retcode = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, dev_priv->token,
 					 DPNI_QUEUE_RX, &layout);
 	if (retcode) {
@@ -306,10 +306,8 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 
 	/* ... tx buffer layout ... */
 	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
-	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
-				DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
+	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS;
 	layout.pass_frame_status = TRUE;
-	layout.pass_timestamp = TRUE;
 	retcode = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, dev_priv->token,
 					 DPNI_QUEUE_TX, &layout);
 	if (retcode) {
@@ -319,10 +317,8 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 	}
 	/* ... tx-conf and error buffer layout ... */
 	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
-	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
-				DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
+	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS;
 	layout.pass_frame_status = TRUE;
-	layout.pass_timestamp = TRUE;
 	retcode = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, dev_priv->token,
 					 DPNI_QUEUE_TX_CONFIRM, &layout);
 	if (retcode) {
@@ -706,22 +702,24 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 			const dpaa2_mbuf_pt mbuf[])
 {
 	/* Function to transmit the frames to given device and VQ*/
+	#define QBMAN_IDX_FROM_DQRR(p) (((unsigned long)p & 0x1ff) >> 6)
 	uint32_t loop;
 	int32_t ret;
 	struct qbman_fd fd;
-	struct qbman_eq_desc eqdesc;
-	uint64_t eq_storage_phys = NULL;
+	struct qbman_eq_desc eqdesc = {{0}};
 	struct dpaa2_dev_priv *dev_priv =
 				(struct dpaa2_dev_priv *)dev->priv;
 	struct qbman_swp *swp;
 	struct dpaa2_vq *eth_tx_vq = (struct dpaa2_vq *)vq;
+	struct eqcr_entry *eqcr = (struct eqcr_entry *)&eqdesc;
 
 	/*Prepare enqueue descriptor*/
-	qbman_eq_desc_clear(&eqdesc);
-	qbman_eq_desc_set_no_orp(&eqdesc, DPAA2_EQ_RESP_ERR_FQ);
-	qbman_eq_desc_set_response(&eqdesc, eq_storage_phys, 0);
-	qbman_eq_desc_set_qd(&eqdesc, dev_priv->qdid,
-			eth_tx_vq->flow_id, eth_tx_vq->tc_index);
+	eqcr->verb = QBMAN_RESP_IF_REJ_QUE_DEST;
+
+	eqcr->tgtid = dev_priv->qdid;
+	eqcr->qdbin = eth_tx_vq->flow_id;
+	eqcr->qpri = eth_tx_vq->tc_index;
+
 	swp = thread_io_info.dpio_dev->sw_portal;
 
 	/*Clear the unused FD fields before sending*/
@@ -736,7 +734,7 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 		   The same need to be freed by H/W.
 		*/
 		if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf[loop])) {
-			qbman_eq_desc_set_dca(&eqdesc, 1, GET_HOLD_DQRR_IDX, 0);
+			eqcr->dca = ENABLE_DCA | GET_HOLD_DQRR_IDX;
 			MARK_HOLD_DQRR_PTR_INVALID;
 		}
 

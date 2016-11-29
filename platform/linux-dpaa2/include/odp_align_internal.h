@@ -138,7 +138,7 @@ extern "C" {
  */
 #define ODP_VAL_IS_POWER_2(x) ((((x)-1) & (x)) == 0)
 
-#define ODP_PACKET_LAYOUT_ALIGN 256
+#define ODP_PACKET_LAYOUT_ALIGN 64
 
 /**
  * @}

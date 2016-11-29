@@ -38,6 +38,7 @@
 #include <dpaa2_mbuf_priv.h>
 #include <dpaa2_io_portal_priv.h>
 #include <dpaa2_vq.h>
+#include <dpaa2_eth_ldpaa_qbman.h>
 #include <dpaa2_ethdev.h>
 #include <dpaa2_memconfig.h>
 #include <fsl_qbman_portal.h>
@@ -374,18 +375,14 @@ void odp_schedule_release_atomic(void)
 	}
 }
 
-
-
 /*
  * Function to receive Scheduled packet from I/O Portal with PUSH Mode
  */
 static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num ODP_UNUSED)
 {
 	struct qbman_swp *swp = thread_io_info.dpio_dev->sw_portal;
-	const struct qbman_fd *fd;
-	const struct qbman_result *dqrr_entry;
 	struct dpaa2_vq *rvq;
-	uint8_t status;
+	const struct dqrr_entry *dq;
 
 	/* Function is responsible to receive frame for a given
 	   DPCON device and Channel ID.
@@ -403,32 +400,26 @@ static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num ODP_UNUSED
 		MARK_HOLD_DQRR_PTR_INVALID;
 	}
 	/*Receive the packets*/
-	dqrr_entry = qbman_swp_dqrr_next(swp);
-	if (NULL == dqrr_entry)
+	dq = (struct dqrr_entry *)qbman_swp_dqrr_next(swp);
+	if (!dq)
 		return 0;
 
-	/* Check for valid frame. If not sent a consume
-	 * confirmation to QBMAN receive_sch_pktotherwise give it to DPAA2
-	 * application and then send consume confirmation to
-	 * QBMAN.
-	 */
-	status = (uint8_t)qbman_result_DQ_flags(dqrr_entry);
-	if (odp_unlikely((status & QBMAN_DQ_STAT_VALIDFRAME) == 0)) {
+	if (odp_unlikely((dq->stat & QBMAN_DQ_STAT_VALIDFRAME) == 0)) {
 		ODP_DBG("No frame is delivered\n");
-		qbman_swp_dqrr_consume(swp, dqrr_entry);
+		qbman_swp_dqrr_consume(swp, (struct qbman_result *)dq);
 		return 0;
 	}
 
-	fd = qbman_result_DQ_fd(dqrr_entry);
-	rvq = (struct dpaa2_vq *)qbman_result_DQ_fqd_ctx(dqrr_entry);
+	rvq = (struct dpaa2_vq *)dq->fqd_ctx;
 	if (rvq) {
-		mbuf[0] = rvq->qmfq.cb(swp, fd, dqrr_entry);
+		mbuf[0] = rvq->qmfq.cb(swp, (struct qbman_fd *)&dq->fd,
+				(struct qbman_result *)dq);
 		/* Set the current context in both threadinfo & buffer */
-		SAVE_HOLD_DQRR_PTR(dqrr_entry);
+		SAVE_HOLD_DQRR_PTR(dq);
 		SAVE_HOLD_BUF_PTR(mbuf[0]);
-		mbuf[0]->atomic_cntxt = (void *)dqrr_entry;
+		mbuf[0]->atomic_cntxt = (void *)dq;
 	} else {
-		qbman_swp_dqrr_consume(swp, dqrr_entry);
+		qbman_swp_dqrr_consume(swp, (struct qbman_result *)dq);
 		ODP_ERR("Null Return VQ received\n");
 		return 0;
 	}
@@ -437,32 +428,34 @@ static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num ODP_UNUSED
 	return 1;
 }
 
-
 /* Function to benchmark low level performance */
 static inline int32_t odp_qbman_loopback(dpaa2_mbuf_pt mbuf[] ODP_UNUSED, int num ODP_UNUSED)
 {
 	struct qbman_swp *swp = thread_io_info.dpio_dev->sw_portal;
 	const struct qbman_fd *fd;
+	struct qbman_fd tx_fd;
 	const struct qbman_result *dqrr_entry;
-	struct dpaa2_vq *rvq;
-	uint8_t status;
-	struct dpaa2_vq *eth_tx_vq = NULL;
 	struct qbman_eq_desc eqdesc;
-	struct dpaa2_dev_priv *dev_priv;
 	uint32_t *overlay;
 	int ret;
+	int cpu_id = odp_cpu_id();
+	struct dpaa2_vq *rvq;
+	struct dpaa2_vq *eth_tx_vq = NULL;
+	struct eqcr_entry *eqcr = (struct eqcr_entry *)&eqdesc;
 
 	/* Function is responsible to receive frame for a given
 	   DPCON device and Channel ID.
 	*/
-	printf("%s: \n", __func__);
-	qbman_eq_desc_clear(&eqdesc);
-	qbman_eq_desc_set_no_orp(&eqdesc, DPAA2_EQ_RESP_ERR_FQ);
+	printf("%s: on CPU => %d\n", __func__, cpu_id);
+	memset(&tx_fd, 0, sizeof(struct qbman_fd));
+	memset(&eqdesc, 0, sizeof(struct qbman_eq_desc));
+
+	eqcr->verb = QBMAN_RESP_IF_REJ_QUE_DEST;
 
 	/*Receive the packets*/
 	while (1) {
 		dqrr_entry = qbman_swp_dqrr_next(swp);
-		if (odp_unlikely(NULL == dqrr_entry)) {
+		if (!dqrr_entry) {
 			if (odp_unlikely(received_sigint)) {
 				if (odp_term_local())
 					fprintf(stderr, "error: odp_term_local() failed.\n");
@@ -470,24 +463,26 @@ static inline int32_t odp_qbman_loopback(dpaa2_mbuf_pt mbuf[] ODP_UNUSED, int nu
 			}
 			continue;
 		}
-		status = (uint8_t)qbman_result_DQ_flags(dqrr_entry);
-		if (odp_unlikely((status & QBMAN_DQ_STAT_VALIDFRAME) == 0)) {
-			ODP_DBG("No frame is delivered\n");
-			qbman_swp_dqrr_consume(swp, dqrr_entry);
-			continue;
-		}
 
 		rvq = (struct dpaa2_vq *)qbman_result_DQ_fqd_ctx(dqrr_entry);
-		eth_tx_vq = rvq->dev->tx_vq[0];
-		dev_priv = (struct dpaa2_dev_priv *)rvq->dev->priv;
+		eth_tx_vq = rvq->dev->tx_vq[cpu_id];
 
-		qbman_eq_desc_set_qd(&eqdesc, dev_priv->qdid,
-				eth_tx_vq->flow_id, eth_tx_vq->tc_index);
-		/* SET DCA */
 #define QBMAN_IDX_FROM_DQRR(p) (((unsigned long)p & 0x1ff) >> 6)
-		qbman_eq_desc_set_dca(&eqdesc, 1,
-				QBMAN_IDX_FROM_DQRR(dqrr_entry), 0);
+
+#if 1 /* Direct access of EQCR */
+		eqcr->tgtid = ((struct dpaa2_dev_priv *)(rvq->dev->priv))->qdid;
+		eqcr->qdbin = eth_tx_vq->flow_id;
+		eqcr->qpri = eth_tx_vq->tc_index;
+		/* SET DCA */
+		eqcr->dca = ENABLE_DCA | (uint8_t)QBMAN_IDX_FROM_DQRR(dqrr_entry);
 		fd = qbman_result_DQ_fd(dqrr_entry);
+
+		/* Prepare Tx descriptor */
+		tx_fd.simple.addr_lo = fd->simple.addr_lo;
+		tx_fd.simple.addr_hi = fd->simple.addr_hi;
+		tx_fd.simple.len = fd->simple.len;
+		tx_fd.simple.bpid_offset = fd->simple.bpid_offset;
+		tx_fd.simple.ctrl = fd->simple.ctrl;
 
 		/* Swap Mac address */
 		overlay = (uint32_t *)DPAA2_IOVA_TO_VADDR(
@@ -513,8 +508,19 @@ static inline int32_t odp_qbman_loopback(dpaa2_mbuf_pt mbuf[] ODP_UNUSED, int nu
 		}
 #endif
 		do {
+			ret = qbman_swp_enqueue(swp, &eqdesc, &tx_fd);
+		} while (ret == -EBUSY);
+
+#else
+		qbman_eq_desc_set_qd(&eqdesc, ((struct dpaa2_dev_priv *)(rvq->dev->priv))->qdid,
+				eth_tx_vq->flow_id, eth_tx_vq->tc_index);
+		/* SET DCA */
+		qbman_eq_desc_set_dca(&eqdesc, 1, QBMAN_IDX_FROM_DQRR(dqrr_entry), 0);
+		fd = qbman_result_DQ_fd(dqrr_entry);
+		do {
 			ret = qbman_swp_enqueue(swp, &eqdesc, fd);
 		} while (ret == -EBUSY);
+#endif
 		/*Check for the errors received*/
 	} /* End of While() */
 }
