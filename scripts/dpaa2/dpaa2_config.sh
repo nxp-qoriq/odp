@@ -83,9 +83,9 @@ export DPCI_COUNT=12
 
 ########################## INTERRUPTS ###########################
 
-#/* To enable the interrupts in scheduler PUSH mode, default is
-# * busy polling*/
-#export ODP_SCH_PUSH_INTR=1
+#/* To disable the interrupts in scheduler PUSH mode. Interrupts are
+# * enable by default*/
+#export ODP_SCH_PUSH_INTR=0
 
 #/* To set the DQRR interrupts threshold value. Valid only
 # * if interrupts are enabled. Value is depends upon dqrr ring size.

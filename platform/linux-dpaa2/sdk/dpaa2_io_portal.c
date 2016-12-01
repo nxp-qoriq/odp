@@ -92,9 +92,9 @@ static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
 	qbman_swp_interrupt_set_inhibit(dpio_dev->sw_portal, 0);
 	qbman_swp_dqrr_thrshld_write(dpio_dev->sw_portal, threshold);
 	qbman_swp_intr_timeout_write(dpio_dev->sw_portal, timeout);
-	printf("DPIO_ID = %d, INTR: DQRR Threshold value = %d\n", dpio_dev->hw_id,
+	DPAA2_DBG("DPIO_ID = %d, INTR: DQRR Threshold value = %d\n", dpio_dev->hw_id,
 			qbman_swp_dqrr_thrshld_read_status(dpio_dev->sw_portal));
-	printf("DPIO_ID = %d, INTR: Timeout value =        %d\n", dpio_dev->hw_id,
+	DPAA2_DBG("DPIO_ID = %d, INTR: Timeout value =        %d\n", dpio_dev->hw_id,
 			qbman_swp_intr_timeout_read_status(dpio_dev->sw_portal));
 
 	eventfd = dpio_dev->intr_handle[VFIO_DPIO_DATA_IRQ_INDEX].fd;

@@ -298,6 +298,8 @@ int odp_init_global(odp_instance_t *instance,
 		const odp_init_t *params,
 		const odp_platform_init_t *platform_params)
 {
+	int intr = 1;
+
 	if (odp_init)
 		return 0;
 
@@ -309,7 +311,10 @@ int odp_init_global(odp_instance_t *instance,
 	if (platform_params)
 		dq_schedule_mode = platform_params->dq_schedule_mode;
 
-	if (getenv("ODP_SCH_PUSH_INTR")) {
+	if(getenv("ODP_SCH_PUSH_INTR"))
+		intr = atoi(getenv("ODP_SCH_PUSH_INTR"));
+
+	if (intr) {
 		if (dq_schedule_mode & ODPFSL_PUSH) {
 			dq_schedule_mode = ODPFSL_PUSH_INTR;
 			printf("\n Using DPAA2 Scheduler in SW-PUSH mode with interrupts\n ");
