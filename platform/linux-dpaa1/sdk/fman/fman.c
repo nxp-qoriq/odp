@@ -1334,7 +1334,7 @@ int fman_if_set_ic_params(const struct fman_if *p,
 	} else {
 		unsigned *fmbm_ricp =
 			  &((struct rx_bmi_regs *)__if->bmirx_map)->fmbm_ricp;
-		out_be32(fmbm_ricp, in_be32(fmbm_ricp) | val);
+		out_be32(fmbm_ricp, val);
 	}
 
         return 0;

@@ -10,8 +10,12 @@
 /* Generic DMA memory area - packet buffers */
 #define DMA_MAP_SIZE            0x2000000
 
-/* IC offset from buffer header address */
-#define DEFAULT_ICEOF		80
+/*
+ * IC offset from buffer header address. We have this 16 so that
+ * we have the parse results in the first cache line and enable
+ * stashing for only one cache line.
+ */
+#define DEFAULT_ICEOF		16
 
 /* internal offset from where IC is copied to packet buffer*/
 #define DEFAULT_ICIOF		32

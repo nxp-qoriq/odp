@@ -77,25 +77,6 @@ static inline struct fman_if
 	int i;
 	enum fman_mac_type mac_type = fman_offline;
 	struct fm_eth_port_cfg *port_cfg;
-	struct fman_if_ic_params icp;
-
-	if (strcmp(name, "loop") == 0) {
-		for (i = 0; i < netcfg->num_ethports; i++) {
-			port_cfg = &netcfg->port_cfg[i];
-			if (port_cfg->fman_if->mac_type == fman_offline) {
-				memset(&icp, 0, sizeof(icp));
-				/* set ICEOF for O/H port to the default value */
-				icp.iceof = DEFAULT_ICEOF;
-				fman_if_set_ic_params(port_cfg->fman_if, &icp);
-				if (fman_ip_rev >= FMAN_V3)
-					fman_if_set_dnia(port_cfg->fman_if,
-							 OH_DEQ_NIA);
-				return port_cfg->fman_if;
-			}
-		}
-
-		return NULL;
-	}
 
 	cp = strdup(name);
 	if (!cp)
@@ -306,6 +287,9 @@ int odp_pktio_init_global(void)
 	int id, i, ret;
 	struct fm_eth_port_cfg *p_cfg;
 	odp_shm_t shm;
+	struct fman_if_ic_params icp;
+	struct fman_if_bpool *bp, *tmpbp;
+
 	shm = odp_shm_reserve("odp_pktio_entries",
 			sizeof(pktio_table_t) +
 			netcfg->num_ethports * sizeof(netcfg_port_info),
@@ -320,8 +304,6 @@ int odp_pktio_init_global(void)
 
 	sdqcr_vdq = QM_SDQCR_CHANNELS_POOL_CONV(pchannel_vdq);
 
-
-
 	memset(pktio_tbl, 0, sizeof(pktio_table_t));
 
 	for (id = 1; id <= ODP_CONFIG_PKTIO_ENTRIES; ++id) {
@@ -330,26 +312,35 @@ int odp_pktio_init_global(void)
 		odp_spinlock_init(&pktio_entry->s.lock);
 	}
 
-	/* copy ports configuration to pktio table */
 	for (i = 0; i < netcfg->num_ethports; i++) {
 		p_cfg = &netcfg->port_cfg[i];
+
+		/* reset bpool list for each port - we explicitly assign
+		 buffer pools to ports when opening pktio devices  */
+		list_for_each_entry_safe(bp, tmpbp,
+					 &p_cfg->fman_if->bpool_list, node) {
+			list_del(&bp->node);
+			free(bp);
+		}
+
+		/* Set the ICIOF, ICEOF & ICSZ */
+		memset(&icp, 0, sizeof(icp));
+		icp.iciof = DEFAULT_ICIOF;
+		icp.iceof = DEFAULT_ICEOF;
+		icp.icsz = DEFAULT_ICSZ;
+		fman_if_set_ic_params(p_cfg->fman_if, &icp);
+
+		if (p_cfg->fman_if->mac_type == fman_offline) {
+			if (fman_ip_rev >= FMAN_V3)
+				fman_if_set_dnia(p_cfg->fman_if, OH_DEQ_NIA);
+		}
+
+		/* copy ports configuration to pktio table */
 		pktio_tbl->port_info[i].p_cfg = p_cfg;
 		pktio_tbl->port_info[i].fman_if = p_cfg->fman_if;
 		pktio_tbl->port_info[i].first_fqid = get_pcd_start_fqid(p_cfg);
 		pktio_tbl->port_info[i].default_fqid = p_cfg->rx_def;
 		pktio_tbl->port_info[i].count = get_pcd_count(p_cfg);
-	}
-
-	/* reset bpool list for each port - we explicitly assign
-	 buffer pools to ports when opening pktio devices  */
-	struct fman_if_bpool *bp, *tmpbp;
-	for (i = 0; i < netcfg->num_ethports; i++) {
-		p_cfg = &netcfg->port_cfg[i];
-		list_for_each_entry_safe(bp, tmpbp,
-					 &p_cfg->fman_if->bpool_list, node){
-			list_del(&bp->node);
-			free(bp);
-		}
 	}
 
 	return 0;

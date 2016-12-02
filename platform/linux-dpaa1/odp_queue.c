@@ -145,9 +145,12 @@ int queue_init_rx_fq(struct qman_fq *fq, uint16_t channel)
 	/* no ordering */
 	if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_PARALLEL)
 		opts.fqd.fq_ctrl |= QM_FQCTRL_AVOIDBLOCK;
+
+	/* Have annotation stashing for one cache line only as parse
+	 * results are in the first cache line */
 	if (qentry->s.type != ODP_QUEUE_TYPE_PLAIN) {
-		opts.fqd.context_a.stashing.annotation_cl = 2;
-		opts.fqd.context_a.stashing.data_cl = 2;
+		opts.fqd.context_a.stashing.annotation_cl = 1;
+		opts.fqd.context_a.stashing.data_cl = 1;
 		opts.fqd.context_a.stashing.context_cl = 0;
 	}
 
