@@ -82,7 +82,6 @@ odp_packet_t odp_packet_alloc(odp_pool_t pool_hdl, uint32_t len)
 		}
 		/* input queue must be initialized */
 		buf_hdr->inq = ODP_QUEUE_INVALID;
-		buf_hdr->allocator = odp_thread_id();
 		pkt_hdr = (odp_packet_hdr_t *)buf_hdr;
 		pkt_hdr->input = ODP_PKTIO_INVALID;
 		packet_init(pool, pkt_hdr, len);

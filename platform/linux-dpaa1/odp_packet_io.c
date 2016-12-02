@@ -380,12 +380,6 @@ enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_portal *qm __always_unused,
 	pool = get_pool_entry(fd->bpid);
 	queue_entry_t *qentry = QENTRY_FROM_FQ(fq);
 
-	assert(dqrr->stat & QM_DQRR_STAT_FD_VALID);
-	assert(!(dqrr->stat & QM_DQRR_STAT_UNSCHEDULED));
-	assert(qentry->s.type == ODP_QUEUE_TYPE_SCHED);
-	assert(fd->offset == FD_DEFAULT_OFFSET);
-	assert(pool->s.params.type == ODP_POOL_PACKET);
-
 	/* get packet header from frame start address */
 	fd_addr = __dma_mem_ptov(qm_fd_addr(fd));
 	buf_hdr = odp_buf_hdr_from_addr(fd_addr, pool);
@@ -415,11 +409,8 @@ enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_portal *qm __always_unused,
 		fd_addr = buf_hdr->addr[sgcnt];
 	}
 
-
 	pkthdr = (odp_packet_hdr_t *)buf_hdr;
 	buf = odp_hdr_to_buf(buf_hdr);
-
-	assert(pkthdr->buf_hdr.addr[0] == ((void *)pkthdr + pool->s.buf_offset));
 
 	/* setup and receive ODP packet */
 	pkt = _odp_packet_from_buffer(buf);
@@ -453,8 +444,6 @@ dqrr_cb_poll_pktin(struct qman_portal *qm __always_unused,
 	fd = &dqrr->fd;
 	pool = get_pool_entry(fd->bpid);
 
-	assert(dqrr->stat & QM_DQRR_STAT_FD_VALID);
-	assert(fd->offset == FD_DEFAULT_OFFSET);
 	fd_addr = __dma_mem_ptov(qm_fd_addr(fd));
 	off = fd->offset;
 	buf_hdr = odp_buf_hdr_from_addr(fd_addr, pool);
@@ -502,12 +491,7 @@ dqrr_cb_poll_pktin(struct qman_portal *qm __always_unused,
 
 	queue_entry_t *qentry = QENTRY_FROM_FQ(fq);
 	pktio_entry_t *pktio_entry = get_pktio_entry(qentry->s.pktin);
-#ifndef ODP_MULTI_POOL_SG_SUPPORT
-	assert((pool == odp_pool_to_entry(pktio_entry->s.pool) &&
-		pktio_entry->s.__if->mac_type != fman_offline) ||
-		(pool != odp_pool_to_entry(pktio_entry->s.pool) &&
-		pktio_entry->s.__if->mac_type == fman_offline));
-#endif
+
 	pkthdr = (odp_packet_hdr_t *)buf_hdr;
 	pkthdr->headroom = pool->s.headroom;
 	pkthdr->tailroom = pool->s.tailroom;
@@ -518,7 +502,6 @@ dqrr_cb_poll_pktin(struct qman_portal *qm __always_unused,
 	_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
 
 	if (pktio_entry->s.pkt_table) {
-		assert(dqrr->stat & QM_DQRR_STAT_UNSCHEDULED);
 		*(pktio_entry->s.pkt_table) = pkt;
 		(pktio_entry->s.pkt_table)++;
 	}
@@ -543,9 +526,6 @@ dqrr_cb_im(struct qman_portal *qm __always_unused,
 
 	fd = &dqrr->fd;
 	pool = get_pool_entry(fd->bpid);
-
-	assert(dqrr->stat & QM_DQRR_STAT_FD_VALID);
-	assert(fd->offset == FD_DEFAULT_OFFSET);
 
 	/* get packet header from frame start address */
 	fd_addr = __dma_mem_ptov(qm_fd_addr(fd));
@@ -579,7 +559,6 @@ dqrr_cb_im(struct qman_portal *qm __always_unused,
 
 	/* get input interface */
 	struct pktio_entry *pktio_entry = PKTIO_ENTRY_FROM_FQ(fq);
-	assert(pool == odp_pool_to_entry(pktio_entry->pool));
 
 	pkthdr = (odp_packet_hdr_t *)buf_hdr;
 	pkthdr->headroom = pool->s.headroom;
@@ -591,7 +570,6 @@ dqrr_cb_im(struct qman_portal *qm __always_unused,
 	_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
 
 	if (pktio_entry->pkt_table) {
-		assert(dqrr->stat & QM_DQRR_STAT_UNSCHEDULED);
 		*(pktio_entry->pkt_table) = pkt;
 		(pktio_entry->pkt_table)++;
 	}

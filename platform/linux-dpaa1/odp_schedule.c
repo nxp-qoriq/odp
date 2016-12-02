@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -166,7 +167,6 @@ static int copy_bufs(odp_buffer_t out_buf[], unsigned int max)
 
 	do {
 		out_buf[i] = sched_local.buf[sched_local.index];
-		assert(odp_buffer_is_valid(out_buf[i]));
 		sched_local.buf[sched_local.index] = ODP_BUFFER_INVALID;
 		sched_local.index++;
 		sched_local.num--;
@@ -175,19 +175,6 @@ static int copy_bufs(odp_buffer_t out_buf[], unsigned int max)
 	} while (sched_local.num && max);
 
 	return i;
-}
-
-static void do_slow_poll(void)
-{
-	static __thread int slowpoll;
-	int ret;
-	if (!(slowpoll--)) {
-		ret = qman_poll_slow() | bman_poll_slow();
-		if (ret)
-			slowpoll = WORKER_SLOWPOLL_BUSY;
-		else
-			slowpoll = WORKER_SLOWPOLL_IDLE;
-	}
 }
 
 /*
@@ -204,7 +191,6 @@ static int schedule(odp_queue_t *out_queue ODP_UNUSED, odp_buffer_t out_buf[],
 	}
 
 	sched_local.index = 0;
-	do_slow_poll();
 	qman_poll_dqrr(max_deq);
 	sched_local.num = sched_local.index;
 	/* reset the index for copy_bufs loop */

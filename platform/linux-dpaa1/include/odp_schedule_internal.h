@@ -53,8 +53,6 @@ static inline enum qman_cb_dqrr_result odp_sched_collect_pkt(
 	odp_buffer_hdr_t *buf_hdr = (odp_buffer_hdr_t *)pkthdr;
 
 	buf_hdr->sched_index = sched_local.index;
-	assert(sched_local.index < MAX_DEQ);
-	assert(sched_local.buf[sched_local.index] == ODP_BUFFER_INVALID);
 	/* save sequence number when input queue is ORDERED */
 	if (inq->s.param.sched.sync == ODP_SCHED_SYNC_ORDERED) {
 		buf_hdr->orp.seqnum = dqrr->seqnum;

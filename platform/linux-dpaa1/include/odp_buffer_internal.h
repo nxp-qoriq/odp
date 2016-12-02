@@ -136,7 +136,6 @@ typedef struct odp_buffer_hdr_t {
 		};
 	} flags;
 	struct odp_buffer_hdr_t *next;       /* next buf in a list */
-	int                      allocator;  /* allocating thread id */
 } odp_buffer_hdr_t;
 
 /** @internal Compile time assert that the
