@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -98,10 +99,10 @@ void odp_packet_free(odp_packet_t pkt)
 int odp_packet_reset(odp_packet_t pkt, uint32_t len)
 {
 	odp_packet_hdr_t *const pkt_hdr = odp_packet_hdr(pkt);
-	pool_entry_t *pool = odp_buf_to_pool(&pkt_hdr->buf_hdr);
+	pool_entry_t *pool = odp_buf_to_pool(pkt_hdr);
 	uint32_t totsize = pool->s.headroom + len + pool->s.tailroom;
 
-	if (totsize > pkt_hdr->buf_hdr.size)
+	if (totsize > pkt_hdr->size)
 		return -1;
 
 	packet_init(pool, pkt_hdr, len);
@@ -128,12 +129,12 @@ odp_event_t odp_packet_to_event(odp_packet_t pkt)
 void *odp_packet_head(odp_packet_t pkt)
 {
 	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
-	return buffer_map(&pkt_hdr->buf_hdr, 0, NULL, 0);
+	return buffer_map(pkt_hdr, 0, NULL, 0);
 }
 
 uint32_t odp_packet_buf_len(odp_packet_t pkt)
 {
-	return odp_packet_hdr(pkt)->buf_hdr.size;
+	return odp_packet_hdr(pkt)->size;
 }
 
 void *odp_packet_data(odp_packet_t pkt)
@@ -228,7 +229,7 @@ void *odp_packet_offset(odp_packet_t pkt, uint32_t offset, uint32_t *len,
 		odp_buffer_bits_t seghandle;
 		seghandle.handle = (odp_buffer_t)pkt;
 		seghandle.seg = (pkt_hdr->headroom + offset) /
-			pkt_hdr->buf_hdr.segsize;
+			pkt_hdr->segsize;
 		*seg = (odp_packet_seg_t)seghandle.handle;
 	}
 
@@ -244,7 +245,7 @@ void *odp_packet_offset(odp_packet_t pkt, uint32_t offset, uint32_t *len,
 
 odp_pool_t odp_packet_pool(odp_packet_t pkt)
 {
-	return odp_packet_hdr(pkt)->buf_hdr.pool_hdl;
+	return odp_packet_hdr(pkt)->pool_hdl;
 }
 
 odp_pktio_t odp_packet_input(odp_packet_t pkt)
@@ -254,22 +255,22 @@ odp_pktio_t odp_packet_input(odp_packet_t pkt)
 
 void *odp_packet_user_ptr(odp_packet_t pkt)
 {
-	return odp_packet_hdr(pkt)->buf_hdr.buf_ctx;
+	return odp_packet_hdr(pkt)->buf_ctx;
 }
 
 void odp_packet_user_ptr_set(odp_packet_t pkt, const void *ctx)
 {
-	odp_packet_hdr(pkt)->buf_hdr.buf_cctx = ctx;
+	odp_packet_hdr(pkt)->buf_cctx = ctx;
 }
 
 void *odp_packet_user_area(odp_packet_t pkt)
 {
-	return odp_packet_hdr(pkt)->buf_hdr.uarea_addr;
+	return odp_packet_hdr(pkt)->uarea_addr;
 }
 
 uint32_t odp_packet_user_area_size(odp_packet_t pkt)
 {
-	return odp_packet_hdr(pkt)->buf_hdr.uarea_size;
+	return odp_packet_hdr(pkt)->uarea_size;
 }
 
 void *odp_packet_l2_ptr(odp_packet_t pkt, uint32_t *len)
@@ -361,14 +362,14 @@ int odp_packet_l4_offset_set(odp_packet_t pkt, uint32_t offset)
 
 int odp_packet_is_segmented(odp_packet_t pkt)
 {
-	return odp_packet_hdr(pkt)->buf_hdr.segcount > 1;
+	return odp_packet_hdr(pkt)->segcount > 1;
 }
 
 int odp_packet_num_segs(odp_packet_t pkt)
 {
 	/* if segcount includes also the sg table buffer, decrement it by 1 */
-	return  (odp_packet_hdr(pkt)->buf_hdr.segcount > 1) ?
-		 (odp_packet_hdr(pkt)->buf_hdr.segcount - 1) : 1;
+	return  (odp_packet_hdr(pkt)->segcount > 1) ?
+		 (odp_packet_hdr(pkt)->segcount - 1) : 1;
 }
 
 odp_packet_seg_t odp_packet_first_seg(odp_packet_t pkt)
@@ -382,7 +383,7 @@ odp_packet_seg_t odp_packet_last_seg(odp_packet_t pkt)
 	odp_buffer_bits_t seghandle;
 
 	seghandle.handle = (odp_buffer_t)pkt;
-	seghandle.seg = pkt_hdr->buf_hdr.segcount - 1;
+	seghandle.seg = pkt_hdr->segcount - 1;
 	return (odp_packet_seg_t)seghandle.handle;
 }
 
@@ -390,7 +391,7 @@ odp_packet_seg_t odp_packet_next_seg(odp_packet_t pkt, odp_packet_seg_t seg)
 {
 	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
 
-	return (odp_packet_seg_t)segment_next(&pkt_hdr->buf_hdr,
+	return (odp_packet_seg_t)segment_next(pkt_hdr,
 					      (odp_buffer_seg_t)seg);
 }
 
@@ -404,7 +405,7 @@ void *odp_packet_seg_data(odp_packet_t pkt, odp_packet_seg_t seg)
 {
 	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
 
-	return segment_map(&pkt_hdr->buf_hdr, (odp_buffer_seg_t)seg, NULL,
+	return segment_map(pkt_hdr, (odp_buffer_seg_t)seg, NULL,
 			   pkt_hdr->frame_len, pkt_hdr->headroom);
 }
 
@@ -413,7 +414,7 @@ uint32_t odp_packet_seg_data_len(odp_packet_t pkt, odp_packet_seg_t seg)
 	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
 	uint32_t seglen = 0;
 
-	segment_map(&pkt_hdr->buf_hdr, (odp_buffer_seg_t)seg, &seglen,
+	segment_map(pkt_hdr, (odp_buffer_seg_t)seg, &seglen,
 		    pkt_hdr->frame_len, pkt_hdr->headroom);
 
 	return seglen;
@@ -437,7 +438,7 @@ int odp_packet_add_data(odp_packet_t *pkt_ptr, uint32_t offset,
 	if (offset > pktlen)
 		return -1;
 
-	newpkt = odp_packet_alloc(pkt_hdr->buf_hdr.pool_hdl, pktlen + len);
+	newpkt = odp_packet_alloc(pkt_hdr->pool_hdl, pktlen + len);
 
 	if (newpkt != ODP_PACKET_INVALID) {
 		if (_odp_packet_copy_to_packet(pkt, 0,
@@ -450,19 +451,19 @@ int odp_packet_add_data(odp_packet_t *pkt_ptr, uint32_t offset,
 		} else {
 			odp_packet_hdr_t *new_hdr = odp_packet_hdr(newpkt);
 			new_hdr->input = pkt_hdr->input;
-			new_hdr->buf_hdr.buf_u64 = pkt_hdr->buf_hdr.buf_u64;
-			if (new_hdr->buf_hdr.uarea_addr != NULL &&
-			    pkt_hdr->buf_hdr.uarea_addr != NULL)
-				memcpy(new_hdr->buf_hdr.uarea_addr,
-				       pkt_hdr->buf_hdr.uarea_addr,
-				       new_hdr->buf_hdr.uarea_size <=
-				       pkt_hdr->buf_hdr.uarea_size ?
-				       new_hdr->buf_hdr.uarea_size :
-				       pkt_hdr->buf_hdr.uarea_size);
+			new_hdr->buf_u64 = pkt_hdr->buf_u64;
+			if (new_hdr->uarea_addr != NULL &&
+			    pkt_hdr->uarea_addr != NULL)
+				memcpy(new_hdr->uarea_addr,
+				       pkt_hdr->uarea_addr,
+				       new_hdr->uarea_size <=
+				       pkt_hdr->uarea_size ?
+				       new_hdr->uarea_size :
+				       pkt_hdr->uarea_size);
 			odp_atomic_store_u32(
-				&new_hdr->buf_hdr.ref_count,
+				&new_hdr->ref_count,
 				odp_atomic_load_u32(
-					&pkt_hdr->buf_hdr.ref_count));
+					&pkt_hdr->ref_count));
 			copy_packet_parser_metadata(pkt_hdr, new_hdr);
 			odp_packet_free(pkt);
 			*pkt_ptr = newpkt;
@@ -484,7 +485,7 @@ int odp_packet_rem_data(odp_packet_t *pkt_ptr, uint32_t offset,
 	if (offset > pktlen || offset + len > pktlen)
 		return -1;
 
-	newpkt = odp_packet_alloc(pkt_hdr->buf_hdr.pool_hdl, pktlen - len);
+	newpkt = odp_packet_alloc(pkt_hdr->pool_hdl, pktlen - len);
 
 	if (newpkt != ODP_PACKET_INVALID) {
 		if (_odp_packet_copy_to_packet(pkt, 0,
@@ -497,19 +498,19 @@ int odp_packet_rem_data(odp_packet_t *pkt_ptr, uint32_t offset,
 		} else {
 			odp_packet_hdr_t *new_hdr = odp_packet_hdr(newpkt);
 			new_hdr->input = pkt_hdr->input;
-			new_hdr->buf_hdr.buf_u64 = pkt_hdr->buf_hdr.buf_u64;
-			if (new_hdr->buf_hdr.uarea_addr != NULL &&
-			    pkt_hdr->buf_hdr.uarea_addr != NULL)
-				memcpy(new_hdr->buf_hdr.uarea_addr,
-				       pkt_hdr->buf_hdr.uarea_addr,
-				       new_hdr->buf_hdr.uarea_size <=
-				       pkt_hdr->buf_hdr.uarea_size ?
-				       new_hdr->buf_hdr.uarea_size :
-				       pkt_hdr->buf_hdr.uarea_size);
+			new_hdr->buf_u64 = pkt_hdr->buf_u64;
+			if (new_hdr->uarea_addr != NULL &&
+			    pkt_hdr->uarea_addr != NULL)
+				memcpy(new_hdr->uarea_addr,
+				       pkt_hdr->uarea_addr,
+				       new_hdr->uarea_size <=
+				       pkt_hdr->uarea_size ?
+				       new_hdr->uarea_size :
+				       pkt_hdr->uarea_size);
 			odp_atomic_store_u32(
-				&new_hdr->buf_hdr.ref_count,
+				&new_hdr->ref_count,
 				odp_atomic_load_u32(
-					&pkt_hdr->buf_hdr.ref_count));
+					&pkt_hdr->ref_count));
 			copy_packet_parser_metadata(pkt_hdr, new_hdr);
 			odp_packet_free(pkt);
 			*pkt_ptr = newpkt;
@@ -537,14 +538,14 @@ odp_packet_t odp_packet_copy(odp_packet_t pkt, odp_pool_t pool)
 		odp_packet_hdr_t *newhdr = odp_packet_hdr(newpkt);
 		uint8_t *newstart, *srcstart;
 
-		if (newhdr->buf_hdr.uarea_size < srchdr->buf_hdr.uarea_size) {
+		if (newhdr->uarea_size < srchdr->uarea_size) {
 			odp_packet_free(newpkt);
 			return ODP_PACKET_INVALID;
 		}
 
 		/* Must copy metadata first, followed by packet data */
-		newstart = (uint8_t *)newhdr->buf_hdr.addr[0] + DEFAULT_ICEOF;
-		srcstart = (uint8_t *)srchdr->buf_hdr.addr[0] + DEFAULT_ICEOF;
+		newstart = (uint8_t *)newhdr->addr[0] + DEFAULT_ICEOF;
+		srcstart = (uint8_t *)srchdr->addr[0] + DEFAULT_ICEOF;
 
 		memcpy(newstart, srcstart, sizeof(fm_prs_result_t));
 		newhdr->jumbo = srchdr->jumbo;
@@ -560,12 +561,12 @@ odp_packet_t odp_packet_copy(odp_packet_t pkt, odp_pool_t pool)
 			odp_packet_free(newpkt);
 			newpkt = ODP_PACKET_INVALID;
 		}
-		if (newhdr->buf_hdr.uarea_addr != NULL &&
-			srchdr->buf_hdr.uarea_addr != NULL)
-			memcpy(newhdr->buf_hdr.uarea_addr,
-			srchdr->buf_hdr.uarea_addr, newhdr->buf_hdr.uarea_size <=
-			srchdr->buf_hdr.uarea_size ? newhdr->buf_hdr.uarea_size :
-			srchdr->buf_hdr.uarea_size);
+		if (newhdr->uarea_addr != NULL &&
+			srchdr->uarea_addr != NULL)
+			memcpy(newhdr->uarea_addr,
+			srchdr->uarea_addr, newhdr->uarea_size <=
+			srchdr->uarea_size ? newhdr->uarea_size :
+			srchdr->uarea_size);
 	}
 
 	return newpkt;
@@ -702,7 +703,7 @@ int odp_packet_split(odp_packet_t *pkt, uint32_t len,
 	if (len >= pktlen)
 		return -1;
 
-	newpkt = odp_packet_alloc(pkthdr->buf_hdr.pool_hdl, pktlen - len);
+	newpkt = odp_packet_alloc(pkthdr->pool_hdl, pktlen - len);
 	_odp_packet_copy_to_packet(*pkt, len, newpkt, 0, pktlen - len);
 
 	pkthdr->frame_len = len;
@@ -717,7 +718,7 @@ int odp_packet_concat(odp_packet_t *dst, odp_packet_t src)
 	uint32_t src_pktlen = src_pkthdr->frame_len;
 	uint32_t dst_pktlen = dst_pkthdr->frame_len;
 	odp_packet_t newpkt = ODP_PACKET_INVALID;
-	newpkt = odp_packet_alloc(dst_pkthdr->buf_hdr.pool_hdl, src_pktlen + dst_pktlen);
+	newpkt = odp_packet_alloc(dst_pkthdr->pool_hdl, src_pktlen + dst_pktlen);
 
 	if (_odp_packet_copy_to_packet(*dst, 0, newpkt, 0, dst_pktlen))
 		return -1;
@@ -792,19 +793,19 @@ void _odp_packet_copy_md_to_packet(odp_packet_t srcpkt, odp_packet_t dstpkt)
 	odp_packet_hdr_t *dsthdr = odp_packet_hdr(dstpkt);
 
 	dsthdr->input = srchdr->input;
-	dsthdr->buf_hdr.buf_u64 = srchdr->buf_hdr.buf_u64;
-	if (dsthdr->buf_hdr.uarea_addr != NULL &&
-	    srchdr->buf_hdr.uarea_addr != NULL)
-		memcpy(dsthdr->buf_hdr.uarea_addr,
-		       srchdr->buf_hdr.uarea_addr,
-		       dsthdr->buf_hdr.uarea_size <=
-		       srchdr->buf_hdr.uarea_size ?
-		       dsthdr->buf_hdr.uarea_size :
-		       srchdr->buf_hdr.uarea_size);
+	dsthdr->buf_u64 = srchdr->buf_u64;
+	if (dsthdr->uarea_addr != NULL &&
+	    srchdr->uarea_addr != NULL)
+		memcpy(dsthdr->uarea_addr,
+		       srchdr->uarea_addr,
+		       dsthdr->uarea_size <=
+		       srchdr->uarea_size ?
+		       dsthdr->uarea_size :
+		       srchdr->uarea_size);
 	odp_atomic_store_u32(
-		&dsthdr->buf_hdr.ref_count,
+		&dsthdr->ref_count,
 		odp_atomic_load_u32(
-			&srchdr->buf_hdr.ref_count));
+			&srchdr->ref_count));
 	copy_packet_parser_metadata(srchdr, dsthdr);
 }
 

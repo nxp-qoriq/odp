@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -109,23 +110,7 @@ typedef union {
 ODP_STATIC_ASSERT(sizeof(output_flags_t) == sizeof(uint32_t),
 		   "OUTPUT_FLAGS_SIZE_ERROR");
 
-/**
- * Internal Packet header
- */
-typedef struct {
-	/* common buffer header */
-	odp_buffer_hdr_t buf_hdr;
-
-	uint32_t l2_offset; /**< offset to L2 hdr, e.g. Eth */
-	uint32_t l3_offset; /**< offset to L3 hdr, e.g. IPv4, IPv6 */
-	uint32_t l4_offset; /**< offset to L4 hdr (TCP, UDP, SCTP, also ICMP) */
-	uint32_t frame_len;
-	uint32_t headroom;
-	uint32_t tailroom;
-	uint8_t jumbo;
-
-	odp_pktio_t input;
-} odp_packet_hdr_t;
+typedef odp_buffer_hdr_t odp_packet_hdr_t;
 
 typedef struct odp_packet_hdr_stride {
 	uint8_t pad[ODP_CACHE_LINE_SIZE_ROUNDUP(sizeof(odp_packet_hdr_t))];
@@ -166,8 +151,8 @@ typedef struct ODP_PACKED fm_prs_result {
 } fm_prs_result_t;
 
 #define GET_PRS_RESULT(buf, prs_res) \
-	(buf.segcount == 1) ? (typeof(prs_res))(buf.addr[0] + DEFAULT_ICEOF) : \
-				(typeof(prs_res))(buf.addr[buf.segcount] + \
+	(buf->segcount == 1) ? (typeof(prs_res))(buf->addr[0] + DEFAULT_ICEOF) : \
+				(typeof(prs_res))(buf->addr[buf->segcount] + \
 						  DEFAULT_ICEOF)
 
 #define BUF_HDR_OFFSET (ODP_CACHE_LINE_SIZE_ROUNDUP(sizeof(odp_packet_hdr_t)) + ODP_CACHE_LINE_SIZE_ROUNDUP(sizeof(struct sg_priv)))
@@ -186,7 +171,7 @@ static inline void packet_init(pool_entry_t *pool ODP_UNUSED,
 			       size_t size)
 {
 	/* reset the annotation area */
-	memset(pkt_hdr->buf_hdr.addr[0], 0, pool->s.headroom);
+	memset(pkt_hdr->addr[0], 0, pool->s.headroom);
 
 	 /* Set metadata items that initialize to non-zero values */
 	pkt_hdr->l2_offset = ODP_PACKET_OFFSET_INVALID;
@@ -212,7 +197,7 @@ static inline void *packet_map(odp_packet_hdr_t *pkt_hdr,
 	if (offset > pkt_hdr->frame_len)
 		return NULL;
 
-	return buffer_map(&pkt_hdr->buf_hdr,
+	return buffer_map(pkt_hdr,
 			  pkt_hdr->headroom + offset, seglen,
 			  pkt_hdr->headroom + pkt_hdr->frame_len);
 }

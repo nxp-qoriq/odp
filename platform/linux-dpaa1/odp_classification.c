@@ -1152,7 +1152,7 @@ static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_portal *qm __always_unus
 	pkthdr = (odp_packet_hdr_t *)buf_hdr;
 	buf = odp_hdr_to_buf(buf_hdr);
 
-	assert(pkthdr->buf_hdr.addr[0] == ((void *)pkthdr + pool->s.buf_offset));
+	assert(pkthdr->addr[0] == ((void *)pkthdr + pool->s.buf_offset));
 
 	/* setup and receive ODP packet */
 	pkt = _odp_packet_from_buffer(buf);
