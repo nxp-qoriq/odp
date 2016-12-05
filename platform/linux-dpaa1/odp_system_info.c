@@ -243,7 +243,7 @@ static int clk_summary_arm(FILE *file, odp_system_info_t *sysinfo)
 
 	if (fgets(str, sizeof(str), file) != NULL) {
 		/* Read cpu current frequency in KHz */
-		sscanf(str, "%i", &sysinfo->cpu_hz);
+		sscanf(str, "%"SCNu64"", &sysinfo->cpu_hz);
 		/* Converting freq into Hz */
 		sysinfo->cpu_hz *= 1000;
 	}
@@ -385,5 +385,8 @@ int odp_sys_cache_line_size(void)
 
 int odp_cpu_count(void)
 {
-	return odp_global_data.system_info.cpu_count;
+	if (odp_global_data.system_info.cpu_count)
+		return odp_global_data.system_info.cpu_count;
+	else
+		return sysconf_cpu_count();
 }
