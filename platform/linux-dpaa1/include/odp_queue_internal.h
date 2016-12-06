@@ -220,7 +220,7 @@ static inline void __config_fd(struct qm_fd *fd,
 		fd->format = qm_fd_contig;
 		/* only PKTOUT queue requires physical address */
 		if (qentry->s.type == ODP_QUEUE_TYPE_PLAIN)
-			addr = __dma_mem_vtop(buf_hdr->addr[0]);
+			addr = buf_hdr->phy_addr;
 		else
 			addr = (intptr_t)buf_hdr;
 		fd->addr = addr;

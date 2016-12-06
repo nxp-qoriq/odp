@@ -117,6 +117,7 @@ odp_pool_create_bman(pool_entry_t *pool)
 			tmp->segsize = pool->s.seg_size;
 			tmp->handle.handle = odp_buffer_encode_handle(tmp);
 
+			tmp->phy_addr = __dma_mem_vtop(bm_addr);
 			tmp->addr[0] = bm_addr;
 		}
 		do {

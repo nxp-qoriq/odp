@@ -31,7 +31,7 @@ extern "C" {
 #include <odp/api/event.h>
 #include <odp/api/queue.h>
 #include <odp/api/packet.h>
-
+#include <odp/api/plat/sdk/usdpaa/usdpaa/dma_mem.h>
 
 #define ODP_BITSIZE(x) \
 	((x) <=     2 ?  1 : \
@@ -135,6 +135,7 @@ typedef struct odp_buffer_hdr_t {
 	uint8_t jumbo;
 
 	odp_pktio_t input;
+	dma_addr_t		*phy_addr;	/* physical address */
 	void                    *addr[ODP_BUFFER_MAX_SEG + 1]; /* block addrs */
 
 	void                    *uarea_addr; /* user area address */
