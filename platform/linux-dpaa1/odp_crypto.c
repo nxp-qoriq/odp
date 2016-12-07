@@ -2133,7 +2133,7 @@ int odp_crypto_operation(struct odp_crypto_op_params *params,
 	qm_fd_addr_set64(&fd, __dma_mem_vtop(sgp->sg));
 	fd._format2 = qm_fd_compound;
 	/* get input queue */
-	odp_queue_t inq = odp_queue_get_input(in_hdr->handle.handle);
+	odp_queue_t inq = in_hdr->inq;
 	if (inq != ODP_QUEUE_INVALID)
 		in_qentry = queue_to_qentry(inq);
 	if (!in_qentry)

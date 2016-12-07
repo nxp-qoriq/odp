@@ -776,9 +776,15 @@ void odp_packet_print(odp_packet_t pkt)
 
 int odp_packet_is_valid(odp_packet_t pkt)
 {
-	odp_buffer_hdr_t *buf = validate_buf((odp_buffer_t)pkt);
+	odp_packet_hdr_t *pkt_hdr;
 
-	return (buf != NULL && buf->type == ODP_EVENT_PACKET);
+	if (pkt == ODP_PACKET_INVALID)
+		return 0;
+	pkt_hdr = odp_packet_hdr(pkt);
+	/* TODO - need more checks here */
+	if (!pkt_hdr->addr[0])
+		return 0;
+	return true;
 }
 
 /*

@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -40,19 +41,12 @@ static inline odp_buffer_t odp_buffer_encode_handle(odp_buffer_hdr_t *hdr)
 
 static inline odp_buffer_t odp_hdr_to_buf(odp_buffer_hdr_t *hdr)
 {
-	return hdr->handle.handle;
+	return (odp_buffer_t)hdr;
 }
 
 static inline odp_buffer_hdr_t *odp_buf_to_hdr(odp_buffer_t buf)
 {
-	odp_buffer_bits_t	handle;
-	struct pool_entry_s	*pool;
-
-	handle.handle = buf;
-	pool = get_pool_entry(handle.pool_id);
-
-	return (odp_buffer_hdr_t *)(void *)
-		(pool->pool_mdata_addr + (handle.index * ODP_CACHE_LINE_SIZE));
+	return (odp_buffer_hdr_t *)buf;
 }
 
 static inline uint32_t odp_buffer_refcount(odp_buffer_hdr_t *buf)
@@ -79,31 +73,6 @@ static inline uint32_t odp_buffer_decr_refcount(odp_buffer_hdr_t *buf,
 	} else {
 		return tmp - val;
 	}
-}
-
-static inline odp_buffer_hdr_t *validate_buf(odp_buffer_t buf)
-{
-	odp_buffer_bits_t handle;
-	odp_buffer_hdr_t *buf_hdr;
-	handle.handle = buf;
-
-	/* For buffer handles, segment index must be 0 and pool id in range */
-	if (handle.seg != 0 || handle.pool_id >= ODP_CONFIG_POOLS)
-		return NULL;
-
-	pool_entry_t *pool =
-		odp_pool_to_entry(_odp_cast_scalar(odp_pool_t,
-						   handle.pool_id));
-
-	/* If pool not created, handle is invalid */
-	if (pool->s.pool_shm == ODP_SHM_INVALID)
-		return NULL;
-
-	buf_hdr = (odp_buffer_hdr_t *)(void *)
-		(pool->s.pool_mdata_addr +
-		 (handle.index * ODP_CACHE_LINE_SIZE));
-
-	return buf_hdr;
 }
 
 int odp_buffer_snprint(char *str, uint32_t n, odp_buffer_t buf);

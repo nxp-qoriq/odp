@@ -266,7 +266,7 @@ odp_event_t odp_schedule(odp_queue_t *out_queue, uint64_t wait)
 	qman_static_dequeue_del(sched_local.sdqcr);
 #endif
 	if (out_queue && (buf != ODP_BUFFER_INVALID))
-		*out_queue = odp_queue_get_input(buf);
+		*out_queue = ((odp_buffer_hdr_t *)buf)->inq;
 
 	return (odp_event_t)buf;
 }
@@ -281,7 +281,7 @@ int odp_schedule_multi(odp_queue_t *out_queue, uint64_t wait,
 	ret = fn_sch_recv_pkt(out_queue, wait, (odp_buffer_t *)ev, 1, MAX_DEQ);
 
 	if (out_queue && ((odp_buffer_t)ev[0] != ODP_BUFFER_INVALID))
-		*out_queue = odp_queue_get_input((odp_buffer_t)ev[0]);
+		*out_queue =  ((odp_buffer_hdr_t *)ev[0])->inq;
 
 	return ret;
 }

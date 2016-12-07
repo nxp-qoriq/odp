@@ -229,8 +229,6 @@ static inline void __config_fd(struct qm_fd *fd,
 	return;
 }
 
-odp_queue_t odp_queue_get_input(odp_buffer_t buf);
-
 void odp_queue_set_input(odp_buffer_t buf, odp_queue_t queue);
 
 int queue_init_rx_fq(struct qman_fq *fq, uint16_t channel);

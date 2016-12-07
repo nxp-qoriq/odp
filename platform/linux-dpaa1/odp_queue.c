@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -231,7 +232,7 @@ static int raw_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 	fd.addr = (uintptr_t)buf_hdr;
 	fd.offset = FD_DEFAULT_OFFSET;
 	fd.length20 = buf_hdr->size;
-	inq = odp_queue_get_input(buf_hdr->handle.handle);
+	inq = buf_hdr->inq;
 	if (inq != ODP_QUEUE_INVALID) {
 		in_qentry = queue_to_qentry(inq);
 	}
@@ -259,10 +260,10 @@ static int pkt_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 	pool_id = buf_hdr->pool_hdl;
 	pool_entry = odp_pool_to_entry(pool_id);
 
-	pkt = _odp_packet_from_buffer(buf_hdr->handle.handle);
+	pkt = (odp_packet_t)buf_hdr;
 	len = odp_packet_len(pkt);
 	off = odp_packet_l2_offset(pkt) + odp_packet_headroom(pkt);
-	inq = odp_queue_get_input(buf_hdr->handle.handle);
+	inq = buf_hdr->inq;
 	if (inq != ODP_QUEUE_INVALID)
 		in_qentry = queue_to_qentry(inq);
 
@@ -341,12 +342,12 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_portal *qm __always_unused,
 		pkthdr->headroom = pool->s.headroom;
 		pkthdr->tailroom = pool->s.tailroom;
 
-		pkt = _odp_packet_from_buffer(buf_hdr->handle.handle);
+		pkt = (odp_packet_t)buf_hdr;
 		_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
 
 		return odp_sched_collect_pkt(pkthdr, pkt, dqrr, qentry);
 	} else {
-		odp_sched_collect_buf(buf_hdr->handle.handle, dqrr, qentry);
+		odp_sched_collect_buf((odp_buffer_t)buf_hdr, dqrr, qentry);
 		/* save sequence number when input queue is ORDERED */
 		if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ORDERED)
 			buf_hdr->orp.seqnum = dqrr->seqnum;
@@ -727,7 +728,7 @@ int odp_queue_deq_multi(odp_queue_t handle, odp_event_t ev[], int num)
 	ret = queue->s.dequeue_multi(queue, buf_hdr, num);
 
 	for (i = 0; i < ret; i++) {
-		buf = buf_hdr[i]->handle.handle;
+		buf = (odp_buffer_t)buf_hdr[i];
 		ev[i] = odp_buffer_to_event(buf);
 	}
 
@@ -748,7 +749,7 @@ odp_event_t odp_queue_deq(odp_queue_t handle)
 	buf_hdr = queue->s.dequeue(queue);
 
 	if (buf_hdr)
-		return (odp_event_t)buf_hdr->handle.handle;
+		return (odp_event_t)buf_hdr;
 
 	return ODP_EVENT_INVALID;
 }
@@ -768,11 +769,6 @@ void queue_unlock(queue_entry_t *queue)
 void odp_queue_param_init(odp_queue_param_t *params)
 {
         memset(params, 0, sizeof(odp_queue_param_t));
-}
-
-inline odp_queue_t odp_queue_get_input(odp_buffer_t buf)
-{
-	return odp_buf_to_hdr(buf)->inq;
 }
 
 inline void odp_queue_set_input(odp_buffer_t buf, odp_queue_t queue)
