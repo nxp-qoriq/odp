@@ -26,22 +26,22 @@ extern "C" {
 /*
  * Maximum number of queues
  */
-#define ODP_CONFIG_QUEUES 1024
+#define ODP_CONFIG_QUEUES	64
 
 /*
  * Number of ordered locks per queue
  */
-#define ODP_CONFIG_MAX_ORDERED_LOCKS_PER_QUEUE 2
+#define ODP_CONFIG_MAX_ORDERED_LOCKS_PER_QUEUE 0
 
 /*
  * Number of scheduling priorities
  */
-#define ODP_CONFIG_SCHED_PRIOS 8
+#define ODP_CONFIG_SCHED_PRIOS 2
 
 /*
  * Number of scheduling groups
  */
-#define ODP_CONFIG_SCHED_GRPS 256
+#define ODP_CONFIG_SCHED_GRPS 5
 
 /*
  * Maximum number of packet IO resources

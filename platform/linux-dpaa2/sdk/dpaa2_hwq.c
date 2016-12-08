@@ -165,6 +165,7 @@ int dpaa2_hwq_probe(struct dpaa2_dev *dev,
 	frame_queue->token = dev_priv->token;
 	frame_queue->fqid = rx_attr.fqid;
 
+	dprc_objects.dpci_count++;
 	DPAA2_INFO(FRAMEQ, "Successfully initialized the Frame Queue");
 
 	return DPAA2_SUCCESS;
@@ -215,6 +216,7 @@ int dpaa2_hwq_close_all(void)
 		}
 	}
 
+	dprc_objects.dpci_count = 0;
 	DPAA2_INFO(CMD, "Successfully closed the device");
 	return DPAA2_SUCCESS;
 }
