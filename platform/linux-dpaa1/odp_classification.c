@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -74,9 +75,9 @@ static struct odp_field_info odp_fields[ODP_PMR_MAX_FIELDS];
 static int fm_modify_cc_miss_act(t_Handle cc_src_handle, t_Handle cc_dst_handle,
 				 int next_act, uint32_t fqid);
 
-static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_portal *qm __always_unused,
-					 struct qman_fq *fq,
-					 const struct qm_dqrr_entry *dqrr);
+static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_fq *fq,
+					 const struct qm_dqrr_entry *dqrr,
+					 uint64_t *user_context);
 static inline void odp_init_fields(void)
 {
 	memset(odp_fields, 0, sizeof(odp_fields));
@@ -1062,7 +1063,7 @@ odp_cos_t odp_cls_cos_create(const char *name, odp_cls_cos_param_t *param)
 		queue = queue_to_qentry(param->queue);
 
 	if (queue && queue->s.type != ODP_QUEUE_TYPE_PLAIN)
-		queue->s.fq.cb.dqrr = dqrr_cb_cos;
+		queue->s.fq.cb.dqrr_ctx = dqrr_cb_cos;
 
 	if (param->pool == ODP_POOL_INVALID)
 		pool = NULL;
@@ -1096,9 +1097,9 @@ odp_cos_t odp_cls_cos_create(const char *name, odp_cls_cos_param_t *param)
 	return ODP_COS_INVALID;
 }
 
-static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_portal *qm __always_unused,
-					 struct qman_fq *fq,
-					 const struct qm_dqrr_entry *dqrr)
+static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_fq *fq,
+					 const struct qm_dqrr_entry *dqrr,
+					 uint64_t *user_context)
 {
 	const struct qm_fd *fd;
 	struct qm_sg_entry *sgt;
@@ -1156,6 +1157,7 @@ static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_portal *qm __always_unus
 
 	/* setup and receive ODP packet */
 	pkt = _odp_packet_from_buffer(buf);
+	*user_context = pkt;
 	buf_set_input_queue(buf_hdr, queue_from_id(get_qid(qentry)));
 	if (qentry->s.type == ODP_QUEUE_TYPE_PLAIN) {
 		qentry->s.buf_hdr = buf_hdr;
@@ -1167,7 +1169,14 @@ static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_portal *qm __always_unus
 	pkthdr->tailroom = pool->s.tailroom;
 	_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
 
-	return odp_sched_collect_pkt(pkthdr, pkt, dqrr, qentry);
+	if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ORDERED) {
+		pkthdr->orp.seqnum = dqrr->seqnum;
+	} else if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC) {
+		pkthdr->dqrr = dqrr;
+		return qman_cb_dqrr_defer;
+	}
+
+	return qman_cb_dqrr_consume;
 }
 
 int odp_cos_queue_set(odp_cos_t cos_id, odp_queue_t queue_id)
@@ -1186,7 +1195,7 @@ int odp_cos_queue_set(odp_cos_t cos_id, odp_queue_t queue_id)
 	cos_entry->s.queue = queue_id;
 	cos_queue = queue_to_qentry(cos_entry->s.queue);
 	if (cos_queue->s.type != ODP_QUEUE_TYPE_PLAIN)
-		cos_queue->s.fq.cb.dqrr = dqrr_cb_cos;
+		cos_queue->s.fq.cb.dqrr_ctx = dqrr_cb_cos;
 	odp_spinlock_unlock(&cos_entry->s.lock);
 
 	return 0;

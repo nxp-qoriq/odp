@@ -1001,6 +1001,7 @@ static inline unsigned int __poll_portal_fast(struct qman_portal *p,
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 	struct qm_dqrr_entry *shadow;
 #endif
+	uint64_t user_context;
 loop:
 	qm_dqrr_pvb_update(&p->p);
 	dq = qm_dqrr_current(&p->p);
@@ -1033,7 +1034,7 @@ loop:
 		/* this is duplicated from the SDQCR code, but we have stuff to
 		 * do before *and* after this callback, and we don't want
 		 * multiple if()s in the critical path (SDQCR). */
-		res = fq->cb.dqrr(p, fq, dq);
+		res = fq->cb.dqrr_ctx(fq, dq, &user_context);
 		if (res == qman_cb_dqrr_stop)
 			goto done;
 		/* Check for VDQCR completion */
@@ -1047,7 +1048,7 @@ loop:
 		fq = (void *)(uintptr_t)dq->contextB;
 #endif
 		/* Now let the callback do its stuff */
-		res = fq->cb.dqrr(p, fq, dq);
+		res = fq->cb.dqrr_ctx(fq, dq, &user_context);
 
 		/* The callback can request that we exit without consuming this
 		 * entry nor advancing; */
@@ -1258,6 +1259,51 @@ void qman_dqrr_consume(struct qman_fq *fq,
 	put_poll_portal();
 }
 EXPORT_SYMBOL(qman_dqrr_consume);
+
+uint64_t qman_poll_odp_dqrr(void)
+{
+	struct qman_portal *p = get_poll_portal();
+	const struct qm_dqrr_entry *dq;
+	struct qman_fq *fq;
+	enum qman_cb_dqrr_result res;
+	uint64_t user_context;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	struct qm_dqrr_entry *shadow;
+#endif
+	qm_dqrr_pvb_update(&p->p);
+	dq = qm_dqrr_current(&p->p);
+	if (!dq)
+		return NULL;
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	shadow = &p->shadow_dqrr[DQRR_PTR2IDX(dq)];
+	*shadow = *dq;
+	dq = shadow;
+	shadow->fqid = be32_to_cpu(shadow->fqid);
+	shadow->contextB = be32_to_cpu(shadow->contextB);
+	shadow->seqnum = be16_to_cpu(shadow->seqnum);
+	hw_fd_to_cpu(&shadow->fd);
+#endif
+
+/* TODO - Why FQ Lookup? */
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+		fq = get_fq_table_entry(dq->contextB);
+#else
+		fq = (void *)(uintptr_t)dq->contextB;
+#endif
+
+	/* Now let the callback do its stuff */
+	res = fq->cb.dqrr_ctx(fq, dq, &user_context);
+
+	/* Defer just means "skip it, I'll consume it myself later on" */
+	if (res != qman_cb_dqrr_defer)
+		qm_dqrr_cdc_consume_1ptr(&p->p, dq, (res == qman_cb_dqrr_park));
+
+	/* Move forward */
+	qm_dqrr_next(&p->p);
+
+	return user_context;
+}
 
 int qman_poll_dqrr(unsigned int limit)
 {

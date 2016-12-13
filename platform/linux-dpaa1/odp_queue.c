@@ -174,8 +174,7 @@ inline int queue_enqueue_tx_fq(struct qman_fq *tx_fq, struct qm_fd *fd,
 
 	if (in_qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC) {
 		/* input queue is ATOMIC - acknowledge DQRR consumption */
-		const struct qm_dqrr_entry      *dqrr =
-				sched_local.buf_ctx[buf_hdr->sched_index];
+		const struct qm_dqrr_entry      *dqrr = buf_hdr->dqrr;
 retry:
 		ret = qman_enqueue(tx_fq, fd, QMAN_ENQUEUE_FLAG_DCA |
 			QMAN_ENQUEUE_FLAG_DCA_PTR((uintptr_t)dqrr));
@@ -277,9 +276,9 @@ static int pkt_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 	return ret;
 }
 
-static enum qman_cb_dqrr_result dqrr_cb(struct qman_portal *qm __always_unused,
-					struct qman_fq *fq,
-					const struct qm_dqrr_entry *dqrr)
+static enum qman_cb_dqrr_result dqrr_cb(struct qman_fq *fq,
+					const struct qm_dqrr_entry *dqrr,
+					uint64_t *user_context)
 {
 	const struct qm_fd *fd = &dqrr->fd;
 	queue_entry_t *qentry = QENTRY_FROM_FQ(fq);
@@ -293,6 +292,7 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_portal *qm __always_unused,
 
 	buf_hdr = (odp_buffer_hdr_t *)(uintptr_t)(fd->addr);
 	buf_set_input_queue(buf_hdr, queue_from_id(get_qid(qentry)));
+	*user_context = buf_hdr;
 
 	if (qentry->s.type == ODP_QUEUE_TYPE_PLAIN) {
 		qentry->s.buf_hdr = buf_hdr;
@@ -302,7 +302,6 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_portal *qm __always_unused,
 	if (buf_hdr->type == ODP_EVENT_PACKET) {
 		pool_entry_t *pool;
 		odp_packet_hdr_t *pkthdr;
-		odp_packet_t pkt;
 		size_t off;
 		struct qm_sg_entry *sgt;
 		void *fd_addr;
@@ -342,18 +341,22 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_portal *qm __always_unused,
 		pkthdr->headroom = pool->s.headroom;
 		pkthdr->tailroom = pool->s.tailroom;
 
-		pkt = (odp_packet_t)buf_hdr;
 		_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
 
-		return odp_sched_collect_pkt(pkthdr, pkt, dqrr, qentry);
+		if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC) {
+			pkthdr->dqrr = dqrr;
+			return qman_cb_dqrr_defer;
+		}
+		return qman_cb_dqrr_consume;
 	} else {
-		odp_sched_collect_buf((odp_buffer_t)buf_hdr, dqrr, qentry);
 		/* save sequence number when input queue is ORDERED */
 		if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ORDERED)
 			buf_hdr->orp.seqnum = dqrr->seqnum;
 
-		if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC)
+		if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC) {
+			buf_hdr->dqrr = dqrr;
 			return qman_cb_dqrr_defer;
+		}
 	}
 
 
@@ -538,7 +541,7 @@ odp_queue_t odp_queue_create(const char *name, const odp_queue_param_t *param)
 		channel = pchannel_vdq;
 	}
 
-	queue->s.fq.cb.dqrr = dqrr_cb;
+	queue->s.fq.cb.dqrr_ctx = dqrr_cb;
 	queue->s.fq.cb.ern = ern_cb;
 	ret = queue_init_rx_fq(&queue->s.fq, channel);
 	if (ret)

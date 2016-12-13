@@ -254,13 +254,46 @@ static inline uint64_t odp_schedule_dummy(odp_queue_t *out_queue, uint64_t wait,
 odp_event_t odp_schedule(odp_queue_t *out_queue, uint64_t wait)
 {
 	odp_buffer_t buf;
+	odp_time_t next, wtime;
+	int first = 1;
+	int ret;
+#ifndef ODP_SCHED_FAIR
+	static __thread int sdqcr_enable;
 
-	buf = ODP_BUFFER_INVALID;
-#ifdef ODP_SCHED_FAIR
+	if (!sdqcr_enable) {
+		qman_static_dequeue_add(sched_local.sdqcr);
+		sdqcr_enable = 1;
+	}
+
+#else
 	qman_static_dequeue_add(sched_local.sdqcr);
 #endif
 
-	fn_sch_recv_pkt(out_queue, wait, &buf, 1, MAX_DEQ);
+	while (1) {
+		buf = qman_poll_odp_dqrr();
+
+		if (buf)
+			break;
+
+		if (wait == ODP_SCHED_WAIT)
+			continue;
+
+		/* If buffer was not returned by QBMAN set it as invalid */
+		buf = ODP_BUFFER_INVALID;
+
+		if (wait == ODP_SCHED_NO_WAIT)
+			break;
+
+		if (first) {
+			wtime = odp_time_local_from_ns(wait);
+			next = odp_time_sum(odp_time_local(), wtime);
+			first = 0;
+			continue;
+		}
+
+		if (odp_time_cmp(next, odp_time_local()) < 0)
+			break;
+	}
 
 #ifdef ODP_SCHED_FAIR
 	qman_static_dequeue_del(sched_local.sdqcr);
@@ -276,12 +309,10 @@ int odp_schedule_multi(odp_queue_t *out_queue, uint64_t wait,
 {
 	int ret = 0;
 
-	ev[0] = (odp_event_t)ODP_BUFFER_INVALID;
+	ev[0] = odp_schedule(out_queue, wait);
 
-	ret = fn_sch_recv_pkt(out_queue, wait, (odp_buffer_t *)ev, 1, MAX_DEQ);
-
-	if (out_queue && ((odp_buffer_t)ev[0] != ODP_BUFFER_INVALID))
-		*out_queue =  ((odp_buffer_hdr_t *)ev[0])->inq;
+	if ((odp_buffer_t)ev[0] != ODP_BUFFER_INVALID)
+		ret = 1;
 
 	return ret;
 }

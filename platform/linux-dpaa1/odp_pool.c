@@ -603,7 +603,7 @@ void odp_buffer_free(odp_buffer_t buf)
 		queue_entry_t *qentry = queue_to_qentry(inq);
 		if (qentry->s.type != ODP_QUEUE_TYPE_PLAIN &&
 		    queue_sched_atomic(inq)) {
-			dqrr = sched_local.buf_ctx[buf_hdr->sched_index];
+			dqrr = buf_hdr->dqrr;
 			qman_dca((struct qm_dqrr_entry *)dqrr, 0);
 		}
 

@@ -1678,6 +1678,9 @@ enum qman_cb_dqrr_result {
 	/* Like qman_cb_dqrr_stop, but consumes the current entry. */
 	qman_cb_dqrr_consume_stop
 };
+typedef enum qman_cb_dqrr_result (*qman_cb_dqrr_ctx)(struct qman_fq *fq,
+					const struct qm_dqrr_entry *dqrr,
+					uint64_t *user_context);
 typedef enum qman_cb_dqrr_result (*qman_cb_dqrr)(struct qman_portal *qm,
 					struct qman_fq *fq,
 					const struct qm_dqrr_entry *dqrr);
@@ -1735,6 +1738,7 @@ enum qman_fq_state {
  */
 
 struct qman_fq_cb {
+	qman_cb_dqrr_ctx dqrr_ctx;      /* for dequeued frames */
 	qman_cb_dqrr dqrr;      /* for dequeued frames */
 	qman_cb_mr ern;         /* for s/w ERNs */
 	qman_cb_mr fqs;         /* frame-queue state changes*/

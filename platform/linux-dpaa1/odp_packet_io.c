@@ -362,26 +362,23 @@ int odp_pktio_init_global(void)
 
 /* DQRR callback when pktio works in queue mode - static deq */
 /* Handles PKTIN queues & PACKET buffer types */
-enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_portal *qm __always_unused,
-					 struct qman_fq *fq,
-					 const struct qm_dqrr_entry *dqrr)
+enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_fq *fq,
+					 const struct qm_dqrr_entry *dqrr,
+					 uint64_t *user_context)
 {
-	const struct qm_fd *fd;
-	struct qm_sg_entry *sgt;
+	const struct qm_fd *fd = &dqrr->fd;
 	void *fd_addr;
-	odp_buffer_t buf;
 	odp_packet_hdr_t *pkthdr;
-	odp_packet_t pkt;
-	size_t off;
 
-	fd = &dqrr->fd;
 	queue_entry_t *qentry = QENTRY_FROM_FQ(fq);
 
 	/* get packet header from frame start address */
 	fd_addr = __dma_mem_ptov(qm_fd_addr(fd));
 	pkthdr = odp_pkt_hdr_from_addr(fd_addr, NULL);
 	if (fd->format == qm_fd_sg) {
+		struct qm_sg_entry *sgt;
 		unsigned	sgcnt;
+		size_t off;
 
 		off = fd->offset;
 		sgt = (struct qm_sg_entry *)(fd_addr + fd->offset);
@@ -409,18 +406,30 @@ enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_portal *qm __always_unused,
 	pkthdr->headroom = ODP_CONFIG_PACKET_HEADROOM;
 	pkthdr->tailroom = ODP_CONFIG_PACKET_TAILROOM;
 	pkthdr->input = qentry->s.pktin;
-	pkthdr->inq = queue_from_id(get_qid(qentry));
 	pkthdr->frame_len = fd->length20;
+	pkthdr->inq = queue_from_id(get_qid(qentry));
+	*user_context = (uint64_t)pkthdr;
 
-	/* Collect the ODP packet */
-	pkt = _odp_packet_from_pkt_hdr(pkthdr);
-	 return odp_sched_collect_pkt(pkthdr, pkt, dqrr, qentry);
+	/* save sequence number when input queue is ORDERED */
+	if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ORDERED) {
+		pkthdr->orp.seqnum = dqrr->seqnum;
+		/*buf_hdr->orp.flags = 0;*/
+	}
+	/* save whole dqrr entry as it is acked on next enqueue
+	   dqrr entry is stored outside the buffer because it is
+	   released by the port before DCA */
+	else if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC) {
+		pkthdr->dqrr = dqrr;
+		return qman_cb_dqrr_defer;
+	}
+
+	return qman_cb_dqrr_consume;
 }
 
 static enum qman_cb_dqrr_result
-dqrr_cb_poll_pktin(struct qman_portal *qm __always_unused,
-		struct qman_fq *fq,
-		const struct qm_dqrr_entry *dqrr)
+dqrr_cb_poll_pktin(struct qman_fq *fq,
+		const struct qm_dqrr_entry *dqrr,
+		uint64_t *user_context)
 {
 	const struct qm_fd *fd;
 	struct qm_sg_entry *sgt;
@@ -491,6 +500,7 @@ dqrr_cb_poll_pktin(struct qman_portal *qm __always_unused,
 	odp_pktio_set_input(pkthdr, pktio_entry->s.id);
 	odp_queue_set_input(_odp_packet_to_buffer(pkt), ODP_QUEUE_INVALID);
 	_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
+	*user_context = pkt;
 
 	if (pktio_entry->s.pkt_table) {
 		*(pktio_entry->s.pkt_table) = pkt;
@@ -501,9 +511,9 @@ dqrr_cb_poll_pktin(struct qman_portal *qm __always_unused,
 
 /* DQRR callback when pktio works in direct receive mode - volatile deq */
 static enum qman_cb_dqrr_result
-dqrr_cb_im(struct qman_portal *qm __always_unused,
-		struct qman_fq *fq,
-		const struct qm_dqrr_entry *dqrr)
+dqrr_cb_im(struct qman_fq *fq,
+		const struct qm_dqrr_entry *dqrr,
+		uint64_t *user_context)
 {
 	const struct qm_fd *fd;
 	struct qm_sg_entry *sgt;
@@ -559,6 +569,7 @@ dqrr_cb_im(struct qman_portal *qm __always_unused,
 	odp_pktio_set_input(pkthdr, pktio_entry->id);
 	buf_set_input_queue(buf_hdr, ODP_QUEUE_INVALID);
 	_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
+	*user_context = pkt;
 
 	if (pktio_entry->pkt_table) {
 		*(pktio_entry->pkt_table) = pkt;
@@ -812,7 +823,7 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 		qentry->s.pktin = pktio;
 		if (qentry->s.type != ODP_QUEUE_TYPE_PLAIN) {
 			channel = get_next_rx_channel();
-			qentry->s.fq.cb.dqrr = dqrr_cb_qm;
+			qentry->s.fq.cb.dqrr_ctx = dqrr_cb_qm;
 			qentry->s.fq.cb.ern = ern_cb;
 		} else {
 			qentry->s.enqueue = pktin_enqueue;
@@ -820,7 +831,7 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 			qentry->s.enqueue_multi = pktin_enq_multi;
 			qentry->s.dequeue_multi = pktin_deq_multi;
 			channel = pchannel_vdq;
-			qentry->s.fq.cb.dqrr = dqrr_cb_poll_pktin;
+			qentry->s.fq.cb.dqrr_ctx = dqrr_cb_poll_pktin;
 			qentry->s.fq.cb.ern = ern_cb;
 		}
 		/* create HW Rx default queue */
@@ -878,7 +889,7 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 			queue_lock(qentry);
 			qentry->s.pktin = pktio;
 			channel = get_next_rx_channel();
-			qentry->s.fq.cb.dqrr = dqrr_cb_qm;
+			qentry->s.fq.cb.dqrr_ctx = dqrr_cb_qm;
 			qentry->s.fq.cb.ern = ern_cb;
 
 			/* create HW Rx PCD queue */
@@ -1339,7 +1350,7 @@ int odp_pktin_recv(odp_pktin_queue_t queue, odp_packet_t packets[], int num)
 		if (ret < 0)
 			return ret;
 
-		pktio_entry->s.rx_fq.cb.dqrr = dqrr_cb_im;
+		pktio_entry->s.rx_fq.cb.dqrr_ctx = dqrr_cb_im;
 		pktio_entry->s.rx_fq.cb.ern = ern_cb;
 	}
 
@@ -1521,7 +1532,7 @@ odp_buffer_hdr_t *pktin_dequeue(queue_entry_t *qentry)
 	lock_entry(pktio_entry);
 	pktio_entry->s.pkt_table = &pkt;
 	qman_static_dequeue_add(sdqcr_vdq);
-	assert(qentry->s.fq.cb.dqrr == dqrr_cb_poll_pktin);
+	assert(qentry->s.fq.cb.dqrr_ctx == dqrr_cb_poll_pktin);
 	do_volatile_deq(&qentry->s.fq, 1, true);
 	qman_static_dequeue_del(sdqcr_vdq);
 	pktio_entry->s.pkt_table = NULL;

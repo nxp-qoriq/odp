@@ -110,6 +110,7 @@ struct odp_buffer_hdr_t;
 typedef struct odp_buffer_hdr_t {
 	odp_buffer_bits_t        handle;     /* handle */
 	uint32_t                sched_index; /* sched_local array index */
+	void			*dqrr; /* To store DQRR in case of atomic queues (DCA) */
 	odp_queue_t              inq;       /* last dequeue from */
 	odp_pool_t               pool_hdl;   /* buffer pool handle */
 	int8_t                   type;       /* buffer type */

@@ -99,9 +99,9 @@ typedef struct {
 
 netcfg_port_info  *pktio_get_port_info(struct fman_if *__if);
 
-enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_portal *qm __always_unused,
-				    struct qman_fq *fq,
-				    const struct qm_dqrr_entry *dqrr);
+enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_fq *fq,
+					 const struct qm_dqrr_entry *dqrr,
+					 uint64_t *user_context);
 
 static inline int pktio_to_id(odp_pktio_t pktio)
 {
