@@ -66,7 +66,7 @@
 /**
  * Default number of flows
  */
-#define ODP_MAX_FLOW_COUNT		100000
+#define ODP_MAX_FLOW_COUNT		0x100000
 
 /**
  * Default Hash bucket number
@@ -118,6 +118,7 @@ typedef struct {
  */
 typedef struct {
 	odp_spinlock_t		lock;	/**< Bucket lock*/
+	uint32_t		depth;	/**< Depth of bucket*/
 	odp_flow_entry_t	*next;	/**< Pointer to first flow entry in bucket*/
 } flow_bucket_t;
 
@@ -256,6 +257,7 @@ static inline void odp_route_flow_insert_in_bucket(odp_flow_entry_t *flow,
 		flow->next = head;
 		bkt->next = flow;
 	}
+	bkt->depth++;
 	UNLOCK(&bkt->lock);
 }
 
@@ -302,6 +304,10 @@ void dump_fwd_db_entry(fwd_db_entry_t *entry);
  */
 void dump_fwd_db(void);
 
+/**
+ * Get the maximum bucket depth in the system
+ */
+uint32_t get_max_bucket_depth(void);
 
 /**
  * Check IPv4 address against a range/subnet

@@ -206,6 +206,21 @@ void dump_fwd_db(void)
 		dump_fwd_db_entry(entry);
 }
 
+uint32_t get_max_bucket_depth(void)
+{
+	flow_bucket_t *bucket;
+	uint32_t i, max_depth = 0;
+
+	/* Get the maximum bucket depth */
+	for (i = 0; i < bucket_count; i++) {
+		bucket = &flow_table[i];
+		max_depth = max_depth > bucket->depth ?
+			max_depth : bucket->depth;
+	}
+
+	return max_depth;
+}
+
 void odp_init_routing_table(void)
 {
 	odp_shm_t		hash_shm;
