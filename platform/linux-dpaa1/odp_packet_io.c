@@ -284,7 +284,7 @@ void odp_pktio_term_local(void)
 int odp_pktio_init_global(void)
 {
 	pktio_entry_t *pktio_entry;
-	int id, i, ret;
+	int id, i, j, ret;
 	struct fm_eth_port_cfg *p_cfg;
 	odp_shm_t shm;
 	struct fman_if_ic_params icp;
@@ -312,6 +312,7 @@ int odp_pktio_init_global(void)
 		odp_spinlock_init(&pktio_entry->s.lock);
 	}
 
+	printf("\nPort info\n---------\n");
 	for (i = 0; i < netcfg->num_ethports; i++) {
 		p_cfg = &netcfg->port_cfg[i];
 
@@ -341,6 +342,19 @@ int odp_pktio_init_global(void)
 		pktio_tbl->port_info[i].first_fqid = get_pcd_start_fqid(p_cfg);
 		pktio_tbl->port_info[i].default_fqid = p_cfg->rx_def;
 		pktio_tbl->port_info[i].count = get_pcd_count(p_cfg);
+
+		/* Print the MAC address */
+		if (p_cfg->fman_if->mac_type == fman_mac_1g ||
+			p_cfg->fman_if->mac_type == fman_mac_10g) {
+			printf("interface fm%d-mac%d macaddr::",
+				p_cfg->fman_if->fman_idx, p_cfg->fman_if->mac_idx);
+			for (j = 0; j < ETH_ALEN; j++) {
+				if (j != (ETH_ALEN - 1))
+					printf("%02x:", p_cfg->fman_if->mac_addr.ether_addr_octet[j]);
+				else
+					printf("%02x\n", p_cfg->fman_if->mac_addr.ether_addr_octet[j]);
+			}
+		}
 	}
 
 	return 0;
