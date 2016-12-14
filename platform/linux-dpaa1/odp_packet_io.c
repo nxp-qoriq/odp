@@ -367,6 +367,11 @@ enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_fq *fq,
 	/* get packet header from frame start address */
 	fd_addr = __dma_mem_ptov(qm_fd_addr(fd));
 	pkthdr = odp_pkt_hdr_from_addr(fd_addr, NULL);
+
+	/* Prefetch annotation and data */
+	odp_prefetch(pkthdr->addr[0]);
+	odp_prefetch(pkthdr->addr[0] + ODP_CONFIG_PACKET_HEADROOM);
+
 	if (fd->format == qm_fd_sg) {
 		struct qm_sg_entry *sgt;
 		unsigned	sgcnt;

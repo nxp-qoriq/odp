@@ -79,10 +79,15 @@ extern "C" {
  * locality 0..3 (0: dont leave to cache, 3: leave on all cache levels)
  */
 
+#if defined(__aarch64__)
 /**
  * Cache prefetch address
  */
+#define odp_prefetch(x) \
+	{ asm volatile ("PRFM PLDL1KEEP, [%0]" : : "r" (x)); }
+#else
 #define odp_prefetch(x)         __builtin_prefetch((x), 0, 3)
+#endif
 
 /**
  * Cache prefetch address for storing
