@@ -559,6 +559,7 @@ odp_packet_t odpfsl_packet_from_addr(odp_pool_t pkt_pool, void *addr)
 	uint8_t *aligned_addr;
 	uint8_t *pool_end_addr;
 	uint32_t aligned_buffer;
+	struct dpaa2_mbuf *mbuf;
 
 	if (pkt_pool == ODP_POOL_INVALID || !addr)
 		return ODP_PACKET_INVALID;
@@ -580,6 +581,12 @@ odp_packet_t odpfsl_packet_from_addr(odp_pool_t pkt_pool, void *addr)
 				bp_list->buf_pool[0].buf_size);
 	aligned_addr = (uint8_t *)h_pool_mem + (aligned_buffer * \
 					bp_list->buf_pool[0].buf_size);
+	mbuf = (struct dpaa2_mbuf *)aligned_addr;
+	mbuf->head = (uint8_t *)aligned_addr +
+			bp_list->buf_pool[0].meta_data_size +
+			dpaa2_mbuf_sw_annotation + DPAA2_MBUF_HW_ANNOTATION;
+	mbuf->hw_annot = (uint64_t)(mbuf->head - DPAA2_MBUF_HW_ANNOTATION);
+	mbuf->next_sg = NULL;
 
 	return (odp_packet_t)aligned_addr;
 }
