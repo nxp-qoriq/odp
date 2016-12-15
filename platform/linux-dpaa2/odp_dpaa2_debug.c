@@ -37,8 +37,9 @@
 
 #define BUFLEN 64
 #define DEFAULT_PLAT_DEBUG_PORT 10000
-#define MAXLENGTH 1024
+#define MAXLENGTH 10000
 #define FAILURE (uint32_t)(-1)
+char pr_buf[MAXLENGTH];
 
 static inline  struct dpaa2_dev *get_dpaa2_dev(char *dev_name)
 {
@@ -94,11 +95,9 @@ static void get_dpni_stats(char *dev_name)
 	int32_t  retcode = -1;
 	int nbytes;
 	union dpni_statistics value;
-	char buf[MAXLENGTH];
-	char *str = buf;
+	char *str = pr_buf;
 	uint8_t page0 = 0, page1 = 1, page2 = 2;
 
-	memset(buf, 0, sizeof(buf));
 	memset(&value, 0, sizeof(union dpni_statistics));
 
 	dev_priv = get_dev_priv(dev_name);
@@ -174,12 +173,13 @@ static void get_dpni_stats(char *dev_name)
 			 value.page_2.ingress_discarded_frames);
 	str = str + nbytes;
 
+	/* Ingress frames discarded due to errors */
+	nbytes = sprintf(str, "\t\t\tTotal Ingress No Buffer discarded\t\t\t: %lu\n",
+			 value.page_2.ingress_nobuffer_discards);
+	str = str + nbytes;
 	/* Total Egress frames discarded due to errors */
 	nbytes = sprintf(str, "\t\t\tTotal Egress Errored Frames discarded\t\t\t: %lu\n",
 			 value.page_2.egress_discarded_frames);
-	str = buf;
-	printf("%s\n", str);
-
 	return;
 error:
 	ODP_ERR("DPNI STATS: Error Code = %d\n", retcode);
@@ -221,7 +221,6 @@ static void event_handler(void *msg)
 {
 	ipc_msg_t *event_msg = (ipc_msg_t *)msg;
 	char name[BUFLEN];
-	char pr_buf[MAXLENGTH];
 	char *str = pr_buf;
 
 	memset(pr_buf, 0, sizeof(pr_buf));
@@ -605,7 +604,7 @@ static void event_handler(void *msg)
 			struct dpaa2_dev *dev;
 			int i = 0;
 			int32_t num_tx_vqs, num_rx_vqs;
-			int nbytes = sprintf(str, "%s:", name);
+			int nbytes = 0;
 
 			dev = get_dpaa2_dev(name);
 
@@ -616,6 +615,7 @@ static void event_handler(void *msg)
 
 			num_tx_vqs = dpaa2_dev_get_max_tx_vq(dev);
 			num_rx_vqs = dpaa2_dev_get_max_rx_vq(dev);
+			nbytes = sprintf(str, "%s: Rx FQs= %d, Tx FQs= %d\n", name, num_rx_vqs, num_tx_vqs);
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
@@ -738,11 +738,12 @@ static void event_handler(void *msg)
 					eth_vq = (struct dpaa2_vq *)(dev->rx_vq[i]);
 					fqid = eth_vq->fqid;
 					if (fqid > 0) {
-						str = str + nbytes;
-						qbman_fq_query(s, fqid, &state);
-						schd_st = qbman_fq_state_schedstate(&state);
-						nbytes = sprintf(str, "\t\t\tFQ State\t\t: %u\t"
+						if (0 == qbman_fq_query_state(s, fqid, &state)) {
+							str = str + nbytes;
+							schd_st = qbman_fq_state_schedstate(&state);
+							nbytes = sprintf(str, "\t\t\tFQ State\t\t: %u\t"
 								"for RX FQID: %u\n", schd_st, fqid);
+						}
 					}
 				}
 
@@ -750,11 +751,12 @@ static void event_handler(void *msg)
 					eth_vq = (struct dpaa2_vq *)(dev->tx_vq[i]);
 					fqid = eth_vq->fqid;
 					if (fqid > 0) {
-						str = str + nbytes;
-						qbman_fq_query(s, fqid, &state);
-						schd_st = qbman_fq_state_schedstate(&state);
-						nbytes = sprintf(str, "\t\t\tFQ State\t\t: %u\t"
+						if (0 == qbman_fq_query_state(s, fqid, &state)) {
+							str = str + nbytes;
+							schd_st = qbman_fq_state_schedstate(&state);
+							nbytes = sprintf(str, "\t\t\tFQ State\t\t: %u\t"
 								"for TX FQID: %u\n", schd_st, fqid);
+						}
 					}
 				}
 			} else {
@@ -768,7 +770,7 @@ static void event_handler(void *msg)
 			struct dpaa2_dev *dev;
 			int i = 0;
 			int32_t num_tx_vqs, num_rx_vqs;
-			int nbytes = sprintf(str, "%s:", name);
+			int nbytes;
 
 			dev = get_dpaa2_dev(name);
 
@@ -779,6 +781,8 @@ static void event_handler(void *msg)
 
 			num_tx_vqs = dpaa2_dev_get_max_tx_vq(dev);
 			num_rx_vqs = dpaa2_dev_get_max_rx_vq(dev);
+			nbytes = sprintf(str, "%s: Rx FQs= %d, Tx FQs= %d\n", name, num_rx_vqs, num_tx_vqs);
+			str = str + nbytes;
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
@@ -791,11 +795,12 @@ static void event_handler(void *msg)
 					eth_vq = (struct dpaa2_vq *)(dev->rx_vq[i]);
 					fqid = eth_vq->fqid;
 					if (fqid > 0) {
-						str = str + nbytes;
-						qbman_fq_query(s, fqid, &state);
-						frame_cnt = qbman_fq_state_frame_count(&state);
-						nbytes = sprintf(str, "\t\t\tNo. of frames\t\t: %u\t"
+						if (0 == qbman_fq_query_state(s, fqid, &state)) {
+							frame_cnt = qbman_fq_state_frame_count(&state);
+							nbytes = sprintf(str, "\t\t\tNo. of frames\t\t: %u\t"
 								"for RX FQID: %u\n", frame_cnt, fqid);
+							str = str + nbytes;
+						}
 					}
 				}
 
@@ -803,11 +808,12 @@ static void event_handler(void *msg)
 					eth_vq = (struct dpaa2_vq *)(dev->tx_vq[i]);
 					fqid = eth_vq->fqid;
 					if (fqid > 0) {
-						str = str + nbytes;
-						qbman_fq_query(s, fqid, &state);
-						frame_cnt = qbman_fq_state_frame_count(&state);
-						nbytes = sprintf(str, "\t\t\tNo. of frames\t\t: %u\t"
+						if (0 == qbman_fq_query_state(s, fqid, &state)) {
+							frame_cnt = qbman_fq_state_frame_count(&state);
+							nbytes = sprintf(str, "\t\t\tNo. of frames\t\t: %u\t"
 								"for TX FQID: %u\n", frame_cnt, fqid);
+							str = str + nbytes;
+						}
 					}
 				}
 			} else {
@@ -821,7 +827,7 @@ static void event_handler(void *msg)
 			struct dpaa2_dev *dev;
 			int i = 0;
 			int32_t num_tx_vqs, num_rx_vqs;
-			int nbytes = sprintf(str, "%s:", name);
+			int nbytes;
 
 			dev = get_dpaa2_dev(name);
 
@@ -832,6 +838,8 @@ static void event_handler(void *msg)
 
 			num_tx_vqs = dpaa2_dev_get_max_tx_vq(dev);
 			num_rx_vqs = dpaa2_dev_get_max_rx_vq(dev);
+			nbytes = sprintf(str, "%s: Rx FQs= %d, Tx FQs= %d\n", name, num_rx_vqs, num_tx_vqs);
+			str = str + nbytes;
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
@@ -844,11 +852,12 @@ static void event_handler(void *msg)
 					eth_vq = (struct dpaa2_vq *)(dev->rx_vq[i]);
 					fqid = eth_vq->fqid;
 					if (fqid > 0) {
-						str = str + nbytes;
-						qbman_fq_query(s, fqid, &state);
-						byte_cnt = qbman_fq_state_byte_count(&state);
-						nbytes = sprintf(str, "\t\t\tNo. of bytes\t\t: %u\t"
+						if (0 == qbman_fq_query_state(s, fqid, &state)) {
+							byte_cnt = qbman_fq_state_byte_count(&state);
+							nbytes = sprintf(str, "\t\t\tNo. of bytes\t\t: %u\t"
 								"for RX FQID: %u\n", byte_cnt, fqid);
+							str = str + nbytes;
+						}
 					}
 				}
 
@@ -856,11 +865,12 @@ static void event_handler(void *msg)
 					eth_vq = (struct dpaa2_vq *)(dev->tx_vq[i]);
 					fqid = eth_vq->fqid;
 					if (fqid > 0) {
-						str = str + nbytes;
-						qbman_fq_query(s, fqid, &state);
-						byte_cnt = qbman_fq_state_byte_count(&state);
-						nbytes = sprintf(str, "\t\t\tNo. of bytes\t\t: %u\t"
+						if (0 == qbman_fq_query_state(s, fqid, &state)) {
+							byte_cnt = qbman_fq_state_byte_count(&state);
+							nbytes = sprintf(str, "\t\t\tNo. of bytes\t\t: %u\t"
 								"for TX FQID: %u\n", byte_cnt, fqid);
+							str = str + nbytes;
+						}
 					}
 				}
 			} else {
