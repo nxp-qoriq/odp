@@ -1676,7 +1676,8 @@ static inline void build_in_ipsec(
 	void		*data;
 
 	/* Input frame */
-	data = odp_packet_l2_ptr(params->pkt, &len);
+	data = odp_packet_l2_ptr(params->pkt, NULL);
+	len = odp_packet_len(params->pkt);
 
 	qm_sg_entry_set64(&sgp->sg[1], __dma_mem_vtop(data + params->cipher_range.offset));
 	sgp->sg[1].length = len - params->cipher_range.offset;
