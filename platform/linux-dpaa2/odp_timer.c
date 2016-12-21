@@ -82,7 +82,8 @@ static _odp_atomic_flag_t locks[NUM_LOCKS]; /* Multiple locks per cache line! */
 #endif
 
 #define MAX_CORES		8	/*Number of cores*/
-uint8_t core_mask = 0;			/*Mask value for creating one manager thread per core*/
+uint8_t core_mask[MAX_CORES] = {0};	/*Mask value for creating one manager
+					thread per core*/
 
 struct worker {
 	pthread_t id;
@@ -315,7 +316,6 @@ static inline odp_buffer_t timer_free(odp_timer_pool *tp, uint32_t idx)
 	odp_event_t ev;
 	odp_buffer_t buf;
 	struct tim_data *info;
-	uint8_t check = 1;
 	int i;
 	odp_timer *tim = &tp->timers[idx];
 
@@ -330,10 +330,10 @@ static inline odp_buffer_t timer_free(odp_timer_pool *tp, uint32_t idx)
 	ODP_ASSERT(tp->num_alloc != 0);
 	tp->num_alloc--;
 	if (!tp->num_alloc) {
-		for (i = 0; i < 8; i++) {
-			if (core_mask & (check << i)) {
+		for (i = 0; i < MAX_CORES; i++) {
+			if (core_mask[i]) {
 				pthread_cancel(attr[i].id);
-				core_mask ^= check << i;
+				core_mask[i] = false;
 			}
 		}
 	}
@@ -493,7 +493,6 @@ int odp_timer_set_abs(odp_timer_t hdl,
 	unsigned lcore_id;
 	odp_timer *tim;
 	struct tim_data *info;
-	uint8_t check = 1;
 	int ret;
 
 	tp = handle_to_tp(hdl);
@@ -503,7 +502,7 @@ int odp_timer_set_abs(odp_timer_t hdl,
 	info = tim->arg;
 	if (!tmo_ev || *tmo_ev == ODP_EVENT_INVALID)
 		return ODP_TIMER_NOEVENT;
-	if (!(core_mask & (check << lcore_id))) {
+	if (!core_mask[lcore_id]) {
 		attr[lcore_id].ures = tp->param.res_ns / 1000;
 		attr[lcore_id].cpu = lcore_id;
 		ret = pthread_create(&attr[lcore_id].id, NULL,
@@ -514,7 +513,7 @@ int odp_timer_set_abs(odp_timer_t hdl,
 						attr[lcore_id].id);
 			return ODP_TIMER_INVALID;
 		}
-		core_mask |= check << lcore_id;
+		core_mask[lcore_id] = true;
 	}
 	cur_tick = odp_timer_current_tick(tp);
 	if (odp_unlikely(abs_tck < cur_tick + tp->min_rel_tck))
@@ -547,7 +546,6 @@ int odp_timer_set_rel(odp_timer_t hdl,
 	uint64_t cur_tick;
 	odp_timer *tim;
 	struct tim_data *info;
-	uint8_t check = 1;
 	int ret;
 
 	tp = handle_to_tp(hdl);
@@ -557,7 +555,7 @@ int odp_timer_set_rel(odp_timer_t hdl,
 	info = tim->arg;
 	if (!tmo_ev || *tmo_ev == ODP_EVENT_INVALID)
 		return ODP_TIMER_NOEVENT;
-	if (!(core_mask & (check << lcore_id))) {
+	if (!core_mask[lcore_id]) {
 		attr[lcore_id].ures = tp->param.res_ns / 1000;
 		attr[lcore_id].cpu = lcore_id;
 		ret = pthread_create(&attr[lcore_id].id, NULL,
@@ -568,7 +566,7 @@ int odp_timer_set_rel(odp_timer_t hdl,
 						attr[lcore_id].id);
 			return ODP_TIMER_INVALID;
 		}
-		core_mask |= check << lcore_id;
+		core_mask[lcore_id] = true;
 	}
 
 	if (odp_unlikely(rel_tck < tp->min_rel_tck))

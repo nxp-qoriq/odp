@@ -276,7 +276,7 @@ get_dpseci_parameters() {
 get_dpio_parameters() {
 	if [[ -z "$DPIO_COUNT" ]]
 	then
-		DPIO_COUNT=10
+		DPIO_COUNT=20
 	fi
 	if [[ -z "$DPIO_PRIORITIES" ]]
 	then
