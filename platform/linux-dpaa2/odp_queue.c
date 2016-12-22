@@ -425,6 +425,17 @@ int odp_queue_enq(odp_queue_t handle, odp_event_t ev)
 	return queue->s.enqueue(queue, buf_hdr);
 }
 
+odp_buffer_hdr_t *queue_deq_dummy(queue_entry_t *queue ODP_UNUSED)
+{
+	return NULL;
+}
+
+int queue_deq_multi_dummy(queue_entry_t *queue ODP_UNUSED,
+		odp_buffer_hdr_t *buf_hdr[] ODP_UNUSED,
+		int num ODP_UNUSED)
+{
+	return -1;
+}
 
 odp_buffer_hdr_t *queue_deq(queue_entry_t *queue)
 {
@@ -609,3 +620,9 @@ queue_entry_t *get_free_queue_entry(void)
 	return queue;
 }
 
+void set_queue_entry_to_free(queue_entry_t *queue)
+{
+	LOCK(&queue->s.lock);
+	queue->s.status = QUEUE_STATUS_FREE;
+	UNLOCK(&queue->s.lock);
+}
