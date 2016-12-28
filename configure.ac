@@ -253,9 +253,10 @@ fi
 if test "${with_platform}" == "linux-dpaa1";
 then
 AC_ARG_ENABLE([build_type],
-[  --build-type    Specify build type as LS1043, P4080, T1040, T4240, T2080],
+[  --build-type    Specify build type as LS1046, LS1043, P4080, T1040, T4240, T2080],
 [case "${enableval}" in
   ls1043) build_type=LS1043 ;;
+  ls1046) build_type=LS1046 ;;
   p4080) build_type=P4080 ;;
   *)  build_type=LS1043;;
 esac],[build_type=LS1043])
@@ -265,7 +266,9 @@ AM_CONDITIONAL([BUILD_LS2085], [test x$build_type = xLS2085 ])
 AM_CONDITIONAL([BUILD_LS2088], [test x$build_type = xLS2088 ])
 AM_CONDITIONAL([BUILD_LS1088], [test x$build_type = xLS1088 ])
 AM_CONDITIONAL([BUILD_LS1043], [test x$build_type = xLS1043 ])
+AM_CONDITIONAL([BUILD_LS1046], [test x$build_type = xLS1046 ])
 AM_CONDITIONAL([LS1043_SOC], [test "x${SOC}" = "xLS1043"])
+AM_CONDITIONAL([LS1046_SOC], [test "x${SOC}" = "xLS1046"])
 AM_CONDITIONAL([P4_SOC], [test "x${SOC}" = "xP4080"])
 AM_CONDITIONAL([T1_SOC], [test "x${SOC}" = "xT1040"])
 AM_CONDITIONAL([T4_SOC], [test "x${SOC}" = "xT4240"])

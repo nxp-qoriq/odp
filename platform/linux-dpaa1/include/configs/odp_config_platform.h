@@ -61,7 +61,7 @@
 #define SEC_ERA		RTA_SEC_ERA_2
 #elif defined T1040
 #define SEC_ERA		RTA_SEC_ERA_6
-#elif defined LS1043
+#elif defined LS1043 || defined LS1046
 #define SEC_ERA		RTA_SEC_ERA_8
 #elif defined T4240
 #define SEC_ERA		RTA_SEC_ERA_6

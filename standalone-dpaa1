@@ -58,6 +58,7 @@ board2soc()
                [tT]1023*) echo t1023;;
                [tT]1024*) echo t1024;;
                [lL][sS]1043*) echo ls1043;;
+               [lL][sS]1046*) echo ls1046;;
        esac
 }
 
@@ -65,7 +66,9 @@ board2cpu()
 {
        case $1 in
                [lL][sS]1043*-be) echo aarch64_be;;
+               [lL][sS]1046*-be) echo aarch64_be;;
                [lL][sS]1043*) echo aarch64;;
+               [lL][sS]1046*) echo aarch64;;
                *) echo -n "powerpc";;
        esac
 }
@@ -74,6 +77,7 @@ soc2arch()
 {
        case $1 in
                [lL][sS]1043*) echo arm64;;
+               [lL][sS]1046*) echo arm64;;
                *) echo -n "powerpc";;
        esac
 }
@@ -82,7 +86,9 @@ soc2cc()
 {
        case $1 in
                [lL][sS]1043*-be) echo aarch64_be;;
+               [lL][sS]1046*-be) echo aarch64_be;;
                [lL][sS]1043*) echo aarch64;;
+               [lL][sS]1046*) echo aarch64;;
                *) echo -n "powerpc";;
        esac
 }
@@ -91,6 +97,7 @@ soc2cflags()
 {
         case $1 in
                 [lL][sS]1043*-[bB][eE]) echo -n "-mbig-endian";;
+                [lL][sS]1046*-[bB][eE]) echo -n "-mbig-endian";;
                 *) echo -n "";;
         esac
 }
@@ -103,7 +110,7 @@ do
 	case $flags in
 		m)
 			case $OPTARG in
-				p1023ds | p2041rdb | p3041ds | p4080ds | p5020ds | p5020ds-64b | p5040ds | p5040ds-64b | b4860qds | b4860qds-64b | t4240qds | t4240qds-64b | t4240rdb | t4240rdb-64b | t1040qds | t1040qds-64b | t1040rdb | t1040rdb-64b | t2080qds | t2080qds-64b | t1023rdb | t1023rdb-64b | t1024rdb | t1024rdb-64b | t1024qds | t1024qds-64b | ls1043ardb | ls1043ardb-be | ls1043a-simu | ls1043aqds | ls1043aqds-be)
+				p1023ds | p2041rdb | p3041ds | p4080ds | p5020ds | p5020ds-64b | p5040ds | p5040ds-64b | b4860qds | b4860qds-64b | t4240qds | t4240qds-64b | t4240rdb | t4240rdb-64b | t1040qds | t1040qds-64b | t1040rdb | t1040rdb-64b | t2080qds | t2080qds-64b | t1023rdb | t1023rdb-64b | t1024rdb | t1024rdb-64b | t1024qds | t1024qds-64b | ls1043ardb | ls1043ardb-be | ls1043a-simu | ls1043aqds | ls1043aqds-be |  ls1046ardb | ls1046ardb-be | ls1046aqds | ls1046aqds-be)
 					board=$OPTARG
 					;;
 				*)

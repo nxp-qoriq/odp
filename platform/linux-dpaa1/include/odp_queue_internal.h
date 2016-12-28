@@ -168,7 +168,7 @@ static inline void __config_fd(struct qm_fd *fd,
 	 */
 #if defined(P4080)
 	fd->cmd = 0x10000000;
-#elif defined(T1040) || defined(LS1043) || defined(T4240)
+#else
 	fd->cmd = 0;
 #endif
 	fd->opaque_addr = 0;
