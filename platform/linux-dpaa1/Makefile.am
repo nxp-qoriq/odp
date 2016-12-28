@@ -6,6 +6,7 @@ PLAT_CFLAGS = -D$(SOC)
 
 if LS1043_SOC
 FMD_CFLAGS = -D$(SOC) -DNCSW_LINUX
+QBMAN_CFLAGS = -DCONFIG_ARM64
 FMLIB = fm-arm64a53
 USDPAA_LIB_PATH = lib_arm64
 LIB_PATH = lib
@@ -13,6 +14,7 @@ SPEC_CFLAGS =
 endif
 if P4_SOC
 FMD_CFLAGS = -D$(SOC) -DNCSW_LINUX
+QBMAN_CFLAGS =
 FMLIB = fm-ppce500mc
 USDPAA_LIB_PATH = lib_powerpc
 LIB_PATH = lib
@@ -20,6 +22,7 @@ SPEC_CFLAGS =
 endif
 if T1_SOC
 FMD_CFLAGS = -DFMAN_V3L -DNCSW_LINUX
+QBMAN_CFLAGS =
 FMLIB = fm-ppc64e5500-fmv3l
 USDPAA_LIB_PATH = lib_powerpc64
 LIB_PATH = lib64
@@ -27,6 +30,7 @@ SPEC_CFLAGS = -m64 -mhard-float -mcpu=e5500
 endif
 if T4_SOC
 FMD_CFLAGS = -DFMAN_V3H -DNCSW_LINUX
+QBMAN_CFLAGS =
 FMLIB = fm-ppc64e6500
 USDPAA_LIB_PATH = lib_powerpc64
 LIB_PATH = lib64
@@ -35,6 +39,7 @@ endif
 
 AM_CFLAGS +=  $(PLAT_CFLAGS)
 AM_CFLAGS +=  -D_GNU_SOURCE $(SPEC_CFLAGS)
+AM_CFLAGS +=  $(QBMAN_CFLAGS) $(FMD_CFLAGS)
 AM_CFLAGS += -std=gnu99
 AM_CFLAGS +=  -I$(srcdir)/include
 AM_CFLAGS +=  -I$(top_srcdir)/include
@@ -45,51 +50,38 @@ AM_CFLAGS +=  -I$(srcdir)/../linux-generic/include
 AM_CFLAGS +=  -I$(srcdir)/../linux-generic/include/api
 AM_CFLAGS +=  -I$(srcdir)/../linux-generic/arch/@ARCH_DIR@/
 
-if SDK_INSTALL_PATH_
-AM_CFLAGS    += -I$(SDK_INSTALL_PATH)/usr/include
-AM_CFLAGS    += -I$(SDK_INSTALL_PATH)/usr/include/usdpaa
-AM_CFLAGS    += -I$(SDK_INSTALL_PATH)/usr/include/fmd
-AM_CFLAGS    += -I$(SDK_INSTALL_PATH)/usr/include/fmd/Peripherals
-AM_CFLAGS    += -I$(SDK_INSTALL_PATH)/usr/include/fmd/integrations $(FMD_CFLAGS)
-AM_LDFLAGS   += -L$(SDK_INSTALL_PATH)/usr/$(LIB_PATH)
-
-
-endif
-
-if USDPAA_PATH_
-AM_CFLAGS   += -I$(USDPAA_PATH)/include
-AM_CFLAGS   += -I$(USDPAA_PATH)/include/usdpaa
-AM_CFLAGS   += -I$(USDPAA_PATH)/include/fsl_sec
-AM_LDFLAGS  += -L$(USDPAA_PATH)/$(USDPAA_LIB_PATH)
-
-endif
-
-if FMLIB_PATH_
-AM_CFLAGS    += -I$(FMLIB_PATH)/include/fmd
-AM_CFLAGS    += -I$(FMLIB_PATH)/include/fmd/Peripherals
-AM_CFLAGS    += -I$(FMLIB_PATH)/include/fmd/integrations $(FMD_CFLAGS)
-
-AM_LDFLAGS   += -L$(FMLIB_PATH)
-
-endif
-
+AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/include/odp/api/plat/sdk/
+AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/include/odp/api/plat/sdk/usdpaa
+AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/include/odp/api/plat/sdk/usdpaa/usdpaa
+AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/include/odp/api/plat/sdk/usdpaa/fsl_sec
+AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/include/odp/api/plat/sdk/usdpaa/syscfg
+AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/flib/include/
+AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/flib/rta
 
 AM_CFLAGS += -Wno-error -Wno-cast-qual -Wno-pointer-arith
+
+if SDK_INSTALL_PATH_
+AM_CFLAGS    += -I$(SDK_INSTALL_PATH)/usr/include/fmd
+AM_CFLAGS    += -I$(SDK_INSTALL_PATH)/usr/include/fmd/Peripherals
+AM_CFLAGS    += -I$(SDK_INSTALL_PATH)/usr/include/fmd/integrations
+AM_LDFLAGS   += -L$(SDK_INSTALL_PATH)/usr/$(LIB_PATH)
+else
+AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/flib/include/fmd
+AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/flib/include/fmd/Peripherals
+AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/flib/include/fmd/integrations
+#if little endian is being compiled
+AM_LDFLAGS += -L$(PWD)/flib/le
+#else
+#AM_CFLAGS += -mbig-endian
+#AM_LDFLAGS += -L$(PWD)/flib/be
+#endif
+endif #SDK_INSTALL_PATH_
+
+LIBS = -lxml2 -lz -lm -l$(FMLIB)
 
 include_HEADERS = \
 		  $(top_srcdir)/include/odp.h \
 		  $(top_srcdir)/include/odp_api.h
-
-USDPAA_LIBS = -lusdpaa_fman \
-	   -lusdpaa_of \
-	   -lusdpaa_qbman \
-	   -lusdpaa_process \
-	   -lusdpaa_dma \
-	   -lusdpaa_dma_mem \
-	   -lusdpaa_syscfg
-
-LIBS = $(USDPAA_LIBS) -l$(FMLIB)
-LIBS += -lxml2
 
 odpapiincludedir= $(includedir)/odp/api
 odpapiinclude_HEADERS = \
@@ -236,8 +228,24 @@ __LIB__libodp_linux_la_SOURCES = \
 			   odp_timer.c \
 			   ../linux-generic/odp_version.c \
 			   ../linux-generic/odp_weak.c \
-                           arch/linux/odp_time_cycles.c \
-                           arch/linux/odp_cpu_cycles.c
+			   arch/linux/odp_time_cycles.c \
+			   arch/linux/odp_cpu_cycles.c \
+			   sdk/qbman/bman_driver.c \
+			   sdk/qbman/qman_driver.c \
+			   sdk/qbman/dpa_alloc.c \
+			   sdk/qbman/bman_high.c \
+			   sdk/qbman/qman_high.c \
+			   sdk/qbman/qman_utility.c \
+			   sdk/qbman/dpa_sys.c \
+			   sdk/fman/memac.c \
+			   sdk/fman/fman.c \
+			   sdk/dma_mem/allocator.c \
+			   sdk/dma_mem/map.c \
+			   sdk/dma_mem/setup.c \
+			   sdk/process/process.c \
+			   sdk/of/of.c \
+			   sdk/syscfg/usdpaa_netcfg_layer.c \
+			   sdk/syscfg/fmc_netcfg_parser.c
 
 EXTRA_DIST = \
 		arch/linux/odp_time_cycles.c \
