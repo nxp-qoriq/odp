@@ -25,6 +25,11 @@ struct dpaa2_driver *dpaa2_driver_list[DPAA2_MAX_DEV];
 struct dpaa2_device_list device_list;
 int ndev_count;
 
+/**
+ *  Resource container's object counts
+ */
+struct dpaa2_container_objects dprc_objects = {0};
+
 void dpaa2_register_driver(struct dpaa2_driver *drv)
 {
 

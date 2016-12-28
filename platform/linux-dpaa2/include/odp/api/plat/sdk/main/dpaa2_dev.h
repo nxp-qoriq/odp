@@ -131,6 +131,21 @@ struct dpaa2_dev {
 };
 
 /*!
+  * Structure to define number of resource container's object count.
+  */
+struct dpaa2_container_objects {
+	uint8_t	dpni_count;	/*Total Number of Ethernet devices probed.*/
+	uint8_t	dpconc_count;	/*Total Number of Schedulers probed*/
+	uint8_t	dpseci_count;	/*Total Number of Security block probed*/
+	uint8_t	dpci_count;	/*Total Number of Software Queues probed*/
+	uint8_t	dpbp_count;	/*Total Number of Buffer pools probed*/
+	uint8_t	dpmcp_count;	/*Total Number of MC portals probed*/
+	uint8_t	dpio_count;	/*Total Number of Software portals probed*/
+};
+
+extern  struct dpaa2_container_objects dprc_objects;
+
+/*!
  * Typedef for the callback registered by the user. When this callback is
  * registered, on receive of any notification on the VQ this callback will
  * be called by the dispatcher. This will only provide the notifications

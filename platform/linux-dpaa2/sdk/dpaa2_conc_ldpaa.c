@@ -150,6 +150,7 @@ int32_t dpaa2_conc_probe(struct dpaa2_dev *dev,
 				dev->num_rx_vqueues, conc_mem->ch_id,
 				conc_mem->num_prio, conc_mem->obj_id);
 
+	dprc_objects.dpconc_count++;
 	return DPAA2_SUCCESS;
 
 get_attr_failure:
@@ -188,6 +189,7 @@ int32_t dpaa2_conc_remove(struct dpaa2_dev *dev)
 	dpaa2_free(dev_priv->drv_priv);
 	dpaa2_free(dpconc);
 
+	dprc_objects.dpconc_count--;
 	return DPAA2_SUCCESS;
 }
 

@@ -25,7 +25,7 @@ extern "C" {
 #define ODP_SCHED_WAIT     0
 #define ODP_SCHED_NO_WAIT  1
 #ifndef ODP_CONFIG_SCHED_PRIOS
-#define ODP_CONFIG_SCHED_PRIOS 8
+#define ODP_CONFIG_SCHED_PRIOS 2
 #endif
 
 typedef int odp_schedule_prio_t;

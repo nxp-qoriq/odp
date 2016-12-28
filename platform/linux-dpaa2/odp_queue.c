@@ -303,6 +303,7 @@ int odp_queue_destroy(odp_queue_t handle)
 		ODP_ABORT("Unexpected queue status\n");
 	}
 
+	dpaa2_put_frameq(queue->s.priv);
 	UNLOCK(&queue->s.lock);
 
 	return 0;
@@ -429,9 +430,10 @@ int odp_queue_enq(odp_queue_t handle, odp_event_t ev)
 odp_buffer_hdr_t *queue_deq(queue_entry_t *queue)
 {
 	odp_buffer_hdr_t *buf_hdr[1] = {NULL};
+	int32_t	pkts = 0;
 
-	dpaa2_hwq_recv(queue->s.priv, buf_hdr, 1);
-	return buf_hdr[0];
+	pkts = dpaa2_hwq_recv(queue->s.priv, buf_hdr, 1);
+	return (pkts  == 1 ? buf_hdr[0] : NULL);
 }
 
 int queue_deq_multi(queue_entry_t *queue, odp_buffer_hdr_t *buf_hdr[], int num)
@@ -543,14 +545,16 @@ int odp_queue_lock_count(odp_queue_t handle ODP_UNUSED)
 
 int odp_queue_capability(odp_queue_capability_t *capa)
 {
-	if (!capa)
+	if (!capa) {
+		ODP_ERR("Input pointer is NULL\n");
 		return -1;
+	}
 
 	memset(capa, 0, sizeof(odp_queue_capability_t));
 
-	capa->max_queues        = ODP_CONFIG_QUEUES;
+	capa->max_queues        = dprc_objects.dpci_count;
 	capa->max_ordered_locks = ODP_CONFIG_MAX_ORDERED_LOCKS_PER_QUEUE;
-	capa->max_sched_groups  = ODP_CONFIG_SCHED_GRPS;
+	capa->max_sched_groups  = dprc_objects.dpconc_count;
 	capa->sched_prios       = ODP_CONFIG_SCHED_PRIOS;
 
 	return 0;
