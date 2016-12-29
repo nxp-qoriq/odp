@@ -76,11 +76,11 @@ static int skfd = -1;
 const char *fm_interfaces;
 
 static const struct argp_option argp_opts[] = {
-	{"fm-interfaces",	'i',	"FILE",	0,	"FMAN interfaces"},
-	{}
+	{"fm-interfaces",	'i',	"FILE",	0,	"FMAN interfaces", 0},
+	{ 0 }
 };
 
-static error_t netcfg_parser(int key, char *arg, struct argp_state *state)
+static error_t netcfg_parser(int key, char *arg, __maybe_unused struct argp_state *state)
 {
 	switch (key) {
 	case 'i':
@@ -92,7 +92,7 @@ static error_t netcfg_parser(int key, char *arg, struct argp_state *state)
 	return 0;
 }
 
-const struct argp netcfg_argp = {argp_opts, netcfg_parser, 0, 0};
+const struct argp netcfg_argp = {argp_opts, netcfg_parser, 0, 0, 0, 0, 0};
 
 
 void dump_usdpaa_netcfg(struct usdpaa_netcfg_info *cfg_ptr)

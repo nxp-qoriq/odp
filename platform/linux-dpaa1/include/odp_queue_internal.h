@@ -143,14 +143,6 @@ static inline queue_entry_t *queue_to_qentry(odp_queue_t handle)
 	return get_qentry(queue_id);
 }
 
-#if ODP_BYTE_ORDER == ODP_BIG_ENDIAN
-/* Note : cpu_to_hw_sg and hw_sg_to_cpu macros are defined in USDPAA on a
- * LS1043 specific branch. They are needed only on the the LE SOCs. Define
- * dummy macros on BE SOCs */
-	#define cpu_to_hw_sg(_x)
-	#define hw_sg_to_cpu(_x)
-#endif
-
 /* configure fd for contig or sg frames */
 static inline void __config_fd(struct qm_fd *fd,
 			      const odp_buffer_hdr_t *buf_hdr,

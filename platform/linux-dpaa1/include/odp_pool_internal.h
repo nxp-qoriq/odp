@@ -24,7 +24,7 @@ extern "C" {
 #include <odp_buffer_internal.h>
 #include <odp/api/hints.h>
 #include <odp_config_internal.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 #include <odp/api/shared_memory.h>
 #include <odp/api/atomic.h>
 #include <odp_atomic_internal.h>

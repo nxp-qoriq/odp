@@ -44,6 +44,7 @@
 
 #include <internal/of.h>
 #include <usdpaa/of.h>
+#include <usdpaa/fsl_bman.h>
 
 /* Instantiate the global variable that the inline CRC64 implementation (in
  * <fsl_fman.h>) depends on. */
@@ -152,7 +153,6 @@ static int fman_get_ip_rev(const struct device_node *fman_node)
 	const uint32_t *fman_addr;
 	uint64_t phys_addr;
 	uint32_t ip_rev_1;
-	int _errno;
 
 	fman_addr = of_get_address(fman_node, 0, &fman_regs_size, NULL);
 	if (!fman_addr) {
@@ -225,7 +225,7 @@ static int fman_if_init(const struct device_node *dpa_node, int is_macless)
 	struct __fman_if *__if;
 	struct fman_if_bpool *bpool;
 	const phandle *mac_phandle, *ports_phandle, *pools_phandle;
-	const phandle *tx_channel_id, *mac_addr, *cell_idx;
+	const phandle *tx_channel_id = NULL, *mac_addr, *cell_idx;
 	const phandle *rx_phandle, *tx_phandle;
 	uint64_t tx_phandle_host[4] = {0};
 	uint64_t rx_phandle_host[4] = {0};
@@ -418,7 +418,7 @@ static int fman_if_init(const struct device_node *dpa_node, int is_macless)
 					__if->__if.mac_idx = 10;
 					break;
 				default:
-					my_err(1, -EINVAL, "Invalid regs_addr: %#x\n",
+					my_err(1, -EINVAL, "Invalid regs_addr: 0x%" PRIx64 "\n",
 					       regs_addr_host);
 			}
 		}
@@ -684,13 +684,12 @@ static int fman_if_init_onic(const struct device_node *dpa_node)
 	struct fman_if_bpool *bpool;
 	const phandle *pools_phandle;
 	const phandle *tx_channel_id, *mac_addr;
-	const phandle *rx_phandle, *tx_phandle;
+	const phandle *rx_phandle;
 	const struct device_node *pool_node;
 	const char *mname;
 	const char *dname = dpa_node->full_name;
 	size_t lenp;
 	int _errno;
-	int i;
 	const phandle *p_oh_node = NULL;
 	const struct device_node *oh_node = NULL;
 	const struct device_node *oh_node2 = NULL;
@@ -863,8 +862,6 @@ int fman_init(void)
 {
 	const struct device_node *dpa_node;
 	int _errno;
-	size_t lenp;
-	const char *mprop = "fsl,fman-mac";
 
 	/* If multiple dependencies try to initialise the Fman driver, don't
 	 * panic. */
@@ -1393,7 +1390,7 @@ int fman_if_set_fc_threshold(struct fman_if *p, u32 high_water, u32 low_water, u
 {
 	struct __fman_if *__if = container_of(p, struct __fman_if, __if);
 	unsigned *fmbm_mpd;
-	int ret;
+	int ret = 0;
 
 	assert(ccsr_map_fd != -1);
 
@@ -1408,6 +1405,7 @@ int fman_if_set_fc_threshold(struct fman_if *p, u32 high_water, u32 low_water, u
 
 	fmbm_mpd = &((struct rx_bmi_regs *)__if->bmirx_map)->fmbm_mpd;
 	out_be32(fmbm_mpd, FMAN_ENABLE_BPOOL_DEPLETION);
+	return ret;
 }
 
 int fman_if_get_fc_quanta(struct fman_if *p)

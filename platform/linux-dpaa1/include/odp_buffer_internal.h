@@ -22,7 +22,7 @@ extern "C" {
 #include <odp/api/atomic.h>
 #include <odp/api/pool.h>
 #include <odp/api/buffer.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 #include <odp/api/align.h>
 #include <odp_align_internal.h>
 #include <odp_config_internal.h>
@@ -110,7 +110,7 @@ struct odp_buffer_hdr_t;
 typedef struct odp_buffer_hdr_t {
 	odp_buffer_bits_t        handle;     /* handle */
 	uint32_t                sched_index; /* sched_local array index */
-	void			*dqrr; /* To store DQRR in case of atomic queues (DCA) */
+	const void		*dqrr; /* To store DQRR in case of atomic queues (DCA) */
 	odp_queue_t              inq;       /* last dequeue from */
 	odp_pool_t               pool_hdl;   /* buffer pool handle */
 	int8_t                   type;       /* buffer type */
@@ -137,7 +137,7 @@ typedef struct odp_buffer_hdr_t {
 	uint8_t jumbo;
 
 	odp_pktio_t input;
-	dma_addr_t		*phy_addr;	/* physical address */
+	dma_addr_t		phy_addr;	/* physical address */
 	void                    *addr[ODP_BUFFER_MAX_SEG + 1]; /* block addrs */
 
 	void                    *uarea_addr; /* user area address */

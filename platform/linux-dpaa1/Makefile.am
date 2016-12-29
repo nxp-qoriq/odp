@@ -66,7 +66,7 @@ AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/include/odp/api/plat/sdk/usdp
 AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/flib/include/
 AM_CFLAGS +=  -I$(top_srcdir)/platform/linux-dpaa1/flib/rta
 
-AM_CFLAGS += -Wno-error -Wno-cast-qual -Wno-pointer-arith
+AM_CFLAGS += -Wno-cast-qual -Wno-pointer-arith
 
 if SDK_INSTALL_PATH_
 AM_CFLAGS    += -I$(SDK_INSTALL_PATH)/usr/include/fmd

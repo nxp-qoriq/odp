@@ -15,7 +15,7 @@
 #include <odp/api/hints.h>
 #include <odp/api/random.h>
 #include <odp_config_internal.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 #include <odp/api/thread.h>
 #include <odp/helper/ipsec.h>
 #include <odp/api/system_info.h>
@@ -283,7 +283,7 @@ crypto_dqrr_cb_inp(struct qman_fq *fq,
 	odp_queue_set_input(_odp_packet_to_buffer(ev->out_pkt),
 			    ses->s.compl_queue);
 	out_bufhdr = odp_buf_to_hdr(_odp_packet_to_buffer(ev->out_pkt));
-	*user_context = compl_ev;
+	*user_context = (uint64_t)compl_ev;
 
 	_odp_buffer_event_type_set(compl_ev, ODP_EVENT_CRYPTO_COMPL);
 
@@ -336,7 +336,6 @@ static enum qman_cb_dqrr_result crypto_ipsec_dqrr_cb_inp(struct qman_fq *fq,
 	struct op_compl_event *ev = odp_buffer_addr(compl_ev);
 	crypto_ses_entry_t *ses = sgp->ses;
 	odp_buffer_hdr_t *out_bufhdr;
-	odph_ipv4hdr_t *ip;
 	uint32_t	len, shift;
 	void	*data;
 	odph_esptrl_t   *esp_t;
@@ -369,7 +368,7 @@ static enum qman_cb_dqrr_result crypto_ipsec_dqrr_cb_inp(struct qman_fq *fq,
 	out_bufhdr = odp_buf_to_hdr(_odp_packet_to_buffer(ev->out_pkt));
 
 	_odp_buffer_event_type_set(compl_ev, ODP_EVENT_CRYPTO_COMPL);
-	*user_context = compl_ev;
+	*user_context = (uint64_t)compl_ev;
 
 #ifndef ODP_CRYPTO_ICV_HW_CHECK
 	if (is_auth_only(ses) && is_decode(ses))

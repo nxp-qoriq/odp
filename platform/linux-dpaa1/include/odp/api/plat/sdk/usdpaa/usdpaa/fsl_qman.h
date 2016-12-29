@@ -1589,7 +1589,7 @@ struct qm_mc_result {
  */
 #define __CGR_WORD(num)		(num >> 5)
 #define __CGR_SHIFT(num)	(num & 0x1f)
-#define __CGR_NUM		(sizeof(struct __qm_mcr_querycongestion) << 3)
+#define __CGR_NUM		(int)(sizeof(struct __qm_mcr_querycongestion) << 3)
 static inline int QM_MCR_QUERYCONGESTION(struct __qm_mcr_querycongestion *p,
 					u8 cgr)
 {
@@ -1940,6 +1940,11 @@ void qman_dqrr_consume(struct qman_fq *fq,
 int qman_poll_dqrr(unsigned int limit);
 
 /**
+ * qman_poll_odp_dqrr - DQRR for odp
+ */
+uint64_t qman_poll_odp_dqrr(void);
+
+/**
  * qman_poll_slow - process anything (except DQRR) that isn't interrupt-driven.
  *
  * This function does any portal processing that isn't interrupt-driven. If the
@@ -2226,6 +2231,8 @@ int qman_query_fq_np(struct qman_fq *fq, struct qm_mcr_queryfq_np *np);
  */
 int qman_query_wq(u8 query_dedicated, struct qm_mcr_querywq *wq);
 
+int qman_query_fq_has_pkts(struct qman_fq *fq);
+
 /**
  * qman_volatile_dequeue - Issue a volatile dequeue command
  * @fq: the frame queue object to dequeue from
@@ -2280,6 +2287,8 @@ int qman_volatile_dequeue(struct qman_fq *fq, u32 flags, u32 vdqcr);
  * enqueues "at the source".
  */
 int qman_enqueue(struct qman_fq *fq, const struct qm_fd *fd, u32 flags);
+
+int qman_enqueue_multi(struct qman_fq *fq, const struct qm_fd *fd, int frames_to_send);
 
 typedef int (*qman_cb_precommit) (void *arg);
 /**
@@ -3649,6 +3658,36 @@ int qman_ceetm_cscn_dcp_get(struct qm_ceetm_ccg *ccg,
 int qman_ceetm_ccg_get_reject_statistics(struct qm_ceetm_ccg *ccg, u32 flags,
 					u64 *frame_count, u64 *byte_count);
 
+int qman_ceetm_configure_lfqmt(struct qm_mcc_ceetm_lfqmt_config *opts);
+int qman_ceetm_configure_cq(struct qm_mcc_ceetm_cq_config *opts);
+int qman_ceetm_configure_dct(struct qm_mcc_ceetm_dct_config *opts);
+int qman_ceetm_query_dct(struct qm_mcc_ceetm_dct_query *opts,
+			 struct qm_mcr_ceetm_dct_query *dct_query);
+int qman_ceetm_configure_class_scheduler(
+			struct qm_mcc_ceetm_class_scheduler_config *opts);
+int qman_ceetm_query_class_scheduler(struct qm_ceetm_channel *channel,
+			struct qm_mcr_ceetm_class_scheduler_query *query);
+int qman_ceetm_configure_mapping_shaper_tcfc(
+		struct qm_mcc_ceetm_mapping_shaper_tcfc_config *opts);
+int qman_ceetm_query_mapping_shaper_tcfc(
+		struct qm_mcc_ceetm_mapping_shaper_tcfc_query *opts,
+		struct qm_mcr_ceetm_mapping_shaper_tcfc_query *response);
+int qman_ceetm_configure_ccgr(struct qm_mcc_ceetm_ccgr_config *opts);
+int qman_ceetm_query_ccgr(struct qm_mcc_ceetm_ccgr_query *ccgr_query,
+				struct qm_mcr_ceetm_ccgr_query *response);
+int qman_ceetm_cq_peek_pop_xsfdrread(struct qm_ceetm_cq *cq,
+			u8 command_type, u16 xsfdr,
+			struct qm_mcr_ceetm_cq_peek_pop_xsfdrread *cq_ppxr);
+int qman_ceetm_query_statistics(u16 cid,
+			enum qm_dc_portal dcp_idx,
+			u16 command_type,
+			struct qm_mcr_ceetm_statistics_query *query_result);
+int qman_ceetm_write_statistics(u16 cid, enum qm_dc_portal dcp_idx,
+			u16 command_type, u64 frame_count, u64 byte_count);
+int qman_ceetm_querycongestion(struct __qm_mcr_querycongestion *ccg_state,
+							unsigned int dcp_idx);
+int qman_ceetm_query_lfqmt(int lfqid,
+			struct qm_mcr_ceetm_lfqmt_query *lfqmt_query);
 /**
  * qman_set_wpm - Set waterfall power management
  *
@@ -3741,8 +3780,8 @@ int qman_p_enqueue_precommit(struct qman_portal *p, struct qman_fq *fq,
 #endif
 
  #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define cpu_to_hw_sg(x) (x)
-#define hw_sg_to_cpu(x) (x)
+#define cpu_to_hw_sg(x) ((void)x)
+#define hw_sg_to_cpu(x) ((void)x)
 #else
 #define cpu_to_hw_sg(x)  __cpu_to_hw_sg(x)
 #define hw_sg_to_cpu(x)  __hw_sg_to_cpu(x)

@@ -24,7 +24,7 @@ extern "C" {
 #include <odp/api/plat/buffer_types.h>
 #include <odp/api/plat/pool_types.h>
 #include <odp/api/spec/hints.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 /** @ingroup odp_packet
  *  @{
  */

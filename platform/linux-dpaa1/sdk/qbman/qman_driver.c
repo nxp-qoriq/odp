@@ -346,7 +346,7 @@ static __init int fsl_ceetm_init(const struct device_node *node)
 	struct qm_ceetm_sp *sp;
 	struct qm_ceetm_lni *lni;
 	const u32 *range;
-	int i;
+	unsigned int i;
 	size_t ret;
 
 	/* Find LFQID range */

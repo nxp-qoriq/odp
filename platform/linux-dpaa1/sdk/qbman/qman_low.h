@@ -585,7 +585,7 @@ static inline void qm_dqrr_set_maxfill(struct qm_portal *portal, u8 mf)
 }
 
 static inline int qm_dqrr_init(struct qm_portal *portal,
-				const struct qm_portal_config *config,
+				__maybe_unused const struct qm_portal_config *config,
 				enum qm_dqrr_dmode dmode,
 				__maybe_unused enum qm_dqrr_pmode pmode,
 				enum qm_dqrr_cmode cmode, u8 max_fill)
@@ -888,7 +888,7 @@ static inline const struct qm_mr_entry *MR_INC(const struct qm_mr_entry *e)
 	return MR_CARRYCLEAR(e + 1);
 }
 
-static inline int qm_mr_init(struct qm_portal *portal, enum qm_mr_pmode pmode,
+static inline int qm_mr_init(struct qm_portal *portal, __maybe_unused enum qm_mr_pmode pmode,
 		enum qm_mr_cmode cmode)
 {
 	register struct qm_mr *mr = &portal->mr;
@@ -1173,7 +1173,7 @@ static inline int qm_shutdown_fq(struct qm_portal **portal, int portal_count,
 	u8 state;
 	int orl_empty, fq_empty, i, drain = 0;
 	u32 result;
-	u32 channel, wq;
+	u32 channel;
 	u16 dest_wq;
 
 	/* Determine the state of the FQID */
@@ -1198,7 +1198,6 @@ static inline int qm_shutdown_fq(struct qm_portal **portal, int portal_count,
 	/* Need to store these since the MCR gets reused */
 	dest_wq = be16_to_cpu(mcr->queryfq.fqd.dest_wq);
 	channel = dest_wq & 0x7;
-	wq = dest_wq>>3;
 
 	switch (state) {
 	case QM_MCR_NP_STATE_TEN_SCHED:
@@ -1223,25 +1222,17 @@ static inline int qm_shutdown_fq(struct qm_portal **portal, int portal_count,
 			const struct qm_mr_entry *msg;
 			const struct qm_dqrr_entry *dqrr = NULL;
 			int found_fqrn = 0;
-			u16 dequeue_wq = 0;
 
 			/* Flag that we need to drain FQ */
 			drain = 1;
 
-			if (channel >= qm_channel_pool1 &&
-			    channel < (qm_channel_pool1 + 15)) {
-				/* Pool channel, enable the bit in the portal */
-				dequeue_wq = (channel -
-					      qm_channel_pool1 + 1)<<4 | wq;
-			} else if (channel < qm_channel_pool1) {
-				/* Dedicated channel */
-				dequeue_wq = wq;
-			} else {
+			if (channel >= (u32)(qm_channel_pool1 + 15)) {
 				pr_info("Cannot recover FQ 0x%x, it is "
 					"scheduled on channel 0x%x",
 					fqid, channel);
 				return -EBUSY;
 			}
+
 			/* Set the sdqcr to drain this channel */
 			if (channel < qm_channel_pool1)
 				for (i = 0; i < portal_count; i++)

@@ -479,7 +479,7 @@ uint32_t of_n_size_cells(const struct device_node *dev_node)
 }
 
 const uint32_t *of_get_address(const struct device_node *dev_node, size_t idx,
-				uint64_t *size, uint32_t *flags)
+				uint64_t *size, __maybe_unused uint32_t *flags)
 {
 	const struct dt_dir *d;
 	const unsigned char *buf;
@@ -492,7 +492,7 @@ const uint32_t *of_get_address(const struct device_node *dev_node, size_t idx,
 	if (!d->reg)
 		return NULL;
 	assert(d->reg->len % ((na + ns) * 4) == 0);
-	assert(d->reg->len / ((na + ns) * 4) > idx);
+	assert((size_t)(d->reg->len / ((na + ns) * 4)) > idx);
 	buf = (const unsigned char *)&d->reg->buf[0];
 	buf += (na + ns) * idx * 4;
 	if (size)

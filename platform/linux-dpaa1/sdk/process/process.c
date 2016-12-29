@@ -110,7 +110,7 @@ int process_alloc(enum usdpaa_id_type id_type, uint32_t *base, uint32_t num,
 	ret = ioctl(fd, USDPAA_IOCTL_ID_ALLOC, &id);
 	if (ret)
 		return ret;
-	for (ret = 0; ret < id.num; ret++)
+	for (uint32_t ret = 0; ret < id.num; ret++)
 		base[ret] = id.base + ret;
 	return id.num;
 }
@@ -323,6 +323,9 @@ struct usdpaa_ioctl_raw_portal {
 
 #define USDPAA_IOCTL_FREE_RAW_PORTAL \
 	_IOR(USDPAA_IOCTL_MAGIC, 0x0D, struct usdpaa_ioctl_raw_portal)
+
+int process_portal_allocate(struct usdpaa_ioctl_raw_portal *portal);
+int process_portal_free(struct usdpaa_ioctl_raw_portal *portal);
 
 int process_portal_allocate(struct usdpaa_ioctl_raw_portal *portal)
 {

@@ -287,7 +287,7 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_fq *fq,
 
 	buf_hdr = (odp_buffer_hdr_t *)(uintptr_t)(fd->addr);
 	buf_set_input_queue(buf_hdr, queue_from_id(get_qid(qentry)));
-	*user_context = buf_hdr;
+	*user_context = (uint64_t)buf_hdr;
 
 	if (qentry->s.type == ODP_QUEUE_TYPE_PLAIN) {
 		qentry->s.buf_hdr = buf_hdr;
@@ -359,7 +359,7 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_fq *fq,
 }
 
 static void queue_init(queue_entry_t *queue, const char *name,
-		       odp_queue_type_t type, odp_queue_param_t *param)
+		       odp_queue_type_t type, const odp_queue_param_t *param)
 {
 	strncpy(queue->s.name, name, ODP_QUEUE_NAME_LEN - 1);
 	queue->s.type = type;

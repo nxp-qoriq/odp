@@ -44,3 +44,4 @@ struct dma_mem {
 
 /* Hooks for initialisation an allocator */
 void dma_mem_allocator_init(struct dma_mem *mem);
+void dma_mem_print_lock(struct dma_mem *map);

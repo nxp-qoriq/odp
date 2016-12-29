@@ -247,7 +247,7 @@ static inline uint64_t odp_schedule_dummy(odp_queue_t *out_queue, uint64_t wait,
 {
 	/* Enable channels scheduling for worker thread only */
 	qman_static_dequeue_add(sched_local.sdqcr);
-	fn_sch_recv_pkt = schedule_loop;
+	fn_sch_recv_pkt = (void *)schedule_loop;
 	return fn_sch_recv_pkt(out_queue, wait, out_buf, max_num, max_deq);
 }
 
@@ -256,7 +256,6 @@ odp_event_t odp_schedule(odp_queue_t *out_queue, uint64_t wait)
 	odp_buffer_t buf;
 	odp_time_t next, wtime;
 	int first = 1;
-	int ret;
 #ifndef ODP_SCHED_FAIR
 	static __thread int sdqcr_enable;
 
@@ -270,7 +269,7 @@ odp_event_t odp_schedule(odp_queue_t *out_queue, uint64_t wait)
 #endif
 
 	while (1) {
-		buf = qman_poll_odp_dqrr();
+		buf = (void *)qman_poll_odp_dqrr();
 
 		if (buf)
 			break;

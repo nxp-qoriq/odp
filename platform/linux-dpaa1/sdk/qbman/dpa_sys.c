@@ -43,6 +43,10 @@ struct process_interrupt {
 	struct list_head node;
 };
 
+void process_interrupt_install(struct process_interrupt *irq);
+void process_interrupt_remove(struct process_interrupt *irq);
+struct process_interrupt *process_interrupt_find(int irq_num);
+
 static LIST_HEAD(process_irq_list);
 static pthread_mutex_t process_irq_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -101,7 +105,7 @@ int qbman_request_irq(int irq, irqreturn_t (*isr)(int irq, void *arg),
 	return 0;
 }
 
-int qbman_free_irq(int irq, void *arg)
+int qbman_free_irq(int irq, __maybe_unused void *arg)
 {
 	struct process_interrupt *irq_node = process_interrupt_find(irq);
 	if (!irq_node)

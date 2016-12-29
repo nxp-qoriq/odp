@@ -21,15 +21,6 @@ extern "C" {
  *  @{
  */
 
-#ifndef ODP_UNIMPLEMENTED
-/**
- * This macro is used to indicate when a given function is not implemented
- */
-#define ODP_UNIMPLEMENTED() \
-		printf("%s:%d:The function %s() is not implemented\n", \
-			__FILE__, __LINE__, __func__)
-
-#endif
 /**
  * @}
  */

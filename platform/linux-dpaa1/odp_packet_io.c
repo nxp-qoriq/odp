@@ -12,7 +12,7 @@
 #include <odp/api/spinlock.h>
 #include <odp/api/shared_memory.h>
 #include <odp/api/hints.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 #include <odp/api/thread.h>
 #include <odp/api/system_info.h>
 
@@ -375,9 +375,7 @@ enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_fq *fq,
 	if (fd->format == qm_fd_sg) {
 		struct qm_sg_entry *sgt;
 		unsigned	sgcnt;
-		size_t off;
 
-		off = fd->offset;
 		sgt = (struct qm_sg_entry *)(fd_addr + fd->offset);
 		/* On LE CPUs, converts the SG entry from the BE format as
 		 * is provided by the HW to LE as expected by the LE CPUs,
@@ -386,7 +384,6 @@ enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_fq *fq,
 
 		fd_addr = __dma_mem_ptov(qm_sg_addr(sgt));/* first sg entry */
 		pkthdr = odp_buf_hdr_from_addr(fd_addr, NULL);
-		off = sgt->offset;
 		sgcnt = 1;
 		do {
 			hw_sg_to_cpu(&sgt[sgcnt]);
@@ -497,7 +494,7 @@ dqrr_cb_poll_pktin(struct qman_fq *fq,
 	odp_pktio_set_input(pkthdr, pktio_entry->s.id);
 	odp_queue_set_input(_odp_packet_to_buffer(pkt), ODP_QUEUE_INVALID);
 	_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
-	*user_context = pkt;
+	*user_context = (uint64_t)pkt;
 
 	if (pktio_entry->s.pkt_table) {
 		*(pktio_entry->s.pkt_table) = pkt;
@@ -566,7 +563,7 @@ dqrr_cb_im(struct qman_fq *fq,
 	odp_pktio_set_input(pkthdr, pktio_entry->id);
 	buf_set_input_queue(buf_hdr, ODP_QUEUE_INVALID);
 	_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
-	*user_context = pkt;
+	*user_context = (uint64_t)pkt;
 
 	if (pktio_entry->pkt_table) {
 		*(pktio_entry->pkt_table) = pkt;
@@ -631,10 +628,10 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 {
 	odp_pktio_t id;
 	pktio_entry_t *pktio_entry;
-	uint32_t default_fqid;
-	int i, ret, is_shared = 1;
+	uint32_t default_fqid = 0;
+	int ret;
 	struct fman_if *__if;
-	uint32_t count, first_fqid;
+	uint32_t count = 0, first_fqid = 0, i;
 	pool_entry_t *pool_t;
 	struct fman_if_bpool *bpool;
 
@@ -662,10 +659,9 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 
 	/* get the fman interface for this device */
 	__if = get_fman_if_byshmac(name);
-	if (!__if) {
+	if (!__if)
 		__if = get_fman_if_byname(name);
-		is_shared = 0;
-	}
+
 	if (!__if) {
 		free_pktio_entry(id);
 		id = ODP_PKTIO_INVALID;
@@ -735,10 +731,9 @@ out:
 int odp_pktin_queue_config(odp_pktio_t pktio,
 			const odp_pktin_queue_param_t *param)
 {
-	int i, ret = 0, rc;
-	unsigned num_queues;
+	int ret = 0, rc;
+	unsigned num_queues, i;
 	uint16_t channel;
-	uint32_t flag;
 	odp_pktin_mode_t mode;
 	pktio_entry_t *entry;
 	queue_entry_t *qentry;
@@ -917,9 +912,8 @@ int odp_pktout_queue_config(odp_pktio_t pktio,
 	queue_entry_t *queue_entry;
 	odp_queue_t qid;
 	struct fman_if *__if;
-	uint32_t count, start, flag;
-	int ret, is_shared = 1;
-	int i, num_queues, rc;
+	unsigned num_queues;
+	int ret, rc;
 	odp_pktio_capability_t capa;
 	odp_pktout_queue_param_t default_param;
 	odp_queue_param_t queue_param;
@@ -999,8 +993,6 @@ int odp_pktout_queue_config(odp_pktio_t pktio,
 	assert(pktio_entry->s.icp.iciof == DEFAULT_ICIOF);
 	assert(pktio_entry->s.icp.icsz == DEFAULT_ICSZ);
 
-out:
-	unlock_entry(pktio_entry);
 	return 0;
 
 }
@@ -1347,7 +1339,7 @@ int odp_pktin_recv(odp_pktin_queue_t queue, odp_packet_t packets[], int num)
 		if (ret < 0)
 			return ret;
 
-		pktio_entry->s.rx_fq.cb.dqrr_ctx = dqrr_cb_im;
+		pktio_entry->s.rx_fq.cb.dqrr_ctx = (void *)dqrr_cb_im;
 		pktio_entry->s.rx_fq.cb.ern = ern_cb;
 	}
 
@@ -1390,7 +1382,6 @@ int odp_pktout_send(odp_pktout_queue_t queue, const odp_packet_t packets[],
 {
 	int ret;
 	int i = 0;
-	odp_pktio_t pktio = queue.pktio;
 	odp_queue_t outq = queue.outq;
 	queue_entry_t *qentry = queue_to_qentry(outq);
 	odp_packet_t pkt;
@@ -1405,35 +1396,6 @@ int odp_pktout_send(odp_pktout_queue_t queue, const odp_packet_t packets[],
 		i++;
 	} /* end while */
 	return i;
-}
-
-int odp_pktio_inq_remdef(odp_pktio_t id)
-{
-	pktio_entry_t *pktio_entry = get_pktio_entry(id);
-	odp_queue_t queue;
-	queue_entry_t *qentry;
-
-	if (pktio_entry == NULL)
-		return -1;
-
-	lock_entry(pktio_entry);
-	queue = pktio_entry->s.inq_default;
-	qentry = queue_to_qentry(queue);
-
-	queue_lock(qentry);
-	if (qentry->s.status == QUEUE_STATUS_FREE) {
-		queue_unlock(qentry);
-		unlock_entry(pktio_entry);
-		return -1;
-	}
-
-	qentry->s.pktin = ODP_PKTIO_INVALID;
-	queue_unlock(qentry);
-
-	pktio_entry->s.inq_default = ODP_QUEUE_INVALID;
-	unlock_entry(pktio_entry);
-
-	return 0;
 }
 
 static inline size_t odp_pkt_get_len(odp_buffer_hdr_t *buf_hdr)

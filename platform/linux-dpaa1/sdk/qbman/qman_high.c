@@ -1273,7 +1273,7 @@ uint64_t qman_poll_odp_dqrr(void)
 	qm_dqrr_pvb_update(&p->p);
 	dq = qm_dqrr_current(&p->p);
 	if (!dq)
-		return NULL;
+		return 0;
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 	shadow = &p->shadow_dqrr[DQRR_PTR2IDX(dq)];
@@ -3548,7 +3548,7 @@ int qman_ceetm_bps2tokenrate(u64 bps, struct qm_ceetm_rate *token_rate,
 {
 	u16 pres;
 	u64 temp;
-	u64 qman_freq;
+	u64 qman_freq = 0;
 	int ret;
 
 	/* Read PRES from CEET_CFG_PRES register */
@@ -3592,7 +3592,7 @@ int qman_ceetm_tokenrate2bps(const struct qm_ceetm_rate *token_rate, u64 *bps,
 {
 	u16 pres;
 	u64 temp;
-	u64 qman_freq;
+	u64 qman_freq = 0;
 	int ret;
 
 	/* Read PRES from CEET_CFG_PRES register */

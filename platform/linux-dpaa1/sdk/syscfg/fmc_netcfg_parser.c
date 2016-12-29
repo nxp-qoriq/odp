@@ -487,7 +487,6 @@ static int parse_engine(xmlNodePtr enode, const char *pcd_file)
 			is_offline = true;
 		} else if (strcmp(tmp, "MAC") == 0) {
 			is_offline = false; /* 'MAC' is only for 10G port */
-			p_num;
 		} else {
 			fprintf(stderr, "%s:%hu:%s() error: Invalid port type (%s) "
 					"in XMLFILE(%s)\n", __FILE__, __LINE__,

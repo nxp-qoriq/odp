@@ -597,7 +597,6 @@ odp_packet_t odp_packet_copy(odp_packet_t pkt, odp_pool_t pool)
 odp_packet_t odp_packet_copy_part(odp_packet_t pkt, uint32_t offset,
 				  uint32_t len, odp_pool_t pool)
 {
-	odp_packet_hdr_t *srchdr = odp_packet_hdr(pkt);
 	odp_packet_t newpkt = odp_packet_alloc(pool, len);
 
 	if (newpkt != ODP_PACKET_INVALID) {
@@ -760,7 +759,7 @@ int odp_packet_input_index(odp_packet_t pkt)
 	odp_packet_hdr_t *pkthdr = odp_packet_hdr(pkt);
 	if (pkthdr->input == ODP_PKTIO_INVALID)
 		return -1;
-	return pkthdr->input;
+	return odp_pktio_index(pkthdr->input);
 }
 
 /*

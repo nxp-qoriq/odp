@@ -37,7 +37,6 @@
 #include <odp_buffer_inlines.h>
 #include <odp/api/pool.h>
 #include <odp_pool_internal.h>
-#include <odp/api/debug.h>
 #include <odp_debug_internal.h>
 #include <odp/api/event.h>
 #include <odp/api/hints.h>
