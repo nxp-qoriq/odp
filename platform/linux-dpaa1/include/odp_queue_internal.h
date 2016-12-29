@@ -38,7 +38,8 @@ extern "C" {
 #include <usdpaa/fman.h>
 #include <usdpaa/dma_mem.h>
 
-#define QUEUE_MULTI_MAX 16
+/* It indicates number of rx fq mentioned in policy file executed using fmc*/
+#define QUEUE_MULTI_MAX 32
 
 #define QUEUE_STATUS_FREE     0
 #define QUEUE_STATUS_READY    1

@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -35,11 +36,13 @@ struct pktio_entry {
 	odp_spinlock_t lock;		/**< entry spinlock */
 	int taken;			/**< is entry taken(1) or free(0) */
 	odp_queue_t inq_default;	/**< default input queue, if set */
+	odp_queue_t queue[QUEUE_MULTI_MAX];	/**< Multi input queue */
 	odp_queue_t outq_default;	/**< default out queue */
 	struct fman_if *__if;		/**< FMAN interface backing this entry */
 	int promisc;			/**< 1/0 - promisc enabled/dsiabled */
 	struct fman_if_ic_params icp;	/**< FMAN interface IC params */
-	uint32_t pcd_fqid;		/**< PCD fqid on which frames are received */
+	uint32_t default_fqid;		/**< Default fqid on which frames are received */
+	uint32_t pcd_first_fqid;	/**< PCD start fqid on which frames are received */
 	struct qman_fq rx_fq;		/**< QMAN Rx frame queue */
 	struct qman_fq tx_fq;
 	odp_pktio_t id;			/**< Entry id */
@@ -64,10 +67,11 @@ typedef struct {
 	/* buffer pools */
 	struct fman_if_bpool bpool[MAX_PORT_BPOOLS];
 	struct fm_eth_port_cfg *p_cfg;
-	/* first fqid available for pktio */
-	uint32_t last_fqid;
-	/* current number of configured buffer pools */
-	unsigned bp_num;
+	struct fman_if *fman_if;	/**< FMAN interface  */
+	uint32_t first_fqid;		/* first fqid available for pktio */
+	uint32_t default_fqid;
+	uint32_t count;
+	unsigned bp_num;		/* current number of configured buffer pools */
         uint8_t scheme_count;
 
         t_Handle fman_handle;
