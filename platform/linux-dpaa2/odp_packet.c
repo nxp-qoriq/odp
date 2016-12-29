@@ -59,15 +59,14 @@ odp_packet_t odp_packet_alloc(odp_pool_t pool_hdl, uint32_t len)
 		return ODP_PACKET_INVALID;
 	}
 	length = len + dpaa2_mbuf_head_room;
-	len = 0;
 	if (length > buf_size) {
 		first_seg->frame_len = buf_size;
 		first_seg->tot_frame_len = buf_size;
 		first_seg->data = first_seg->head;
 		seg_required = true;
 	} else {
-		first_seg->frame_len = length;
-		first_seg->tot_frame_len = length;
+		first_seg->frame_len = len;
+		first_seg->tot_frame_len = len;
 	}
 	next_seg = first_seg;
 	while (seg_required && length > 0) {
@@ -465,6 +464,7 @@ odp_packet_t odp_packet_copy(odp_packet_t pkt, odp_pool_t pool)
 {
 	struct dpaa2_mbuf *srchdr, *dsthdr;
 	odp_packet_t newpkt;
+	pool_entry_t *pool_entry = odp_pool_to_entry(pool);
 
 	if (!pool_type_is_packet(pool)) {
 		DPAA2_ERR(BUF, "\nPool is not packet pool\n");
@@ -485,7 +485,7 @@ odp_packet_t odp_packet_copy(odp_packet_t pkt, odp_pool_t pool)
 		DPAA2_ERR(BUF, "\nPacket copy failure\n");
 		return ODP_PACKET_INVALID;
 	}
-
+	dsthdr->bpid = pool_entry->s.bpid;
 	return newpkt;
 }
 
