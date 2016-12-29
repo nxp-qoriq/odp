@@ -133,6 +133,7 @@ typedef struct odp_buffer_hdr_t {
 	uint32_t frame_len;
 	uint32_t headroom;
 	uint32_t tailroom;
+	uint16_t bpid;
 	uint8_t jumbo;
 
 	odp_pktio_t input;

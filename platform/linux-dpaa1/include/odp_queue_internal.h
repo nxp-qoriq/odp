@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -154,7 +155,6 @@ static inline queue_entry_t *queue_to_qentry(odp_queue_t handle)
 static inline void __config_fd(struct qm_fd *fd,
 			      const odp_buffer_hdr_t *buf_hdr,
 			      size_t off, size_t len,
-			      uint32_t pool_id,
 			      queue_entry_t *qentry)
 {
 	struct qm_sg_entry *sgt;
@@ -173,10 +173,8 @@ static inline void __config_fd(struct qm_fd *fd,
 	fd->cmd = 0;
 #endif
 	fd->opaque_addr = 0;
-	fd->offset = off;
-	fd->length20 = len;
-	 /* release to the pool it belongs to */
-	fd->bpid = pool_id;
+	fd->opaque = buf_hdr->frame_len;
+	fd->opaque |= (off << 20);
 
 	if (buf_hdr->segcount > 1) {
 		pool_entry_t *pool_entry;
@@ -215,15 +213,19 @@ static inline void __config_fd(struct qm_fd *fd,
 		}
 
 		fd->addr = __dma_mem_vtop(buf_hdr->addr[seg]);
+		fd->bpid = buf_hdr->bpid;
 
 	} else {
-		fd->format = qm_fd_contig;
-		/* only PKTOUT queue requires physical address */
-		if (qentry->s.type == ODP_QUEUE_TYPE_PLAIN)
-			addr = buf_hdr->phy_addr;
-		else
-			addr = (intptr_t)buf_hdr;
-		fd->addr = addr;
+		if (qentry->s.type == ODP_QUEUE_TYPE_PLAIN) {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+			fd->opaque_addr = buf_hdr->phy_addr;
+#else
+			fd->opaque_addr = buf_hdr->phy_addr << 24;
+#endif
+		} else {
+			fd->addr = (intptr_t)buf_hdr;
+		}
+		fd->bpid = buf_hdr->bpid;
 	}
 
 	return;

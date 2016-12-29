@@ -248,16 +248,11 @@ static int raw_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 static int pkt_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 {
 	odp_packet_t pkt;
-	odp_pool_t pool_id;
-	pool_entry_t *pool_entry;
 	size_t len, off;
 	struct qm_fd fd;
 	odp_queue_t inq;
 	queue_entry_t *in_qentry = NULL;
 	int ret;
-
-	pool_id = buf_hdr->pool_hdl;
-	pool_entry = odp_pool_to_entry(pool_id);
 
 	pkt = (odp_packet_t)buf_hdr;
 	len = odp_packet_len(pkt);
@@ -266,7 +261,7 @@ static int pkt_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 	if (inq != ODP_QUEUE_INVALID)
 		in_qentry = queue_to_qentry(inq);
 
-	__config_fd(&fd, buf_hdr, off, len, pool_entry->s.pool_id, qentry);
+	__config_fd(&fd, buf_hdr, off, len, qentry);
 
 	if (in_qentry && in_qentry->s.type != ODP_QUEUE_TYPE_PLAIN)
 		ret = queue_enqueue_tx_fq(&qentry->s.fq, &fd, buf_hdr,

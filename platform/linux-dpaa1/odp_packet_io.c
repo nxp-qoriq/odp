@@ -34,9 +34,6 @@
 #include <string.h>
 #include <assert.h>
 
-/* Per-thread transmit frame queue */
-static __thread struct qman_fq local_fq;
-
 /* Direct receive pool channel */
 static u32 sdqcr_vdq, pchannel_vdq;
 
@@ -268,17 +265,12 @@ static int free_pktio_entry(odp_pktio_t id)
 
 int odp_pktio_init_local(void)
 {
-	int ret;
-	ret = qman_create_fq(1, QMAN_FQ_FLAG_NO_MODIFY, &local_fq);
-	if (ret)
-		ODP_ERR("odp_pktio_init_local failed (%d)\n", ret);
-	local_fq.cb.ern = ern_cb;
-	return ret;
+	return 0;
 }
 
 void odp_pktio_term_local(void)
 {
-	qman_destroy_fq(&local_fq, 0);
+	return;
 }
 
 int odp_pktio_init_global(void)
@@ -1452,28 +1444,25 @@ static inline uint32_t odp_buf_get_bpid(odp_buffer_hdr_t *buf_hdr)
 /* Enqueue a buffer for transmission */
 int pktout_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 {
-	uint32_t pool_id;
 	size_t len, off;
 	struct qm_fd fd;
 	odp_queue_t inq;
 	queue_entry_t *in_qentry = NULL;
 	int ret;
 
-	pool_id = odp_buf_get_bpid(buf_hdr);
 	len = odp_pkt_get_len(buf_hdr);
 	off = GET_PRS_RESULT(buf_hdr)->eth_off +
 		((odp_packet_hdr_t *)(buf_hdr))->headroom;
 	inq = buf_hdr->inq;
 
-	__config_fd(&fd, buf_hdr, off, len, pool_id, qentry);
-	local_fq.fqid = qentry->s.fq.fqid;
+	__config_fd(&fd, buf_hdr, off, len, qentry);
 
 	if (inq != ODP_QUEUE_INVALID) {
 		in_qentry = queue_to_qentry(inq);
 	} else {
 retry:
 		/* pktio burst mode */
-		ret = qman_enqueue(&local_fq, &fd, 0);
+		ret = qman_enqueue(&qentry->s.fq, &fd, 0);
 		if (ret) {
 			cpu_spin(CPU_BACKOFF_CYCLES);
 			goto retry;
@@ -1481,7 +1470,7 @@ retry:
 		return ret;
 	}
 
-	return queue_enqueue_tx_fq(&local_fq, &fd, buf_hdr, in_qentry);
+	return queue_enqueue_tx_fq(&qentry->s.fq, &fd, buf_hdr, in_qentry);
 }
 
 /* no dequeue from PKTOUT queues */
