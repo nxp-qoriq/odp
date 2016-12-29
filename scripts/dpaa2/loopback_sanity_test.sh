@@ -1242,7 +1242,13 @@ run_cunit_command() {
 			return;
 		fi
 		eval "$1 > log 2>&1 &"
-		sleep 10
+		if [[ $MODULE == "time" ||
+			$MODULE == "system" ]]
+		then
+			sleep 40
+		else
+			sleep 10
+		fi
 		killall $1 > /dev/null 2>&1
 		echo
 		echo -e " #$cunit_test_no)\tTest case:$MODULE\t\tCommand:($1)" >> cunit_tested_app
@@ -1301,7 +1307,6 @@ run_cunit() {
 	run_cunit_command "./init_main_ok"
 	run_cunit_command "./init_main_log"
 	run_cunit_command "./init_main_abort"
-	run_cunit_command "./config_main"
 	run_cunit_command "./queue_main"
 	run_cunit_command "./buffer_main"
 	run_cunit_command "./classification_main"
@@ -1315,11 +1320,16 @@ run_cunit() {
 	run_cunit_command "./random_main"
 	run_cunit_command "./scheduler_main"
 	run_cunit_command "./shmem_main"
-	run_cunit_command "./synchronizers_main"
 	run_cunit_command "./system_main"
 	run_cunit_command "./thread_main"
 	run_cunit_command "./time_main"
 	run_cunit_command "./timer_main"
+	run_cunit_command "./atomic_main"
+	run_cunit_command "./barrier_main"
+	run_cunit_command "./hash_main"
+	run_cunit_command "./lock_main"
+	run_cunit_command "./std_clib_main"
+	run_cunit_command "./traffic_mngr_main"
 }
 
 #/* configuring the interfaces*/
