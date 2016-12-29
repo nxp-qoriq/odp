@@ -32,16 +32,8 @@ extern "C" {
 /**
  * @}
  */
-static inline uint32_t odp_packet_flow_hash(odp_packet_t pkt ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-	return 0;
-}
 
-static inline void odp_packet_flow_hash_set(odp_packet_t pkt ODP_UNUSED, uint32_t flow_hash ODP_UNUSED)
-{
-	ODP_UNIMPLEMENTED();
-}
+/* TODO - Add all the annotation related functions here */
 
 #include <odp/api/spec/packet.h>
 

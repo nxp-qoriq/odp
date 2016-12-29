@@ -368,25 +368,22 @@ enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_portal *qm __always_unused,
 {
 	const struct qm_fd *fd;
 	struct qm_sg_entry *sgt;
-	pool_entry_t *pool;
 	void *fd_addr;
-	odp_buffer_hdr_t *buf_hdr;
 	odp_buffer_t buf;
 	odp_packet_hdr_t *pkthdr;
 	odp_packet_t pkt;
 	size_t off;
 
 	fd = &dqrr->fd;
-	pool = get_pool_entry(fd->bpid);
 	queue_entry_t *qentry = QENTRY_FROM_FQ(fq);
 
 	/* get packet header from frame start address */
 	fd_addr = __dma_mem_ptov(qm_fd_addr(fd));
-	buf_hdr = odp_buf_hdr_from_addr(fd_addr, pool);
-	off = fd->offset;
+	pkthdr = odp_pkt_hdr_from_addr(fd_addr, NULL);
 	if (fd->format == qm_fd_sg) {
 		unsigned	sgcnt;
 
+		off = fd->offset;
 		sgt = (struct qm_sg_entry *)(fd_addr + fd->offset);
 		/* On LE CPUs, converts the SG entry from the BE format as
 		 * is provided by the HW to LE as expected by the LE CPUs,
@@ -394,35 +391,29 @@ enum qman_cb_dqrr_result dqrr_cb_qm(struct qman_portal *qm __always_unused,
 		hw_sg_to_cpu(&sgt[0]);
 
 		fd_addr = __dma_mem_ptov(qm_sg_addr(sgt));/* first sg entry */
-		buf_hdr = odp_buf_hdr_from_addr(fd_addr, pool);
+		pkthdr = odp_buf_hdr_from_addr(fd_addr, NULL);
 		off = sgt->offset;
 		sgcnt = 1;
 		do {
 			hw_sg_to_cpu(&sgt[sgcnt]);
 
-			buf_hdr->addr[sgcnt] = __dma_mem_ptov(
+			pkthdr->addr[sgcnt] = __dma_mem_ptov(
 							qm_sg_addr(&sgt[sgcnt]));
 			sgcnt++;
 		} while (sgt[sgcnt - 1].final != 1);
-		buf_hdr->addr[sgcnt] = __dma_mem_ptov(qm_fd_addr(fd));
-		buf_hdr->segcount = sgcnt;
-		fd_addr = buf_hdr->addr[sgcnt];
+		pkthdr->addr[sgcnt] = __dma_mem_ptov(qm_fd_addr(fd));
+		pkthdr->segcount = sgcnt;
+		fd_addr = pkthdr->addr[sgcnt];
 	}
 
-	pkthdr = (odp_packet_hdr_t *)buf_hdr;
-	buf = odp_hdr_to_buf(buf_hdr);
+	pkthdr->headroom = ODP_CONFIG_PACKET_HEADROOM;
+	pkthdr->tailroom = ODP_CONFIG_PACKET_TAILROOM;
+	pkthdr->input = qentry->s.pktin;
+	pkthdr->inq = queue_from_id(get_qid(qentry));
+	pkthdr->frame_len = fd->length20;
 
-	/* setup and receive ODP packet */
-	pkt = _odp_packet_from_buffer(buf);
-
-	pkthdr->headroom = pool->s.headroom;
-	pkthdr->tailroom = pool->s.tailroom;
-
-	odp_pktio_set_input(pkthdr, qentry->s.pktin);
-	buf_set_input_queue(buf_hdr, queue_from_id(get_qid(qentry)));
-
-	_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
-
+	/* Collect the ODP packet */
+	pkt = _odp_packet_from_pkt_hdr(pkthdr);
 	 return odp_sched_collect_pkt(pkthdr, pkt, dqrr, qentry);
 }
 
@@ -1442,12 +1433,6 @@ static inline size_t odp_pkt_get_len(odp_buffer_hdr_t *buf_hdr)
 	return ((odp_packet_hdr_t *)(buf_hdr))->frame_len;
 }
 
-static inline size_t odp_pkt_get_data_off(odp_buffer_hdr_t *buf_hdr)
-{
-	return ((odp_packet_hdr_t *)(buf_hdr))->l2_offset +
-		((odp_packet_hdr_t *)(buf_hdr))->headroom;
-}
-
 static inline uint32_t odp_buf_get_bpid(odp_buffer_hdr_t *buf_hdr)
 {
 	return buf_hdr->handle.pool_id;
@@ -1465,7 +1450,8 @@ int pktout_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 
 	pool_id = odp_buf_get_bpid(buf_hdr);
 	len = odp_pkt_get_len(buf_hdr);
-	off = odp_pkt_get_data_off(buf_hdr);
+	off = GET_PRS_RESULT(buf_hdr)->eth_off +
+		((odp_packet_hdr_t *)(buf_hdr))->headroom;
 	inq = buf_hdr->inq;
 
 	__config_fd(&fd, buf_hdr, off, len, pool_id, qentry);

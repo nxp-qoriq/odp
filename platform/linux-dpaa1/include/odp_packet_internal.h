@@ -128,6 +128,7 @@ static inline odp_packet_hdr_t *odp_packet_hdr(odp_packet_t pkt)
  * FMan parse result array
  */
 typedef struct ODP_PACKED fm_prs_result {
+	 uint8_t     reserved[DEFAULT_ICEOF];
 	 uint8_t     lpid;		 /**< Logical port id */
 	 uint8_t     shimr;		 /**< Shim header result  */
 	 uint16_t    l2r;		 /**< Layer 2 result */
@@ -148,14 +149,20 @@ typedef struct ODP_PACKED fm_prs_result {
 	 uint8_t     gre_off;		 /**< GRE offset */
 	 uint8_t     l4_off;		 /**< Layer 4 offset */
 	 uint8_t     nxthdr_off;	 /**< Parser end point */
+	 uint64_t    timestamp;		 /**< TimeStamp */
+	 uint64_t    hash_result;	 /**< Hash Result */
 } fm_prs_result_t;
 
-#define GET_PRS_RESULT(buf, prs_res) \
-	(buf->segcount == 1) ? (typeof(prs_res))(buf->addr[0] + DEFAULT_ICEOF) : \
-				(typeof(prs_res))(buf->addr[buf->segcount] + \
-						  DEFAULT_ICEOF)
-
+/* TODO - This will currently not work for SG and we shall need
+ * to add a annotation pointer in packet header */
+#define GET_PRS_RESULT(_pkt) ((fm_prs_result_t *)(_pkt->addr[0]))
 #define BUF_HDR_OFFSET (ODP_CACHE_LINE_SIZE_ROUNDUP(sizeof(odp_packet_hdr_t)) + ODP_CACHE_LINE_SIZE_ROUNDUP(sizeof(struct sg_priv)))
+
+static inline odp_packet_hdr_t
+*odp_pkt_hdr_from_addr(void *fd_addr,  pool_entry_t *pool ODP_UNUSED)
+{
+	return (odp_packet_hdr_t *)(fd_addr - BUF_HDR_OFFSET);
+}
 
 static inline odp_buffer_hdr_t
 *odp_buf_hdr_from_addr(void *fd_addr,  pool_entry_t *pool ODP_UNUSED)
@@ -292,6 +299,13 @@ static inline odp_packet_t _odp_packet_from_buffer(odp_buffer_t buf)
 {
 	return (odp_packet_t)buf;
 }
+
+/* Convert a buffer handle to a packet handle */
+static inline odp_packet_t _odp_packet_from_pkt_hdr(odp_packet_hdr_t *pkt_hdr)
+{
+	return (odp_packet_t)pkt_hdr;
+}
+
 
 #ifdef __cplusplus
 }

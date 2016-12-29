@@ -276,88 +276,110 @@ uint32_t odp_packet_user_area_size(odp_packet_t pkt)
 void *odp_packet_l2_ptr(odp_packet_t pkt, uint32_t *len)
 {
 	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
-	return packet_map(pkt_hdr, pkt_hdr->l2_offset, len);
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
+
+	if (len)
+		*len = pkt_hdr->segsize - pa->eth_off;
+
+	return pkt_hdr->addr[0] + pkt_hdr->headroom + pa->eth_off;
 }
 
 uint32_t odp_packet_l2_offset(odp_packet_t pkt)
 {
-	return odp_packet_hdr(pkt)->l2_offset;
+	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
+
+	return pa->eth_off;
 }
 
 int odp_packet_l2_offset_set(odp_packet_t pkt, uint32_t offset)
 {
 	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
-	fm_prs_result_t		*pa;
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
 
 	if (offset >= pkt_hdr->frame_len)
 		return -1;
 
-	pkt_hdr->l2_offset = offset;
-
-	/* Set offset in the Parse Array */
-	pa = (fm_prs_result_t *)(odp_buffer_addr(_odp_packet_to_buffer(pkt)) +
-			DEFAULT_ICEOF);
 	pa->eth_off = offset;
-
 	return 0;
 }
 
 void *odp_packet_l3_ptr(odp_packet_t pkt, uint32_t *len)
 {
 	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
-	return packet_map(pkt_hdr, pkt_hdr->l3_offset, len);
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
+
+	if (len)
+		*len = pkt_hdr->segsize - pa->ip_off[0];
+
+	return pkt_hdr->addr[0] + pkt_hdr->headroom + pa->ip_off[0];
 }
 
 uint32_t odp_packet_l3_offset(odp_packet_t pkt)
 {
-	return odp_packet_hdr(pkt)->l3_offset;
+	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
+
+	return pa->ip_off[0];
 }
 
 int odp_packet_l3_offset_set(odp_packet_t pkt, uint32_t offset)
 {
 	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
-	fm_prs_result_t		*pa;
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
 
 	if (offset >= pkt_hdr->frame_len)
 		return -1;
 
-	pkt_hdr->l3_offset = offset;
-
-	/* Set offset in the Parse Array */
-	pa = (fm_prs_result_t *)(odp_buffer_addr(_odp_packet_to_buffer(pkt)) +
-			DEFAULT_ICEOF);
 	pa->ip_off[0] = offset;
-
 	return 0;
 }
 
 void *odp_packet_l4_ptr(odp_packet_t pkt, uint32_t *len)
 {
 	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
-	return packet_map(pkt_hdr, pkt_hdr->l4_offset, len);
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
+
+	if (len)
+		*len = pkt_hdr->segsize - pa->l4_off;
+
+	return pkt_hdr->addr[0] + pkt_hdr->headroom + pa->l4_off;
 }
 
 uint32_t odp_packet_l4_offset(odp_packet_t pkt)
 {
-	return odp_packet_hdr(pkt)->l4_offset;
+	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
+
+	return pa->l4_off;
 }
 
 int odp_packet_l4_offset_set(odp_packet_t pkt, uint32_t offset)
 {
 	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
-	fm_prs_result_t		*pa;
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
 
 	if (offset >= pkt_hdr->frame_len)
 		return -1;
 
-	pkt_hdr->l4_offset = offset;
-
-	/* Set offset in the Parse Array */
-	pa = (fm_prs_result_t *)(odp_buffer_addr(_odp_packet_to_buffer(pkt)) +
-			DEFAULT_ICEOF);
 	pa->l4_off = offset;
-
 	return 0;
+}
+
+uint32_t odp_packet_flow_hash(odp_packet_t pkt)
+{
+	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
+
+	return pa->hash_result;
+}
+
+void odp_packet_flow_hash_set(odp_packet_t pkt, uint32_t flow_hash)
+{
+	odp_packet_hdr_t *pkt_hdr = odp_packet_hdr(pkt);
+	fm_prs_result_t *pa = GET_PRS_RESULT(pkt_hdr);
+
+	pa->hash_result = flow_hash;
 }
 
 int odp_packet_is_segmented(odp_packet_t pkt)
