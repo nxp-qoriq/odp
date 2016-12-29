@@ -395,10 +395,10 @@ static void initialize_intf(char *intf)
 	if (odp_pktout_queue_config(pktio, NULL))
 		EXAMPLE_ABORT("Error: pktout config failed for %s\n", intf);
 
-	if (odp_pktin_event_queue(pktio, &inq_def, 1) != 1)
-		EXAMPLE_ABORT("Error: failed to get input queue for %s\n", intf);
-
 	if (pktio_param.in_mode == ODP_PKTIN_MODE_QUEUE) {
+		if (odp_pktin_event_queue(pktio, &inq_def, 1) != 1)
+			EXAMPLE_ABORT("Error: failed to get input queue for %s\n", intf);
+
 		poll_queues[num_polled_queues++] = inq_def;
 		printf("%s: adding %"PRIu64"\n", __func__,
 		       odp_queue_to_u64(inq_def));
@@ -419,12 +419,8 @@ static void initialize_intf(char *intf)
 			      intf);
 	}
 
-	printf("Created pktio:%02" PRIu64 ", queue mode (ATOMIC queues)\n"
-	       "          default pktio%02" PRIu64 "-INPUT queue:%" PRIu64 "\n"
-	       "          source mac address %s\n",
-	       odp_pktio_to_u64(pktio), odp_pktio_to_u64(pktio),
-	       odp_queue_to_u64(inq_def),
-	       mac_addr_str(src_mac_str, src_mac));
+	printf("Created pktio:%02" PRIu64 "\n" "source mac address %s\n",
+	       odp_pktio_to_u64(pktio), mac_addr_str(src_mac_str, src_mac));
 
 	/* Resolve any routes using this interface for output */
 	resolve_fwd_db(intf, pktout, src_mac);
