@@ -123,7 +123,7 @@ int odp_buffer_alloc_multi(odp_pool_t pool_hdl,
 	int count;
 	pool_entry_t *pool = odp_pool_to_entry(pool_hdl);
 	
-	if (pool->s.params.type != ODP_POOL_BUFFER) {
+	if (!pool || pool->s.params.type != ODP_POOL_BUFFER) {
 		__odp_errno = EINVAL;
 		return -1;
 	}
