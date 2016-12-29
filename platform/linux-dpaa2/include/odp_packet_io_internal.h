@@ -43,8 +43,8 @@ typedef enum {
 struct pktio_entry {
 	odp_spinlock_t lock;		/**< entry spinlock */
 	int taken;			/**< is entry taken(1) or free(0) */
-	odp_queue_t inq_default;	/**< default input queue, if set */
-	odp_queue_t outq_default;	/**< default out queue */
+	uint8_t conf_rx_queues;		/**< number of configured input queues*/
+	uint8_t conf_tx_queues;		/**< number of configured out queues*/
 	odp_queue_t loopq;		/**< loopback queue for "loop" device */
 	odp_pktio_type_t type;		/**< pktio type */
 	pkt_dpaa2_t pkt_dpaa2;		/**< using DPAA2 API for IO */
@@ -93,51 +93,16 @@ static inline pktio_entry_t *get_pktio_entry(odp_pktio_t id)
 int odp_pktio_inq_set(odp_pktio_t pktio, queue_entry_t *qentry, uint8_t vq_id);
 
 /**
- * Query default output queue
- *
- * @param pktio Packet IO handle
- *
- * @return Default out queue
- * @retval ODP_QUEUE_INVALID on failure
- */
-static inline odp_queue_t odp_pktio_outq_getdef(odp_pktio_t id)
-{
-	pktio_entry_t *pktio_entry = get_pktio_entry(id);
-
-	if (pktio_entry == NULL)
-		return ODP_QUEUE_INVALID;
-
-	return pktio_entry->s.outq_default;
-}
-
-
-/**
- * Get default input queue associated with a pktio handle
- *
- * @param pktio  Packet IO handle
- *
- * @return Default input queue set
- * @retval ODP_QUEUE_INVALID on failure
- */
-static inline odp_queue_t odp_pktio_inq_getdef(odp_pktio_t id)
-{
-	pktio_entry_t *pktio_entry = get_pktio_entry(id);
-
-	if (pktio_entry == NULL)
-		return ODP_QUEUE_INVALID;
-
-	return pktio_entry->s.inq_default;
-}
-
-/**
- * remove the default input queue associated with a pktio handle
+ * remove an input queue associated with a pktio handle
  *
  * @param pktio         Packet IO handle
+ * @param vq_id		queue id
  * @retval  0 on success
  * @retval <0 on failure
  */
-int odp_pktio_inq_remdef(odp_pktio_t pktio);
+int odp_pktio_inq_rem(odp_pktio_t id, uint8_t vq_id);
 
+void set_queue_entry_to_free(queue_entry_t *queue);
 #ifdef __cplusplus
 }
 #endif

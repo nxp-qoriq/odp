@@ -56,6 +56,16 @@ static pktio_table_t *pktio_tbl;
 /* pktio pointer entries ( for inlines) */
 void *pktio_entry_ptr[ODP_CONFIG_PKTIO_ENTRIES];
 
+static void lock_entry(pktio_entry_t *entry)
+{
+	odp_spinlock_lock(&entry->s.lock);
+}
+
+static void unlock_entry(pktio_entry_t *entry)
+{
+	odp_spinlock_unlock(&entry->s.lock);
+}
+
 int odp_pktio_init_global(void)
 {
 	pktio_entry_t *pktio_entry;
@@ -103,9 +113,27 @@ int odp_pktio_term_global(void)
 		return 0;
 	for (id = 1; id <= ODP_CONFIG_PKTIO_ENTRIES; ++id) {
 		pktio_entry = &pktio_tbl->entries[id - 1];
-		if (pktio_entry)
-			if (pktio_entry->s.outq_default)
-				odp_queue_destroy(pktio_entry->s.outq_default);
+		if (pktio_entry) {
+			odp_queue_t queue;
+			struct dpaa2_dev *ndev;
+			odp_pktout_mode_t mode;
+
+			ndev = pktio_entry->s.pkt_dpaa2.dev;
+			mode = pktio_entry->s.param.out_mode;
+			lock_entry(pktio_entry);
+			if (mode == ODP_PKTOUT_MODE_QUEUE) {
+				queue_entry_t *qentry;
+
+				while (pktio_entry->s.conf_tx_queues) {
+					queue = (odp_queue_t)dpaa2_dev_get_vq_handle(ndev->tx_vq[pktio_entry->s.conf_tx_queues - 1]);
+					qentry = queue_to_qentry(queue);
+					set_queue_entry_to_free(qentry);
+					pktio_entry->s.conf_tx_queues--;
+				}
+			} else
+				pktio_entry->s.conf_tx_queues = 0;
+			unlock_entry(pktio_entry);
+		}
 	}
 
 	ret = odp_shm_free(odp_shm_lookup("odp_pktio_entries"));
@@ -133,16 +161,6 @@ static void set_free(pktio_entry_t *entry)
 static void set_taken(pktio_entry_t *entry)
 {
 	entry->s.taken = 1;
-}
-
-static void lock_entry(pktio_entry_t *entry)
-{
-	odp_spinlock_lock(&entry->s.lock);
-}
-
-static void unlock_entry(pktio_entry_t *entry)
-{
-	odp_spinlock_unlock(&entry->s.lock);
 }
 
 static void lock_entry_classifier(pktio_entry_t *entry)
@@ -179,7 +197,8 @@ void odp_pktout_queue_param_init(odp_pktout_queue_param_t *param)
 static void init_pktio_entry(pktio_entry_t *entry)
 {
 	set_taken(entry);
-	entry->s.inq_default = ODP_QUEUE_INVALID;
+	entry->s.conf_rx_queues = 0;
+	entry->s.conf_tx_queues = 0;
 	memset(&entry->s.pkt_dpaa2, 0, sizeof(entry->s.pkt_dpaa2));
 	/* Save pktio parameters, type is the most useful */
 	//memcpy(&entry->s.params, params, sizeof(*params));
@@ -292,7 +311,7 @@ static void odp_hash_dist(odp_pktio_t pktio,
 		ret = dpaa2_eth_setup_flow_distribution(ndev,
 					dist_tuple,
 					i,
-					q_config->tc_config[i].num_dist);
+					q_param->num_queues);
 
 		if (ret) {
 			ODP_ERR("Fail to configure RX dist\n");
@@ -300,13 +319,7 @@ static void odp_hash_dist(odp_pktio_t pktio,
 		}
 	}
 
-	for (i = 0; i < q_param->num_queues; i++) {
-		ret = dpaa2_eth_setup_rx_vq(ndev, i, NULL);
-		if (DPAA2_FAILURE == ret) {
-			ODP_ERR("Fail to setup RX VQ\n");
-			return;
-		}
-	}
+	ODP_PRINT("Configured RX dist! 0x%X\n", dist_tuple);
 
 	return;
 }
@@ -544,15 +557,9 @@ int odp_pktin_recv(odp_pktin_queue_t queue, odp_packet_t pkt_table[], int len)
 
 int odp_pktout_send(odp_pktout_queue_t queue, const odp_packet_t pkt_table[], int len)
 {
-	pktio_entry_t *pktio_entry = get_pktio_entry(queue.pktio);
-	struct dpaa2_dev *ndev;
 	int pkts;
 
-	if (pktio_entry == NULL)
-		return -1;
-
-	ndev = pktio_entry->s.pkt_dpaa2.dev;
-	pkts = dpaa2_eth_xmit(ndev, ndev->tx_vq[0], len, pkt_table);
+	pkts = dpaa2_eth_xmit(((struct dpaa2_vq *)queue)->dev, (struct dpaa2_vq *) queue, len, pkt_table);
 
 	return pkts;
 }
@@ -561,6 +568,7 @@ int odp_pktio_inq_set(odp_pktio_t id, queue_entry_t *qentry, uint8_t vq_id)
 {
 	pktio_entry_t *pktio_entry = get_pktio_entry(id);
 	struct dpaa2_dev *ndev;
+	int retcode;
 
 	if (!pktio_entry || !qentry)
 		return -1;
@@ -572,56 +580,68 @@ int odp_pktio_inq_set(odp_pktio_t id, queue_entry_t *qentry, uint8_t vq_id)
 	qentry->s.pktout = id;
 	qentry->s.status = QUEUE_STATUS_READY;
 	qentry->s.priv = ndev->rx_vq[vq_id];
-	qentry->s.dequeue = pktin_dequeue;
-	qentry->s.dequeue_multi = pktin_deq_multi;
-	lock_entry(pktio_entry);
+	qentry->s.enqueue = queue_enq_dummy;
+	qentry->s.enqueue_multi = queue_enq_multi_dummy;
 	dpaa2_dev_set_vq_handle(ndev->rx_vq[vq_id], (uint64_t)qentry->s.handle);
-	unlock_entry(pktio_entry);
 	if (qentry->s.param.type == ODP_QUEUE_TYPE_SCHED) {
+		qentry->s.dequeue = queue_deq_dummy;
+		qentry->s.dequeue_multi = queue_deq_multi_dummy;
 		odp_schedule_queue(qentry, qentry->s.param.sched.prio, vq_id);
 		qentry->s.status = QUEUE_STATUS_SCHED;
+	} else {
+		qentry->s.dequeue = pktin_dequeue;
+		qentry->s.dequeue_multi = pktin_deq_multi;
+		retcode = dpaa2_eth_setup_rx_vq(ndev, vq_id, NULL);
+		if (DPAA2_FAILURE == retcode) {
+			ODP_ERR("Fail to setup RX VQ\n");
+			return -1;
+		}
 	}
 	queue_unlock(qentry);
+	pktio_entry->s.conf_rx_queues += 1;
 
 	return 0;
 }
 
-int odp_pktio_inq_remdef(odp_pktio_t id)
+int odp_pktio_inq_rem(odp_pktio_t id, uint8_t vq_id)
 {
 	pktio_entry_t *pktio_entry = get_pktio_entry(id);
-	odp_queue_t queue;
+	struct dpaa2_dev *ndev;
 	queue_entry_t *qentry;
+	odp_queue_t queue;
+	int ret;
+
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
 
 	if (pktio_entry == NULL)
 		return -1;
 
-	lock_entry(pktio_entry);
-	queue = pktio_entry->s.inq_default;
+	queue = (odp_queue_t)dpaa2_dev_get_vq_handle(ndev->rx_vq[vq_id]);
+
 	qentry = queue_to_qentry(queue);
-
 	queue_lock(qentry);
-
-	if (enable_hash) {
-		struct dpaa2_dev *ndev;
-
-		ndev = pktio_entry->s.pkt_dpaa2.dev;
-		dpaa2_eth_remove_flow_distribution(ndev, 0);
-	}
 
 	if (qentry->s.status == QUEUE_STATUS_FREE) {
 		queue_unlock(qentry);
-		unlock_entry(pktio_entry);
 		return -1;
 	}
 
+	qentry->s.dequeue = queue_deq_dummy;
+	qentry->s.dequeue_multi = queue_deq_multi_dummy;
 	qentry->s.enqueue = queue_enq_dummy;
 	qentry->s.enqueue_multi = queue_enq_multi_dummy;
 	qentry->s.status = QUEUE_STATUS_NOTSCHED;
 	qentry->s.pktin = ODP_PKTIO_INVALID;
-	queue_unlock(qentry);
+	qentry->s.priv = NULL;
+	if (qentry->s.param.type == ODP_QUEUE_TYPE_SCHED) {
+		ret = odp_sub_queue_to_group(qentry->s.param.sched.group);
+		if (!ret)
+			odp_deaffine_group(qentry->s.param.sched.group, NULL);
+	}
+	qentry->s.status = QUEUE_STATUS_FREE;
 
-	pktio_entry->s.inq_default = ODP_QUEUE_INVALID;
-	unlock_entry(pktio_entry);
+	queue_unlock(qentry);
+	pktio_entry->s.conf_rx_queues -= 1;
 
 	return 0;
 }
@@ -1048,8 +1068,11 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 	int retcode;
 	uint32_t i;
 	queue_entry_t *queue;
+	odp_pktin_mode_t mode;
 	pktio_entry_t *pktio_entry;
 	odp_pktin_queue_param_t q_param;
+	odp_pktio_capability_t capa;
+	struct dpaa2_dev *ndev;
 
 	if (!param)
 		odp_pktin_queue_param_init(&q_param);
@@ -1062,46 +1085,153 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 		return -1;
 	}
 
-	if (param->num_queues == 0 && !(param->classifier_enable)) {
+	mode = pktio_entry->s.param.in_mode;
+
+	/* Ignore the call when packet input is disabled. */
+	if (mode == ODP_PKTIN_MODE_DISABLED) {
+		ODP_DBG("pktio %s: in mode is disabled\n", pktio_entry->s.name);
+		return 0;
+	}
+
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
+
+	if (ndev->state == DEV_ACTIVE) {
+		ODP_ERR("pktio %s: not stopped\n", pktio_entry->s.name);
+		return -1;
+	}
+
+	retcode = odp_pktio_capability(pktio, &capa);
+	if (retcode) {
+		ODP_ERR("pktio %s: unable to read capabilities\n",
+			pktio_entry->s.name);
+		return -1;
+	}
+
+	if (q_param.num_queues > capa.max_input_queues) {
+		ODP_ERR("pktio %s: too many input queues\n", pktio_entry->s.name);
+		return -1;
+	}
+
+	if (q_param.classifier_enable && q_param.hash_enable) {
+		ODP_ERR("pktio %s: Both classifier and hashing cannot be"
+				" enabled simultaneously\n", pktio_entry->s.name);
+		return -1;
+	}
+
+	if (q_param.num_queues == 0 && !(q_param.classifier_enable)) {
 		ODP_ERR("pktio %s: zero input queues\n", pktio_entry->s.name);
 		return -1;
 	}
 
-	if (param->num_queues > 1 && !(param->hash_enable) &&
-		 !(param->classifier_enable)) {
+	if (q_param.num_queues > 1 && !(q_param.hash_enable) &&
+		 !(q_param.classifier_enable)) {
 		ODP_ERR("pktio %s:  More than one input queues require either"
 			"flow hashing or classifier enabled.\n",
 			pktio_entry->s.name);
 		return -1;
 	}
 
-	if (pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_SCHED)
-		q_param.queue_param.type = ODP_QUEUE_TYPE_SCHED;
+	lock_entry(pktio_entry);
+	/* If re-configuring, destroy old queues */
+	if (pktio_entry->s.conf_rx_queues) {
+		if ((mode == ODP_PKTIN_MODE_SCHED) ||
+			(mode == ODP_PKTIN_MODE_QUEUE)) {
 
-	if ((pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_SCHED) ||
-		(pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_QUEUE)) {
-		/* enable hash distribution */
-		if (q_param.hash_enable && q_param.num_queues > 1) {
-			enable_hash = TRUE;
-			odp_hash_dist(pktio, param);
+			while (pktio_entry->s.conf_rx_queues) {
+				retcode = odp_pktio_inq_rem(pktio, pktio_entry->s.conf_rx_queues - 1);
+				if (retcode) {
+					ODP_ERR("pktio %s: failed to remove already configured queues\n",
+						pktio_entry->s.name);
+					unlock_entry(pktio_entry);
+					return -1;
+				}
+			}
+		} else
+			pktio_entry->s.conf_rx_queues = 0;
+
+		if (enable_hash) {
+			struct queues_config *q_config;
+
+			q_config = dpaa2_eth_get_queues_config(ndev);
+			for (i = 0; i < q_config->num_tcs; i++)
+				dpaa2_eth_remove_flow_distribution(ndev, i);
+
+			enable_hash = FALSE;
 		}
+	}
+
+
+	/* enable hash distribution */
+	if (q_param.hash_enable && q_param.num_queues > 1) {
+		enable_hash = TRUE;
+		odp_hash_dist(pktio, &q_param);
+	}
+
+	switch (mode) {
+	case ODP_PKTIN_MODE_SCHED:
+
+		q_param.queue_param.type = ODP_QUEUE_TYPE_SCHED;
+	case ODP_PKTIN_MODE_QUEUE:
 
 		for (i = 0; i < q_param.num_queues; i++) {
 			queue = get_free_queue_entry();
-			if (!queue)
+			if (!queue) {
 				ODP_ERR("pktio %s: No free queue entry available\n",
-				pktio_entry->s.name);
+					pktio_entry->s.name);
+				goto failure;
+			}
 
 			memcpy(&queue->s.param, &q_param.queue_param, sizeof(odp_queue_param_t));
 
 			retcode = odp_pktio_inq_set(pktio, queue, i);
 			if (retcode < 0) {
 				ODP_ERR("\n Error in setting inq\n");
-				return -1;
+				/*unconfigure the queues in case partial configured*/
+				goto failure;
 			}
 		}
+		break;
+
+	case ODP_PKTIN_MODE_DIRECT:
+		for (i = 0; i < q_param.num_queues; i++) {
+			retcode = dpaa2_eth_setup_rx_vq(ndev, i, NULL);
+			if (DPAA2_FAILURE == retcode) {
+				ODP_ERR("Fail to setup RX VQ\n");
+				unlock_entry(pktio_entry);
+				return -1;
+			}
+
+		}
+		pktio_entry->s.conf_rx_queues = q_param.num_queues;
+
+	default:
+		break;
 	}
+	unlock_entry(pktio_entry);
 	return 0;
+
+failure:
+	while (pktio_entry->s.conf_rx_queues) {
+		retcode = odp_pktio_inq_rem(pktio, pktio_entry->s.conf_rx_queues - 1);
+		if (retcode) {
+			ODP_ERR("pktio %s: failed to remove already configured queues\n",
+				pktio_entry->s.name);
+			unlock_entry(pktio_entry);
+			return -1;
+		}
+	}
+
+	if (enable_hash) {
+		struct queues_config *q_config;
+
+		q_config = dpaa2_eth_get_queues_config(ndev);
+		for (i = 0; i < q_config->num_tcs; i++)
+			dpaa2_eth_remove_flow_distribution(ndev, i);
+
+		enable_hash = FALSE;
+	}
+	unlock_entry(pktio_entry);
+	return -1;
 }
 
 int odp_pktout_queue_config(odp_pktio_t pktio,
@@ -1110,12 +1240,13 @@ int odp_pktout_queue_config(odp_pktio_t pktio,
 	queue_entry_t *qentry;
 	pktio_entry_t *pktio_entry;
 	odp_queue_t qid;
+	odp_pktout_mode_t mode;
 	odp_pktio_capability_t capa;
 	struct dpaa2_dev *ndev;
-	uint32_t i, ret;
+	int32_t ret;
+	uint32_t i = 0;
 	char name[ODP_QUEUE_NAME_LEN] = {0};
 	odp_pktout_queue_param_t q_default_param;
-	odp_queue_param_t qparam;
 
 	if (!param)
 		odp_pktout_queue_param_init(&q_default_param);
@@ -1125,6 +1256,19 @@ int odp_pktout_queue_config(odp_pktio_t pktio,
 	pktio_entry = get_pktio_entry(pktio);
 	if (!pktio_entry)
 		return -1;
+
+	mode = pktio_entry->s.param.out_mode;
+
+	if (mode == ODP_PKTOUT_MODE_DISABLED ||
+		mode == ODP_PKTOUT_MODE_TM)
+		return 0;
+
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
+
+	if (ndev->state == DEV_ACTIVE) {
+		ODP_ERR("pktio %s: not stopped\n", pktio_entry->s.name);
+		return -1;
+	}
 
 	if (q_default_param.num_queues == 0) {
 		ODP_DBG("pktio %s: zero output queues\n", pktio_entry->s.name);
@@ -1143,38 +1287,81 @@ int odp_pktout_queue_config(odp_pktio_t pktio,
 		return -1;
 	}
 
-	switch (pktio_entry->s.param.out_mode) {
-	case ODP_PKTOUT_MODE_DIRECT:
-		/*Nothing to do*/
-		break;
-	case ODP_PKTOUT_MODE_TM:
-		ODP_UNIMPLEMENTED();
-		break;
+	lock_entry(pktio_entry);
+	/* If re-configuring, destroy old queues */
+	if (pktio_entry->s.conf_tx_queues) {
+		if (mode == ODP_PKTOUT_MODE_QUEUE) {
+			odp_queue_t qid;
+
+			while (pktio_entry->s.conf_tx_queues) {
+				qid = (odp_queue_t)dpaa2_dev_get_vq_handle(ndev->tx_vq[pktio_entry->s.conf_tx_queues - 1]);
+				if (!qid) {
+					ODP_ERR("pktio %s: failed to remove already configured queues\n",
+						pktio_entry->s.name);
+					unlock_entry(pktio_entry);
+					return -1;
+				}
+				qentry = queue_to_qentry(qid);
+				set_queue_entry_to_free(qentry);
+				pktio_entry->s.conf_tx_queues -= 1;
+			}
+		} else
+			pktio_entry->s.conf_tx_queues = 0;
+	}
+
+	switch (mode) {
 	case ODP_PKTOUT_MODE_QUEUE:
 		for (i = 0; i < q_default_param.num_queues; i++) {
 			sprintf(name, "pktio%lu_outq_%d", odp_pktio_to_u64(pktio), i);
-			odp_queue_param_init(&qparam);
-			qid = odp_queue_create(name, &qparam);
-			if (qid == ODP_QUEUE_INVALID)
-				return -1;
-			pktio_entry->s.outq_default = qid;
-			qentry = queue_to_qentry(qid);
+			qentry = get_free_queue_entry();
+			if (!qentry) {
+				ODP_ERR("pktio %s: No free queue entry available\n",
+					pktio_entry->s.name);
+				goto failure;
+			}
+
+			queue_lock(qentry);
 			qentry->s.pktout = pktio;
 
 			/*Configure tx queue at underlying hardware queues*/
-			ndev = pktio_entry->s.pkt_dpaa2.dev;
-			qentry->s.priv = ndev->tx_vq[0];
-			dpaa2_dev_set_vq_handle(ndev->tx_vq[0], (uint64_t)qentry->s.handle);
+			qentry->s.priv = ndev->tx_vq[i];
+			dpaa2_dev_set_vq_handle(ndev->tx_vq[i], (uint64_t)qentry->s.handle);
 
 			qentry->s.enqueue = pktout_enqueue;
 			qentry->s.enqueue_multi = pktout_enq_multi;
+			queue_unlock(qentry);
 		}
-		break;
-	case ODP_PKTOUT_MODE_DISABLED:
-		/*Nothing to do*/
+
+	case ODP_PKTOUT_MODE_DIRECT:
+		ret = dpaa2_eth_setup_tx_vq(ndev, q_default_param.num_queues, DPAA2BUF_TX_NO_ACTION);
+		if (ret == DPAA2_FAILURE) {
+			ODP_ERR("pktio %s: Failed to setup queues\n", pktio_entry->s.name);
+			goto failure;
+		}
+		pktio_entry->s.conf_tx_queues = q_default_param.num_queues;
+
+	default:
 		break;
 	}
+	unlock_entry(pktio_entry);
 	return 0;
+
+failure:
+	/** Free queues for queue mode*/
+	while (i > 0) {
+		qid = (odp_queue_t)dpaa2_dev_get_vq_handle(ndev->tx_vq[--i]);
+		if (!qid) {
+			ODP_ERR("pktio %s: failed to remove already configured queues\n",
+				pktio_entry->s.name);
+			unlock_entry(pktio_entry);
+			return -1;
+		}
+		qentry = queue_to_qentry(qid);
+		set_queue_entry_to_free(qentry);
+	}
+	unlock_entry(pktio_entry);
+	return -1;
+
 }
 
 int odp_pktin_queue(odp_pktio_t pktio, odp_pktin_queue_t queues[],
@@ -1189,15 +1376,23 @@ int odp_pktin_queue(odp_pktio_t pktio, odp_pktin_queue_t queues[],
 	if (!pktio_entry)
 		return -1;
 
-	ndev = pktio_entry->s.pkt_dpaa2.dev;
-	num_queues = ndev->num_rx_vqueues;
+	num_queues = pktio_entry->s.conf_rx_queues;
+	if (!queues) {
+		ODP_DBG("OUT parameter 'queues' is NULL\n");
+		return num_queues;
+	}
 
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
 	if (pktio_entry->s.param.in_mode  == ODP_PKTIN_MODE_DIRECT) {
 		for (i = 0; i < num && i < num_queues; i++) {
 			queues[i] = ndev->rx_vq[i];
 		}
+	} else {
+		ODP_ERR("pktio %s: pktio in mode is not DIRECT mode\n", pktio_entry->s.name);
+		return -1;
 	}
-	return i;
+
+	return num_queues;
 }
 
 int odp_pktout_queue(odp_pktio_t pktio, odp_pktout_queue_t queues[],
@@ -1205,21 +1400,29 @@ int odp_pktout_queue(odp_pktio_t pktio, odp_pktout_queue_t queues[],
 {
 	int32_t i = -1, num_queues;
 	pktio_entry_t *pktio_entry;
+	struct dpaa2_dev *ndev;
 
 	pktio_entry = get_pktio_entry(pktio);
 	if (!pktio_entry)
 		return -1;
 
-	/*TODO: Implementation need to be enhanced for multi queue support*/
-	num_queues = 1;
+	num_queues = pktio_entry->s.conf_tx_queues;
+	if (!queues) {
+		ODP_DBG("OUT parameter 'queues' is NULL\n");
+		return num_queues;
+	}
 
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
 	if (pktio_entry->s.param.out_mode == ODP_PKTOUT_MODE_DIRECT) {
 		for (i = 0; i < num && i < num_queues; i++) {
-			queues[i].queue = odp_pktio_outq_getdef(pktio);
-			queues[i].pktio = pktio;
+			queues[i] = ndev->tx_vq[i];
 		}
+	} else {
+		ODP_ERR("pktio %s: pktio out mode is not DIRECT mode\n", pktio_entry->s.name);
+		return -1;
 	}
-	return i;
+
+	return num_queues;
 }
 
 int odp_pktio_capability(odp_pktio_t pktio, odp_pktio_capability_t *capa)
@@ -1259,41 +1462,52 @@ int odp_pktin_event_queue(odp_pktio_t pktio, odp_queue_t queues[], int num)
 	if (!pktio_entry)
 		return -1;
 
-	ndev = pktio_entry->s.pkt_dpaa2.dev;
-	num_queues = ndev->num_rx_vqueues;
+	num_queues = pktio_entry->s.conf_rx_queues;
+	if (!queues) {
+		ODP_DBG("OUT parameter 'queues' is NULL\n");
+		return num_queues;
+	}
 
-	if ((pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_SCHED) ||
-		(pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_QUEUE)) {
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
+
+	if ((pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_QUEUE) ||
+		(pktio_entry->s.param.in_mode == ODP_PKTIN_MODE_SCHED)) {
 		for (i = 0; i < num && i < num_queues; i++)
 			queues[i] =
 			(odp_queue_t)dpaa2_dev_get_vq_handle(ndev->rx_vq[i]);
+	} else {
+		ODP_ERR("pktio %s: pktio in mode is not either QUEUE or SCHED mode\n", pktio_entry->s.name);
+		return -1;
 	}
-	return i;
+
+	return num_queues;
 }
 
 int odp_pktout_event_queue(odp_pktio_t pktio, odp_queue_t queues[], int num)
 {
-	int32_t i = -1;
+	int32_t i = -1, num_queues;
 	pktio_entry_t *pktio_entry;
+	struct dpaa2_dev *ndev;
 
 	pktio_entry = get_pktio_entry(pktio);
 	if (!pktio_entry)
 		return -1;
 
-	/*TODO: Implementation need to be enhanced for multi queue support*/
-	switch (pktio_entry->s.param.out_mode) {
-	case ODP_PKTOUT_MODE_DIRECT:
-	case ODP_PKTOUT_MODE_DISABLED:
-		break;
-	case ODP_PKTOUT_MODE_QUEUE:
-		for (i = 0; i < num; i++)
-			queues[i] = odp_pktio_outq_getdef(pktio);
-		break;
-	case ODP_PKTOUT_MODE_TM:
-		ODP_UNIMPLEMENTED();
-		break;
+	num_queues = pktio_entry->s.conf_tx_queues;
+	if (!queues) {
+		ODP_DBG("OUT parameter 'queues' is NULL\n");
+		return num_queues;
 	}
-	return i;
+
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
+	if (pktio_entry->s.param.out_mode == ODP_PKTOUT_MODE_QUEUE) {
+		for (i = 0; i < num && i < num_queues; i++)
+			queues[i] = (odp_queue_t)dpaa2_dev_get_vq_handle(ndev->tx_vq[i]);
+	} else {
+		ODP_ERR("pktio %s: pktio out mode is not QUEUE mode\n", pktio_entry->s.name);
+		return -1;
+	}
+	return num_queues;
 }
 
 int odp_pktio_index(odp_pktio_t pktio)

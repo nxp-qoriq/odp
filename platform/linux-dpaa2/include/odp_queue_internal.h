@@ -103,6 +103,8 @@ int queue_deq_multi(queue_entry_t *queue, odp_buffer_hdr_t *buf_hdr[], int num);
 int queue_enq_dummy(queue_entry_t *queue, odp_buffer_hdr_t *buf_hdr);
 int queue_enq_multi_dummy(queue_entry_t *queue, odp_buffer_hdr_t *buf_hdr[],
 			  int num);
+odp_buffer_hdr_t *queue_deq_dummy(queue_entry_t *queue);
+int queue_deq_multi_dummy(queue_entry_t *queue, odp_buffer_hdr_t *buf_hdr[], int num);
 int queue_deq_multi_destroy(queue_entry_t *queue, odp_buffer_hdr_t *buf_hdr[],
 			    int num);
 

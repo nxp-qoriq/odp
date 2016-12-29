@@ -773,6 +773,9 @@ initialize_knidev_array(args_t *args)
 			break;
 		}
 
+		if (odp_pktin_queue_config(pktio, NULL))
+			EXAMPLE_ABORT("Error: pktin config failed for pktio\n");
+
 		/* Allocating KNI dev */
 		ret = odpfsl_knidev_open(kdev_p, i, pktio, &kdev_ops, NULL);
 		if (SUCCESS != ret) {

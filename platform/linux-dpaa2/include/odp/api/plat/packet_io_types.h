@@ -31,11 +31,7 @@ typedef ODP_HANDLE_T(odp_pktio_t);
 
 typedef	ODP_HANDLE_T(odp_pktin_queue_t);
 
-/** @internal */
-typedef struct odp_pktout_queue_s {
-	odp_pktio_t pktio; /**< @internal pktio handle */
-	odp_queue_t queue;	/**< @internal pktio queue index */
-} odp_pktout_queue_t;
+typedef	ODP_HANDLE_T(odp_pktout_queue_t);
 
 #define ODP_PKTIO_INVALID _odp_cast_scalar(odp_pktio_t, 0)
 

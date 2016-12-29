@@ -36,8 +36,7 @@
 int setup_pkt_dpaa2(pkt_dpaa2_t * const pkt_dpaa2 ODP_UNUSED, void *dev,
 							odp_pool_t pool)
 {
-	uint32_t max_rx_vq;
-	int i, ret;
+	int ret;
 	struct dpaa2_dev *netdev = (struct dpaa2_dev *)dev;
 	pool_entry_t *phandle = (pool_entry_t *)pool;
 	struct dpaa2_dev_priv *dev_priv = netdev->priv;
@@ -52,24 +51,6 @@ int setup_pkt_dpaa2(pkt_dpaa2_t * const pkt_dpaa2 ODP_UNUSED, void *dev,
 	/* Get Max available RX & TX VQs for this device */
 	DPAA2_NOTE(APP1, "port =>  %s being created",
 		netdev->dev_string);
-
-	/* Get Max available RX & TX VQs for this device */
-	max_rx_vq = dpaa2_dev_get_max_rx_vq(netdev);
-	if (max_rx_vq < 1) {
-		ODP_ERR("Not enough Resource to run\n");
-		goto fail_dpaa2start;
-	}
-	/* Add RX Virtual queues to this device */
-	i = 0;
-	{
-		DPAA2_NOTE(APP1, "setup FQ %d", i);
-		ret = dpaa2_eth_setup_rx_vq(netdev, i, NULL);
-		if (DPAA2_FAILURE == ret) {
-			DPAA2_ERR(APP1,
-				"Fail to configure RX VQs\n");
-			goto fail_dpaa2start;
-		}
-	}
 
 	ret = dpaa2_eth_attach_bp_list(netdev, (void *)(phandle->s.int_hdl));
 	if (DPAA2_FAILURE == ret) {
@@ -102,22 +83,14 @@ int32_t cleanup_pkt_dpaa2(pkt_dpaa2_t *const pkt_dpaa2)
 
 int start_pkt_dpaa2(pkt_dpaa2_t *const pkt_dpaa2)
 {
-	uint32_t max_tx_vq;
 	int ret;
 	struct dpaa2_dev *netdev = pkt_dpaa2->dev;
-	max_tx_vq = dpaa2_dev_get_max_tx_vq(netdev);
-	if (max_tx_vq < 1) {
-		ODP_ERR("Not enough Resource to run\n");
-		return -1;
-	}
+
 	ret = dpaa2_eth_start(netdev);
 	if (DPAA2_FAILURE == ret) {
 		ODP_ERR("Not enough Resource to run\n");
 		return -1;
 	}
-	/*Error handling is not done as a workaround of failure of
-	  below API after CTRL+C*/
-	dpaa2_eth_setup_tx_vq(netdev, max_tx_vq, DPAA2BUF_TX_NO_ACTION);
 	return 0;
 }
 
