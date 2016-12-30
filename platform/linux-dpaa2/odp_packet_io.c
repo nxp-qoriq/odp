@@ -106,6 +106,7 @@ int odp_pktio_init_global(void)
 int odp_pktio_term_global(void)
 {
 	pktio_entry_t *pktio_entry;
+	struct dpaa2_dev *ndev;
 	int ret;
 	int id;
 
@@ -113,12 +114,11 @@ int odp_pktio_term_global(void)
 		return 0;
 	for (id = 1; id <= ODP_CONFIG_PKTIO_ENTRIES; ++id) {
 		pktio_entry = &pktio_tbl->entries[id - 1];
-		if (pktio_entry) {
+		ndev = pktio_entry->s.pkt_dpaa2.dev;
+		if (ndev) {
 			odp_queue_t queue;
-			struct dpaa2_dev *ndev;
 			odp_pktout_mode_t mode;
 
-			ndev = pktio_entry->s.pkt_dpaa2.dev;
 			mode = pktio_entry->s.param.out_mode;
 			lock_entry(pktio_entry);
 			if (mode == ODP_PKTOUT_MODE_QUEUE) {
@@ -132,7 +132,9 @@ int odp_pktio_term_global(void)
 				}
 			} else
 				pktio_entry->s.conf_tx_queues = 0;
+
 			unlock_entry(pktio_entry);
+			odp_pktio_close(odp_pktio_lookup(ndev->dev_string));
 		}
 	}
 
@@ -331,7 +333,14 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 	pktio_entry_t *pktio_entry;
 	struct dpaa2_dev *ndev;
 	int ret, loop_dev = 0;
-	uint8_t src_mac[ODPH_ETHADDR_LEN];
+	pool_entry_t *phandle = (pool_entry_t *)pool;
+
+	id = odp_pktio_lookup(name);
+	if (id != ODP_PKTIO_INVALID) {
+		/* interface is already open */
+		__odp_errno = EEXIST;
+		return ODP_PKTIO_INVALID;
+	}
 
 	ODP_DBG("Allocating dpaa2 pktio\n");
 
@@ -363,21 +372,27 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 		return ODP_PKTIO_INVALID;
 	}
 
+	ret = dpaa2_eth_open(ndev);
+	if (ret)
+		return ODP_PKTIO_INVALID;
+
+	/* if successful, alloc_lock_pktio_entry() returns with the entry locked */
 	id = alloc_lock_pktio_entry();
 	if (id == ODP_PKTIO_INVALID) {
 		ODP_ERR("No resources available.\n");
-		return ODP_PKTIO_INVALID;
+		goto setup_failure;
 	}
-	/* if successful, alloc_pktio_entry() returns with the entry locked */
 
 	pktio_entry = get_pktio_entry(id);
 	if (!pktio_entry)
-		return ODP_PKTIO_INVALID;
+		goto setup_failure;
 
 	if (loop_dev) {
 		ret = init_loop(pktio_entry, id);
-		if (ret)
-			return ODP_PKTIO_INVALID;
+		if (ret) {
+			free_pktio_entry(id);
+			goto setup_failure;
+		}
 	}
 
 	pktio_entry->s.pkt_dpaa2.dev = ndev;
@@ -387,15 +402,12 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 	else
 		odp_pktio_param_init(&pktio_entry->s.param);
 
-	ret = setup_pkt_dpaa2(&pktio_entry->s.pkt_dpaa2, (void *)ndev, pool);
+	ret = dpaa2_eth_attach_bp_list(ndev, (void *)(phandle->s.int_hdl));
 	if (ret != 0) {
 		unlock_entry_classifier(pktio_entry);
-		cleanup_pkt_dpaa2(&pktio_entry->s.pkt_dpaa2);
 		free_pktio_entry(id);
-		__odp_errno = EEXIST;
-		id = ODP_PKTIO_INVALID;
 		ODP_ERR("Unable to init any I/O type.\n");
-		return id;
+		goto setup_failure;
 	}
 
 	pktio_entry->s.pkt_dpaa2.pool = pool;
@@ -403,16 +415,15 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 	pktio_entry->s.pktio_headroom = ODP_CONFIG_PACKET_HEADROOM;
 	unlock_entry_classifier(pktio_entry);
 
-	ret = odp_pktio_mac_addr(id, src_mac, sizeof(src_mac));
-	if (ret < 0) {
-		ODP_ERR("Error: failed during MAC address get for %s\n", name);
-	} else {
-		printf("\nPort %s = Mac %02X.%02X.%02X.%02X.%02X.%02X\n", \
-			name, src_mac[0], src_mac[1], src_mac[2],
-			src_mac[3], src_mac[4], src_mac[5]);
-	}
 	return id;
+
+setup_failure:
+	ret = dpaa2_eth_close(ndev);
+	if (ret)
+		ODP_ERR("Failed to close the device\n");
+	return ODP_PKTIO_INVALID;
 }
+
 int odp_pktio_start(odp_pktio_t pktio)
 {
 	pktio_entry_t *entry;
@@ -457,12 +468,22 @@ int odp_pktio_stop(odp_pktio_t pktio)
 
 int odp_pktio_close(odp_pktio_t id)
 {
+	struct dpaa2_dev *ndev;
 	pktio_entry_t *entry;
+	struct dpaa2_dev_priv *dev_priv;
 	int res = -1;
 
 	entry = get_pktio_entry(id);
 	if (entry == NULL)
 		return -1;
+
+	ndev = entry->s.pkt_dpaa2.dev;
+	dev_priv = ndev->priv;
+
+	if (!dev_priv->hw) {
+		ODP_PRINT("pktio already closed\n");
+		return 0;
+	}
 
 	lock_entry(entry);
 	if (!is_free(entry)) {
@@ -473,7 +494,7 @@ int odp_pktio_close(odp_pktio_t id)
 		res |= free_pktio_entry(id);
 	}
 
-	res |= cleanup_pkt_dpaa2(&entry->s.pkt_dpaa2);
+	res |= dpaa2_eth_close(ndev);
 	if (res)
 		ODP_ERR("pktio cleanup failed\n");
 

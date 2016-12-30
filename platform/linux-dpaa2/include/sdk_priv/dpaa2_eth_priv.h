@@ -144,6 +144,16 @@ int32_t dpaa2_eth_defconfig(struct dpaa2_dev *dev);
 int32_t dpaa2_eth_probe(struct dpaa2_dev *dev, const void *data);
 
 /*!
+ * @details	Ethernet driver open function to open and configure the device.
+ *
+ * @param[in]	dev - Pointer to DPAA2 Ethernet device
+ *
+ * @returns	DPAA2_SUCCESS on success; DPAA2_FAILURE otherwise.
+ *
+ */
+int32_t dpaa2_eth_open(struct dpaa2_dev *dev);
+
+/*!
  * @details	Ethernet driver remove function to remove the device.
  *
  * @param[in]	dev - Pointer to DPAA2 Ethernet device
@@ -152,6 +162,16 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev, const void *data);
  *
  */
 int32_t dpaa2_eth_remove(struct dpaa2_dev *dev);
+
+/*!
+ * @details	Ethernet driver close function to unconfigure and close the device.
+ *
+ * @param[in]	dev - Pointer to DPAA2 Ethernet device
+ *
+ * @returns	DPAA2_SUCCESS on success; DPAA2_FAILURE otherwise.
+ *
+ */
+int32_t dpaa2_eth_close(struct dpaa2_dev *dev);
 
 /*!
  * @details	Enable a ethernet device for use of RX/TX.
