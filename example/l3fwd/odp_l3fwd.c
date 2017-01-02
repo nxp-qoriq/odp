@@ -253,7 +253,6 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 		{"count", required_argument, NULL, 'c'},	/* return 'c'*/
 		{"interface", required_argument, NULL, 'i'},	/* return 'i' */
 		{"mode", required_argument, NULL, 'm'},		/* return 'm' */
-		{"flows", required_argument, NULL, 'f'},	/* return 'f' */
 		{"route", required_argument, NULL, 'r'},	/* return 'r' */
 		{"help", no_argument, NULL, 'h'},		/* return 'h' */
 		{NULL, 0, NULL, 0}
@@ -322,16 +321,6 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 			i = atoi(optarg);
 			if (i != 0)
 				appl_args->mode = APPL_MODE_PKT_SCHED;
-			break;
-		/* Number of flows which are to be created*/
-		case 'f':
-			i = atoi(optarg);
-			if (i <= ODP_MAX_FLOW_COUNT)
-				appl_args->flows = i;
-
-			appl_args->free_entries = appl_args->flows;
-			bucket_count = ((appl_args->flows / 8) == 0) ?
-						ODP_DEFAULT_BUCKET_COUNT : appl_args->flows / 8;
 			break;
 		/*Configure Route in forwarding database*/
 		case 'r':
@@ -422,8 +411,6 @@ static void usage(char *progname)
 	       "                  1: Send & receive packets through ODP Schedular.\n"
 	       "			Default: Packet burst mode.\n"
 	       "  -c, --count <number> CPU count.\n"
-	       "  -f, --flows <number> Maximum number of Route cache flows.\n"
-	       "			Default: 1 Million.\n"
 	       "  -h, --help           Display help and exit.\n\n"
 	       " environment variables: ODP_PKTIO_DISABLE_SOCKET_MMAP\n"
 	       "                        ODP_PKTIO_DISABLE_SOCKET_MMSG\n"
@@ -849,6 +836,9 @@ int main(int argc, char *argv[])
 	free(gbl_args->appl.if_names);
 	free(gbl_args->appl.if_str);
 	free(gbl_args);
+
+	printf("Maximum bucket depth in this run: %u\n",
+		get_max_bucket_depth());
 	printf("Exit\n\n");
 
 	return 0;
