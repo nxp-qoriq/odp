@@ -56,16 +56,6 @@ typedef struct {
 int32_t dpaa2_eth_xmit_fqid(void *vq, uint32_t num,
 				dpaa2_mbuf_pt buf[]);
 
-/**
- * Configure an interface to work in dpaa2 mode
- */
-int setup_pkt_dpaa2(pkt_dpaa2_t * const pkt_dpaa2, void *netdev,
-					odp_pool_t pool);
-/**
- * Switch interface from dpaa2 mode to normal mode
- */
-int32_t cleanup_pkt_dpaa2(pkt_dpaa2_t *const pkt_dpaa2);
-
 int start_pkt_dpaa2(pkt_dpaa2_t * const pkt_dpaa2);
 
 int close_pkt_dpaa2(pkt_dpaa2_t * const pkt_dpaa2);

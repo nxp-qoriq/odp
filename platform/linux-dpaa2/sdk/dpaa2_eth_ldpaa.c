@@ -110,7 +110,40 @@ int32_t dpaa2_eth_driver_exit(void)
 int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 			const void *data ODP_UNUSED)
 {
-	/*Probe function is responsible to initialize the DPNI devices.
+	int retcode;
+	struct dpaa2_dev_priv *dev_priv =
+				(struct dpaa2_dev_priv *)dev->priv;
+	struct vfio_device_info *obj_info =
+		(struct vfio_device_info *)dev_priv->drv_priv;
+
+	/* Get the interrupts for Ethernet device */
+	retcode = dpaa2_get_interrupt_info(dev_priv->vfio_fd,
+			obj_info, &(dev_priv->intr_handle));
+	if (retcode != DPAA2_SUCCESS) {
+		DPAA2_ERR(FW, "Unable to get interrupt information\n");
+		return DPAA2_FAILURE;
+	};
+	/*if  headroom is already initialized in the previous device probe*/
+	if (!dpaa2_mbuf_head_room) {
+		uint32_t tot_size;
+		/* ... rx buffer layout ... */
+		dpaa2_mbuf_sw_annotation = DPAA2_FD_PTA_SIZE;
+		dpaa2_mbuf_head_room	= ODP_CONFIG_PACKET_HEADROOM;
+
+		/*Check alignment for buffer layouts first*/
+		tot_size = dpaa2_mbuf_sw_annotation + DPAA2_MBUF_HW_ANNOTATION +
+							dpaa2_mbuf_head_room;
+		tot_size = ODP_ALIGN_ROUNDUP(tot_size, ODP_PACKET_LAYOUT_ALIGN);
+		dpaa2_mbuf_head_room = tot_size - (dpaa2_mbuf_sw_annotation +
+						DPAA2_MBUF_HW_ANNOTATION);
+	}
+	sprintf(dev->dev_string, "dpni.%u", dev_priv->hw_id);
+	return DPAA2_SUCCESS;
+}
+
+int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
+{
+	/*eth_open function is responsible to initialize the DPNI devices.
 	 * It does the following:
 	 * 1. Register device specific callbacks to DPAA2 device framework
 	 * 2. Allocate memory for RX/TX VQ's and assign into NADL device
@@ -133,8 +166,6 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 	uint8_t mac_addr[ETH_ADDR_LEN];
 	struct dpni_buffer_layout layout;
 	struct queues_config *q_config;
-	struct vfio_device_info *obj_info =
-		(struct vfio_device_info *)dev_priv->drv_priv;
 
 	/*Allocate space for device specific data*/
 	eth_priv = (struct dpaa2_eth_priv *)dpaa2_calloc(NULL, 1,
@@ -164,14 +195,6 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 	/*Configure device specific callbacks to the DPAA2 framework*/
 	dev_priv->fn_get_vqid	 = dpaa2_eth_get_fqid;
 	dev_priv->drv_priv	 = eth_priv;
-
-	/* Get the interrupts for Ethernet device */
-	retcode = dpaa2_get_interrupt_info(dev_priv->vfio_fd,
-			obj_info, &(dev_priv->intr_handle));
-	if (retcode != DPAA2_SUCCESS) {
-		DPAA2_ERR(FW, "Unable to get interrupt information\n");
-		goto mem_alloc_failure;
-	};
 
 	/*Open the dpaa2 device via MC and save the handle for further use*/
 	dpni_dev = (struct fsl_mc_io *)dpaa2_calloc(NULL, 1,
@@ -229,7 +252,9 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 					" Error Code = %d\n", retcode);
 		goto get_attr_failure;
 	}
-	sprintf(dev->dev_string, "dpni.%u", dev_priv->hw_id);
+	printf("\nPort %s = Mac %02X.%02X.%02X.%02X.%02X.%02X\n", \
+			dev->dev_string, mac_addr[0], mac_addr[1], mac_addr[2],
+			mac_addr[3], mac_addr[4], mac_addr[5]);
 	sprintf((char *)eth_priv->cfg.name, "fsl_dpaa2_eth");
 	memcpy(eth_priv->cfg.mac_addr, mac_addr, ETH_ADDR_LEN);
 	/* driver may only return MTU in case of IPF/IPR offload support
@@ -269,20 +294,6 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 	/*Configure WRIOP to provide parse results, frame annoatation status and
 	timestamp*/
 
-	/*if  headroom is already initialized in the previous device probe*/
-	if (!dpaa2_mbuf_head_room) {
-		uint32_t tot_size;
-		/* ... rx buffer layout ... */
-		dpaa2_mbuf_sw_annotation = DPAA2_FD_PTA_SIZE;
-		dpaa2_mbuf_head_room	= ODP_CONFIG_PACKET_HEADROOM;
-
-		/*Check alignment for buffer layouts first*/
-		tot_size = dpaa2_mbuf_sw_annotation + DPAA2_MBUF_HW_ANNOTATION +
-							dpaa2_mbuf_head_room;
-		tot_size = ODP_ALIGN_ROUNDUP(tot_size, ODP_PACKET_LAYOUT_ALIGN);
-		dpaa2_mbuf_head_room = tot_size - (dpaa2_mbuf_sw_annotation +
-						DPAA2_MBUF_HW_ANNOTATION);
-	}
 	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
 	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
 				DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
@@ -360,7 +371,12 @@ mem_alloc_failure:
 		return DPAA2_FAILURE;
 }
 
-int32_t dpaa2_eth_remove(struct dpaa2_dev *dev)
+int32_t dpaa2_eth_remove(struct dpaa2_dev *dev ODP_UNUSED)
+{
+	return DPAA2_SUCCESS;
+}
+
+int32_t dpaa2_eth_close(struct dpaa2_dev *dev)
 {
 	/*Function is reverse of dpaa2_eth_probe.
 	 * It does the following:
@@ -372,6 +388,9 @@ int32_t dpaa2_eth_remove(struct dpaa2_dev *dev)
 	struct dpaa2_eth_priv *eth_priv = dev_priv->drv_priv;
 	struct fsl_mc_io *dpni = dev_priv->hw;
 	int32_t retcode;
+
+	if (!dpni)
+		return DPAA2_SUCCESS;
 
 	/* Reset the DPNI device object for next use */
 	retcode = dpni_reset(dpni, CMD_PRI_LOW, dev_priv->token);
@@ -386,6 +405,7 @@ int32_t dpaa2_eth_remove(struct dpaa2_dev *dev)
 	/*Free the allocated memory for ethernet private data and dpni*/
 	dpaa2_free(eth_priv);
 	dpaa2_free(dpni);
+	dev_priv->hw = NULL;
 
 	return DPAA2_SUCCESS;
 }
@@ -470,7 +490,7 @@ int32_t dpaa2_eth_stop(struct dpaa2_dev *dev)
 	/* Disable the network interface and set dpaa2 device as inactive*/
 	retcode = dpni_disable(dpni, CMD_PRI_LOW, dev_priv->token);
 	if (retcode != 0) {
-		DPAA2_ERR(ETH, "Device cannot be disabled:Error Code = %0x\n",
+		DPAA2_ERR(ETH, "Device cannot be disabled:Error Code = %0d\n",
 								retcode);
 		return DPAA2_FAILURE;
 	}

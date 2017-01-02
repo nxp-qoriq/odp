@@ -42,7 +42,7 @@ int dpaa2_get_interrupt_info(int dev_vfio_fd,
 		ret = ioctl(dev_vfio_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq_info);
 		if (ret < 0) {
 			DPAA2_ERR(NOTIFIER, "Failed to get IRQ info from VFIO, "
-				"ret code: %d", ret);
+				"ret code: %d", errno);
 			dpaa2_free(*intr_handle);
 			return DPAA2_FAILURE;
 		}

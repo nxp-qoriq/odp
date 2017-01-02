@@ -144,7 +144,6 @@ static void install_signal_handler(void)
 
 static void __attribute__((destructor(102))) odp_finish(void)
 {
-	uint32_t  i;
 	odp_instance_t instance = 0xdeadbeef;
 	ODP_DBG("odp_finish\n");
 	if (!vfio_container)
@@ -153,10 +152,6 @@ static void __attribute__((destructor(102))) odp_finish(void)
 		DPAA2_ERR(APP1, "Error: ODP Global term failed.\n");
 	/*Clear buffer library*/
 	dpaa2_mbuf_finish();
-	/*Graceful shutdown to all the Ethernet devices*/
-	for (i = 0; i < dpaa2_res.res_cnt.eth_dev_cnt; i++) {
-		dpaa2_eth_stop(dpaa2_res.net_dev[i]);
-	}
 	/* Do cleanup and exit */
 	dpaa2_cleanup();
 }
