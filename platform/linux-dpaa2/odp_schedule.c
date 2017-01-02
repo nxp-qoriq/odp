@@ -305,8 +305,10 @@ void odp_schedule_queue(queue_entry_t *qentry, int prio, uint8_t vq_id)
 	int32_t ret;
 
 	pktio_entry = get_pktio_entry(qentry->s.pktin);
-	if (!pktio_entry || !qentry)
+	if (!pktio_entry) {
+		ODP_ERR("Failed to get pktio_entry\n");
 		return;
+	}
 
 	ndev = pktio_entry->s.pkt_dpaa2.dev;
 
