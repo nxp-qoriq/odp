@@ -1135,10 +1135,10 @@ int32_t dpaa2_eth_attach_bp_list(struct dpaa2_dev *dev,
 	}
 
 	retcode = dpni_set_pools(dpni, CMD_PRI_LOW, dev_priv->token, &bpool_cfg);
-	if (retcode != 0) {
+	if (retcode < 0) {
 		DPAA2_ERR(ETH, "Error in attaching the buffer pool list"
 						"Error code = %d\n", retcode);
-		return DPAA2_FAILURE;
+		return retcode;
 	}
 
 	dev_priv->bp_list = bp_list;

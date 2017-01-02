@@ -73,10 +73,12 @@ static inline void dpaa2_destroy_frameq(
 {
 	DPAA2_TRACE(FRAMEQ);
 
-	if (frame_queue->state == FRAMEQ_STATE_INVALID)
-		DPAA2_ERR(FRAMEQ, "Destroying an invalid Frame Queue");
-
-	frame_queue->state = FRAMEQ_STATE_INVALID;
+	if (frame_queue->state != FRAMEQ_STATE_INVALID) {
+		frame_queue->state = FRAMEQ_STATE_INVALID;
+	} else {
+		DPAA2_DBG(FRAMEQ, "Destroying an invalid Frame Queue");
+	}
+	return;
 }
 
 int dpaa2_hwq_probe(struct dpaa2_dev *dev,
@@ -291,6 +293,7 @@ int dpaa2_detach_frameq_from_conc(void *h_dpaa2_hwq)
 		return DPAA2_FAILURE;
 	}
 
+	dpaa2_hwq->state = FRAMEQ_STATE_ACQUIRED;
 	return DPAA2_SUCCESS;
 }
 
