@@ -21,7 +21,7 @@ extern "C" {
 #include <odp/api/std_types.h>
 #include <odp/api/pool.h>
 #include <odp/api/buffer.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 #include <odp/api/align.h>
 #include <odp/api/crypto.h>
 #include <odp/helper/ip.h>

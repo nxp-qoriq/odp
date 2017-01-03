@@ -16,7 +16,7 @@
 #define ODP_TIMER_INTERNAL_H_
 
 #include <odp/api/align.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 #include <odp_buffer_internal.h>
 #include <odp_pool_internal.h>
 #include <odp/api/timer.h>

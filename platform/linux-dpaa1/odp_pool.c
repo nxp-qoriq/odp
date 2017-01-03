@@ -379,7 +379,6 @@ odp_pool_t odp_pool_create(const char *name, odp_pool_param_t *params)
 				(odp_buffer_hdr_t *)(void *)buf;
 
 			/* Iniitalize buffer metadata */
-			tmp->allocator = ODP_FREEBUF;
 			tmp->flags.all = 0;
 			tmp->flags.zeroized = zeroized;
 			tmp->size = 0;
@@ -579,7 +578,6 @@ odp_buffer_t odp_buffer_alloc(odp_pool_t pool_hdl)
 				buf_hdr = odp_buf_to_hdr(buf);
 				/* input queue must be initialized */
 				buf_hdr->inq = ODP_QUEUE_INVALID;
-				buf_hdr->allocator = odp_thread_id();
 				pkt_hdr = (odp_packet_hdr_t *)buf_hdr;
 				packet_init(pool, pkt_hdr, buf_hdr->size);
 			}
@@ -605,7 +603,7 @@ void odp_buffer_free(odp_buffer_t buf)
 		queue_entry_t *qentry = queue_to_qentry(inq);
 		if (qentry->s.type != ODP_QUEUE_TYPE_PLAIN &&
 		    queue_sched_atomic(inq)) {
-			dqrr = sched_local.buf_ctx[buf_hdr->sched_index];
+			dqrr = buf_hdr->dqrr;
 			qman_dca((struct qm_dqrr_entry *)dqrr, 0);
 		}
 

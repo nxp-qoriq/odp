@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -50,7 +51,20 @@ int _odp_buffer_type(odp_buffer_t buf)
 
 int odp_buffer_is_valid(odp_buffer_t buf)
 {
-	return validate_buf(buf) != NULL;
+	odp_buffer_hdr_t *buf_hdr = (odp_buffer_hdr_t *)buf;
+	int32_t type;
+
+	if (buf == ODP_BUFFER_INVALID)
+		return false;
+
+	if (!(buf_hdr->addr[0]))
+		return false;
+
+	type = _odp_buffer_type(buf);
+	if (!(type & ODP_EVENT_BUFFER))
+		return false;
+
+	return true;
 }
 
 

@@ -95,7 +95,6 @@ odp_pool_create_bman(pool_entry_t *pool)
 			odp_buffer_hdr_t *tmp = (odp_buffer_hdr_t *)ptr;
 			/* Initialize buffer metadata */
 			tmp->next = NULL;
-			tmp->allocator = ODP_FREEBUF;
 			tmp->flags.all = 0;
 			tmp->flags.zeroized = 0;
 			tmp->size = pool->s.blk_size +
@@ -118,6 +117,8 @@ odp_pool_create_bman(pool_entry_t *pool)
 			tmp->segsize = pool->s.seg_size;
 			tmp->handle.handle = odp_buffer_encode_handle(tmp);
 
+			tmp->bpid = pool->s.pool_id;
+			tmp->phy_addr = __dma_mem_vtop(bm_addr);
 			tmp->addr[0] = bm_addr;
 		}
 		do {

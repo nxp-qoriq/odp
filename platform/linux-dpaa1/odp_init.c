@@ -8,7 +8,7 @@
 /*ODP generic headers */
 #include <odp/api/init.h>
 #include <odp_internal.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 #include <odp/api/thread.h>
 #include <odp/api/crypto.h>
 #include <odp/api/cpu.h>
@@ -37,6 +37,8 @@
 #include <usdpaa/of.h>
 #include <usdpaa/usdpaa_netcfg.h>
 #include <usdpaa/dma_mem.h>
+
+#define ENABLE_CLASSIFICATION 0
 
 static const char __PCD_PATH[] = __stringify(DEF_PCD_PATH);
 static const char __CFG_PATH[] = __stringify(DEF_CFG_PATH);
@@ -252,12 +254,14 @@ int odp_init_global(odp_instance_t *instance,
 		return -1;
 	}
 
+#if ENABLE_CLASSIFICATION
 	if (!getenv("APP_RESTART")) {
 		if (odp_classification_init_global()) {
 			ODP_ERR("ODP classification init failed.\n");
 			return -1;
 		}
 	}
+#endif
 	odp_init = TRUE;
 
 	/* Dummy support for single instance */
@@ -265,11 +269,11 @@ int odp_init_global(odp_instance_t *instance,
 	return 0;
 }
 
-int odp_term_global(odp_instance_t instance)
+int odp_term_global(odp_instance_t instance ODP_UNUSED)
 {
 	/* Workaround for App-Restart */
 	/* When proper cleanup is done remove if 0 */
-#if 0
+#if ENABLE_CLASSIFICATION
 	odp_classification_term_global();
 #endif
 	if (!odp_init)
@@ -289,7 +293,7 @@ int odp_term_global(odp_instance_t instance)
 	return 0;
 }
 
-int odp_init_local(odp_instance_t instance, odp_thread_type_t thr_type)
+int odp_init_local(odp_instance_t instance ODP_UNUSED, odp_thread_type_t thr_type)
 {
 	int ret = 0;
 	cpu_set_t cpuset;

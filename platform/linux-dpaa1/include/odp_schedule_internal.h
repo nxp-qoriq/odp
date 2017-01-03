@@ -44,52 +44,6 @@ typedef uint64_t (*odp_sch_recv_t)(odp_queue_t *out_queue, uint64_t wait,
 			  odp_buffer_t out_buf[],
 			  unsigned int max_num, unsigned int max_deq);
 
-static inline enum qman_cb_dqrr_result odp_sched_collect_pkt(
-				  odp_packet_hdr_t *pkthdr,
-				  odp_packet_t pkt,
-				  const struct qm_dqrr_entry *dqrr,
-				  queue_entry_t *inq)
-{
-	odp_buffer_hdr_t *buf_hdr = (odp_buffer_hdr_t *)pkthdr;
-
-	buf_hdr->sched_index = sched_local.index;
-	assert(sched_local.index < MAX_DEQ);
-	assert(sched_local.buf[sched_local.index] == ODP_BUFFER_INVALID);
-	/* save sequence number when input queue is ORDERED */
-	if (inq->s.param.sched.sync == ODP_SCHED_SYNC_ORDERED) {
-		buf_hdr->orp.seqnum = dqrr->seqnum;
-		/*buf_hdr->orp.flags = 0;*/
-	}
-	/* save whole dqrr entry as it is acked on next enqueue
-	   dqrr entry is stored outside the buffer because it is
-	   released by the port before DCA */
-	else if (inq->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC) {
-		sched_local.buf_ctx[sched_local.index] = dqrr;
-		sched_local.buf[sched_local.index] = _odp_packet_to_buffer(pkt);
-		sched_local.index++;
-		return qman_cb_dqrr_defer;
-	}
-	sched_local.buf[sched_local.index] = _odp_packet_to_buffer(pkt);
-	sched_local.index++;
-
-	return qman_cb_dqrr_consume;
-}
-
-static inline void odp_sched_collect_buf(odp_buffer_t buf,
-				  const struct qm_dqrr_entry *dqrr,
-				  queue_entry_t *inq)
-{
-	odp_buffer_hdr_t *buf_hdr = odp_buf_to_hdr(buf);
-	buf_hdr->sched_index = sched_local.index;
-	assert(sched_local.index < MAX_DEQ);
-	assert(sched_local.buf[sched_local.index] == ODP_BUFFER_INVALID);
-	sched_local.buf[sched_local.index] = buf;
-	if (inq->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC)
-		sched_local.buf_ctx[sched_local.index] = dqrr;
-	sched_local.index++;
-}
-
-
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -21,7 +22,7 @@ extern "C" {
 #include <odp/api/atomic.h>
 #include <odp/api/pool.h>
 #include <odp/api/buffer.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 #include <odp/api/align.h>
 #include <odp_align_internal.h>
 #include <odp_config_internal.h>
@@ -29,7 +30,8 @@ extern "C" {
 #include <odp/api/thread.h>
 #include <odp/api/event.h>
 #include <odp/api/queue.h>
-
+#include <odp/api/packet.h>
+#include <odp/api/plat/sdk/usdpaa/usdpaa/dma_mem.h>
 
 #define ODP_BITSIZE(x) \
 	((x) <=     2 ?  1 : \
@@ -107,27 +109,16 @@ struct odp_buffer_hdr_t;
 /* Common buffer header */
 typedef struct odp_buffer_hdr_t {
 	odp_buffer_bits_t        handle;     /* handle */
-        uint32_t                sched_index; /* sched_local array index */
-	union {
-		uint64_t         buf_u64;    /* user u64 */
-		void            *buf_ctx;    /* user context */
-		const void      *buf_cctx;   /* const alias for ctx */
-	};
-        odp_queue_t              inq;       /* last dequeue from */
+	uint32_t                sched_index; /* sched_local array index */
+	const void		*dqrr; /* To store DQRR in case of atomic queues (DCA) */
+	odp_queue_t              inq;       /* last dequeue from */
 	odp_pool_t               pool_hdl;   /* buffer pool handle */
-	void                    *addr[ODP_BUFFER_MAX_SEG + 1]; /* block addrs */
-        struct {                            /* ORP data */
-                uint16_t seqnum;
-                uint16_t flags;
-        } orp;
 	int8_t                   type;       /* buffer type */
 	odp_event_type_t         event_type; /* for reuse as event */
 	uint32_t                 size;       /* max data size */
 	odp_atomic_u32_t         ref_count;  /* reference count */
 	uint32_t                 segcount;   /* segment count */
 	uint32_t                 segsize;    /* segment size */
-	void                    *uarea_addr; /* user area address */
-	uint32_t                 uarea_size; /* size of user area */
 	union {
 		uint32_t all;
 		struct {
@@ -135,8 +126,32 @@ typedef struct odp_buffer_hdr_t {
 			uint32_t hdrdata:1;  /* Data is in buffer hdr */
 		};
 	} flags;
+
+	uint32_t l2_offset; /**< offset to L2 hdr, e.g. Eth */
+	uint32_t l3_offset; /**< offset to L3 hdr, e.g. IPv4, IPv6 */
+	uint32_t l4_offset; /**< offset to L4 hdr (TCP, UDP, SCTP, also ICMP) */
+	uint32_t frame_len;
+	uint32_t headroom;
+	uint32_t tailroom;
+	uint16_t bpid;
+	uint8_t jumbo;
+
+	odp_pktio_t input;
+	dma_addr_t		phy_addr;	/* physical address */
+	void                    *addr[ODP_BUFFER_MAX_SEG + 1]; /* block addrs */
+
+	void                    *uarea_addr; /* user area address */
+	uint32_t                 uarea_size; /* size of user area */
+	union {
+		uint64_t         buf_u64;    /* user u64 */
+		void            *buf_ctx;    /* user context */
+		const void      *buf_cctx;   /* const alias for ctx */
+	};
+	struct {                            /* ORP data */
+		uint16_t seqnum;
+		uint16_t flags;
+	} orp;
 	struct odp_buffer_hdr_t *next;       /* next buf in a list */
-	int                      allocator;  /* allocating thread id */
 } odp_buffer_hdr_t;
 
 /** @internal Compile time assert that the

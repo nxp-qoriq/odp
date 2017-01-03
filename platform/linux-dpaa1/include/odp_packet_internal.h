@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -18,7 +19,7 @@ extern "C" {
 #endif
 
 #include <odp/api/align.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 #include <odp/api/spinlock.h>
 #include <odp_buffer_internal.h>
 #include <odp_pool_internal.h>
@@ -109,23 +110,7 @@ typedef union {
 ODP_STATIC_ASSERT(sizeof(output_flags_t) == sizeof(uint32_t),
 		   "OUTPUT_FLAGS_SIZE_ERROR");
 
-/**
- * Internal Packet header
- */
-typedef struct {
-	/* common buffer header */
-	odp_buffer_hdr_t buf_hdr;
-
-	uint32_t l2_offset; /**< offset to L2 hdr, e.g. Eth */
-	uint32_t l3_offset; /**< offset to L3 hdr, e.g. IPv4, IPv6 */
-	uint32_t l4_offset; /**< offset to L4 hdr (TCP, UDP, SCTP, also ICMP) */
-	uint32_t frame_len;
-	uint32_t headroom;
-	uint32_t tailroom;
-	uint8_t jumbo;
-
-	odp_pktio_t input;
-} odp_packet_hdr_t;
+typedef odp_buffer_hdr_t odp_packet_hdr_t;
 
 typedef struct odp_packet_hdr_stride {
 	uint8_t pad[ODP_CACHE_LINE_SIZE_ROUNDUP(sizeof(odp_packet_hdr_t))];
@@ -143,6 +128,7 @@ static inline odp_packet_hdr_t *odp_packet_hdr(odp_packet_t pkt)
  * FMan parse result array
  */
 typedef struct ODP_PACKED fm_prs_result {
+	 uint8_t     reserved[DEFAULT_ICEOF];
 	 uint8_t     lpid;		 /**< Logical port id */
 	 uint8_t     shimr;		 /**< Shim header result  */
 	 uint16_t    l2r;		 /**< Layer 2 result */
@@ -163,14 +149,20 @@ typedef struct ODP_PACKED fm_prs_result {
 	 uint8_t     gre_off;		 /**< GRE offset */
 	 uint8_t     l4_off;		 /**< Layer 4 offset */
 	 uint8_t     nxthdr_off;	 /**< Parser end point */
+	 uint64_t    timestamp;		 /**< TimeStamp */
+	 uint64_t    hash_result;	 /**< Hash Result */
 } fm_prs_result_t;
 
-#define GET_PRS_RESULT(buf, prs_res) \
-	(buf.segcount == 1) ? (typeof(prs_res))(buf.addr[0] + DEFAULT_ICEOF) : \
-				(typeof(prs_res))(buf.addr[buf.segcount] + \
-						  DEFAULT_ICEOF)
-
+/* TODO - This will currently not work for SG and we shall need
+ * to add a annotation pointer in packet header */
+#define GET_PRS_RESULT(_pkt) ((fm_prs_result_t *)(_pkt->addr[0]))
 #define BUF_HDR_OFFSET (ODP_CACHE_LINE_SIZE_ROUNDUP(sizeof(odp_packet_hdr_t)) + ODP_CACHE_LINE_SIZE_ROUNDUP(sizeof(struct sg_priv)))
+
+static inline odp_packet_hdr_t
+*odp_pkt_hdr_from_addr(void *fd_addr,  pool_entry_t *pool ODP_UNUSED)
+{
+	return (odp_packet_hdr_t *)(fd_addr - BUF_HDR_OFFSET);
+}
 
 static inline odp_buffer_hdr_t
 *odp_buf_hdr_from_addr(void *fd_addr,  pool_entry_t *pool ODP_UNUSED)
@@ -186,7 +178,7 @@ static inline void packet_init(pool_entry_t *pool ODP_UNUSED,
 			       size_t size)
 {
 	/* reset the annotation area */
-	memset(pkt_hdr->buf_hdr.addr[0], 0, pool->s.headroom);
+	memset(pkt_hdr->addr[0], 0, pool->s.headroom);
 
 	 /* Set metadata items that initialize to non-zero values */
 	pkt_hdr->l2_offset = ODP_PACKET_OFFSET_INVALID;
@@ -212,7 +204,7 @@ static inline void *packet_map(odp_packet_hdr_t *pkt_hdr,
 	if (offset > pkt_hdr->frame_len)
 		return NULL;
 
-	return buffer_map(&pkt_hdr->buf_hdr,
+	return buffer_map(pkt_hdr,
 			  pkt_hdr->headroom + offset, seglen,
 			  pkt_hdr->headroom + pkt_hdr->frame_len);
 }
@@ -307,6 +299,13 @@ static inline odp_packet_t _odp_packet_from_buffer(odp_buffer_t buf)
 {
 	return (odp_packet_t)buf;
 }
+
+/* Convert a buffer handle to a packet handle */
+static inline odp_packet_t _odp_packet_from_pkt_hdr(odp_packet_hdr_t *pkt_hdr)
+{
+	return (odp_packet_t)pkt_hdr;
+}
+
 
 #ifdef __cplusplus
 }

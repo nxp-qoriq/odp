@@ -20,7 +20,7 @@ extern "C" {
 #include <odp/api/std_types.h>
 #include <odp/api/hints.h>
 #include <odp/api/plat/packet_types.h>
-#include <odp/api/debug.h>
+#include <odp_debug_internal.h>
 /** @ingroup odp_packet
  *  @{
  */

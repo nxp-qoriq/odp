@@ -10,7 +10,7 @@
 #include <odp/api/system_info.h>
 #include <usdpaa/fsl_usd.h>
 
-inline uint64_t odp_time_cycles(void)
+static inline uint64_t odp_time_cycles(void)
 {
         return mfatb();
 }

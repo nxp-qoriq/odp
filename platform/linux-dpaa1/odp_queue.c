@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -145,9 +146,12 @@ int queue_init_rx_fq(struct qman_fq *fq, uint16_t channel)
 	/* no ordering */
 	if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_PARALLEL)
 		opts.fqd.fq_ctrl |= QM_FQCTRL_AVOIDBLOCK;
+
+	/* Have annotation stashing for one cache line only as parse
+	 * results are in the first cache line */
 	if (qentry->s.type != ODP_QUEUE_TYPE_PLAIN) {
-		opts.fqd.context_a.stashing.annotation_cl = 2;
-		opts.fqd.context_a.stashing.data_cl = 2;
+		opts.fqd.context_a.stashing.annotation_cl = 1;
+		opts.fqd.context_a.stashing.data_cl = 1;
 		opts.fqd.context_a.stashing.context_cl = 0;
 	}
 
@@ -170,8 +174,7 @@ inline int queue_enqueue_tx_fq(struct qman_fq *tx_fq, struct qm_fd *fd,
 
 	if (in_qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC) {
 		/* input queue is ATOMIC - acknowledge DQRR consumption */
-		const struct qm_dqrr_entry      *dqrr =
-				sched_local.buf_ctx[buf_hdr->sched_index];
+		const struct qm_dqrr_entry      *dqrr = buf_hdr->dqrr;
 retry:
 		ret = qman_enqueue(tx_fq, fd, QMAN_ENQUEUE_FLAG_DCA |
 			QMAN_ENQUEUE_FLAG_DCA_PTR((uintptr_t)dqrr));
@@ -228,7 +231,7 @@ static int raw_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 	fd.addr = (uintptr_t)buf_hdr;
 	fd.offset = FD_DEFAULT_OFFSET;
 	fd.length20 = buf_hdr->size;
-	inq = odp_queue_get_input(buf_hdr->handle.handle);
+	inq = buf_hdr->inq;
 	if (inq != ODP_QUEUE_INVALID) {
 		in_qentry = queue_to_qentry(inq);
 	}
@@ -245,25 +248,20 @@ static int raw_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 static int pkt_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 {
 	odp_packet_t pkt;
-	odp_pool_t pool_id;
-	pool_entry_t *pool_entry;
 	size_t len, off;
 	struct qm_fd fd;
 	odp_queue_t inq;
 	queue_entry_t *in_qentry = NULL;
 	int ret;
 
-	pool_id = buf_hdr->pool_hdl;
-	pool_entry = odp_pool_to_entry(pool_id);
-
-	pkt = _odp_packet_from_buffer(buf_hdr->handle.handle);
+	pkt = (odp_packet_t)buf_hdr;
 	len = odp_packet_len(pkt);
 	off = odp_packet_l2_offset(pkt) + odp_packet_headroom(pkt);
-	inq = odp_queue_get_input(buf_hdr->handle.handle);
+	inq = buf_hdr->inq;
 	if (inq != ODP_QUEUE_INVALID)
 		in_qentry = queue_to_qentry(inq);
 
-	__config_fd(&fd, buf_hdr, off, len, pool_entry->s.pool_id, qentry);
+	__config_fd(&fd, buf_hdr, off, len, qentry);
 
 	if (in_qentry && in_qentry->s.type != ODP_QUEUE_TYPE_PLAIN)
 		ret = queue_enqueue_tx_fq(&qentry->s.fq, &fd, buf_hdr,
@@ -273,9 +271,9 @@ static int pkt_enqueue(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr)
 	return ret;
 }
 
-static enum qman_cb_dqrr_result dqrr_cb(struct qman_portal *qm __always_unused,
-					struct qman_fq *fq,
-					const struct qm_dqrr_entry *dqrr)
+static enum qman_cb_dqrr_result dqrr_cb(struct qman_fq *fq,
+					const struct qm_dqrr_entry *dqrr,
+					uint64_t *user_context)
 {
 	const struct qm_fd *fd = &dqrr->fd;
 	queue_entry_t *qentry = QENTRY_FROM_FQ(fq);
@@ -289,6 +287,7 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_portal *qm __always_unused,
 
 	buf_hdr = (odp_buffer_hdr_t *)(uintptr_t)(fd->addr);
 	buf_set_input_queue(buf_hdr, queue_from_id(get_qid(qentry)));
+	*user_context = (uint64_t)buf_hdr;
 
 	if (qentry->s.type == ODP_QUEUE_TYPE_PLAIN) {
 		qentry->s.buf_hdr = buf_hdr;
@@ -298,7 +297,6 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_portal *qm __always_unused,
 	if (buf_hdr->type == ODP_EVENT_PACKET) {
 		pool_entry_t *pool;
 		odp_packet_hdr_t *pkthdr;
-		odp_packet_t pkt;
 		size_t off;
 		struct qm_sg_entry *sgt;
 		void *fd_addr;
@@ -338,18 +336,22 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_portal *qm __always_unused,
 		pkthdr->headroom = pool->s.headroom;
 		pkthdr->tailroom = pool->s.tailroom;
 
-		pkt = _odp_packet_from_buffer(buf_hdr->handle.handle);
 		_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
 
-		return odp_sched_collect_pkt(pkthdr, pkt, dqrr, qentry);
+		if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC) {
+			pkthdr->dqrr = dqrr;
+			return qman_cb_dqrr_defer;
+		}
+		return qman_cb_dqrr_consume;
 	} else {
-		odp_sched_collect_buf(buf_hdr->handle.handle, dqrr, qentry);
 		/* save sequence number when input queue is ORDERED */
 		if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ORDERED)
 			buf_hdr->orp.seqnum = dqrr->seqnum;
 
-		if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC)
+		if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC) {
+			buf_hdr->dqrr = dqrr;
 			return qman_cb_dqrr_defer;
+		}
 	}
 
 
@@ -357,7 +359,7 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_portal *qm __always_unused,
 }
 
 static void queue_init(queue_entry_t *queue, const char *name,
-		       odp_queue_type_t type, odp_queue_param_t *param)
+		       odp_queue_type_t type, const odp_queue_param_t *param)
 {
 	strncpy(queue->s.name, name, ODP_QUEUE_NAME_LEN - 1);
 	queue->s.type = type;
@@ -534,7 +536,7 @@ odp_queue_t odp_queue_create(const char *name, const odp_queue_param_t *param)
 		channel = pchannel_vdq;
 	}
 
-	queue->s.fq.cb.dqrr = dqrr_cb;
+	queue->s.fq.cb.dqrr_ctx = dqrr_cb;
 	queue->s.fq.cb.ern = ern_cb;
 	ret = queue_init_rx_fq(&queue->s.fq, channel);
 	if (ret)
@@ -724,7 +726,7 @@ int odp_queue_deq_multi(odp_queue_t handle, odp_event_t ev[], int num)
 	ret = queue->s.dequeue_multi(queue, buf_hdr, num);
 
 	for (i = 0; i < ret; i++) {
-		buf = buf_hdr[i]->handle.handle;
+		buf = (odp_buffer_t)buf_hdr[i];
 		ev[i] = odp_buffer_to_event(buf);
 	}
 
@@ -745,7 +747,7 @@ odp_event_t odp_queue_deq(odp_queue_t handle)
 	buf_hdr = queue->s.dequeue(queue);
 
 	if (buf_hdr)
-		return (odp_event_t)buf_hdr->handle.handle;
+		return (odp_event_t)buf_hdr;
 
 	return ODP_EVENT_INVALID;
 }
@@ -765,11 +767,6 @@ void queue_unlock(queue_entry_t *queue)
 void odp_queue_param_init(odp_queue_param_t *params)
 {
         memset(params, 0, sizeof(odp_queue_param_t));
-}
-
-inline odp_queue_t odp_queue_get_input(odp_buffer_t buf)
-{
-	return odp_buf_to_hdr(buf)->inq;
 }
 
 inline void odp_queue_set_input(odp_buffer_t buf, odp_queue_t queue)

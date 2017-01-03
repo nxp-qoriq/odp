@@ -1,5 +1,6 @@
 /* Copyright (c) 2014, Linaro Limited
  * Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2016 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -74,9 +75,9 @@ static struct odp_field_info odp_fields[ODP_PMR_MAX_FIELDS];
 static int fm_modify_cc_miss_act(t_Handle cc_src_handle, t_Handle cc_dst_handle,
 				 int next_act, uint32_t fqid);
 
-static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_portal *qm __always_unused,
-					 struct qman_fq *fq,
-					 const struct qm_dqrr_entry *dqrr);
+static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_fq *fq,
+					 const struct qm_dqrr_entry *dqrr,
+					 uint64_t *user_context);
 static inline void odp_init_fields(void)
 {
 	memset(odp_fields, 0, sizeof(odp_fields));
@@ -1048,11 +1049,9 @@ int odp_classification_init_global(void)
 
 odp_cos_t odp_cls_cos_create(const char *name, odp_cls_cos_param_t *param)
 {
-	int i, j;
+	int i;
 	int len;
 	queue_entry_t *queue;
-	pool_entry_t *pool;
-	odp_cls_drop_t drop_policy;
 	odp_cos_t handle = ODP_COS_INVALID;
 
 	/* Packets are dropped if Queue or Pool is invalid*/
@@ -1062,14 +1061,7 @@ odp_cos_t odp_cls_cos_create(const char *name, odp_cls_cos_param_t *param)
 		queue = queue_to_qentry(param->queue);
 
 	if (queue && queue->s.type != ODP_QUEUE_TYPE_PLAIN)
-		queue->s.fq.cb.dqrr = dqrr_cb_cos;
-
-	if (param->pool == ODP_POOL_INVALID)
-		pool = NULL;
-	else
-		pool = odp_pool_to_entry(param->pool);
-
-	drop_policy = param->drop_policy;
+		queue->s.fq.cb.dqrr_ctx = dqrr_cb_cos;
 
 	for (i = 0; i < ODP_COS_MAX_ENTRY; i++) {
 		odp_spinlock_lock(&cos_tbl->cos[i].s.lock);
@@ -1096,9 +1088,9 @@ odp_cos_t odp_cls_cos_create(const char *name, odp_cls_cos_param_t *param)
 	return ODP_COS_INVALID;
 }
 
-static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_portal *qm __always_unused,
-					 struct qman_fq *fq,
-					 const struct qm_dqrr_entry *dqrr)
+static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_fq *fq,
+					 const struct qm_dqrr_entry *dqrr,
+					 uint64_t *user_context)
 {
 	const struct qm_fd *fd;
 	struct qm_sg_entry *sgt;
@@ -1152,10 +1144,11 @@ static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_portal *qm __always_unus
 	pkthdr = (odp_packet_hdr_t *)buf_hdr;
 	buf = odp_hdr_to_buf(buf_hdr);
 
-	assert(pkthdr->buf_hdr.addr[0] == ((void *)pkthdr + pool->s.buf_offset));
+	assert(pkthdr->addr[0] == ((void *)pkthdr + pool->s.buf_offset));
 
 	/* setup and receive ODP packet */
 	pkt = _odp_packet_from_buffer(buf);
+	*user_context = (uint64_t)pkt;
 	buf_set_input_queue(buf_hdr, queue_from_id(get_qid(qentry)));
 	if (qentry->s.type == ODP_QUEUE_TYPE_PLAIN) {
 		qentry->s.buf_hdr = buf_hdr;
@@ -1167,7 +1160,14 @@ static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_portal *qm __always_unus
 	pkthdr->tailroom = pool->s.tailroom;
 	_odp_packet_parse(pkthdr, fd->length20, off, fd_addr);
 
-	return odp_sched_collect_pkt(pkthdr, pkt, dqrr, qentry);
+	if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ORDERED) {
+		pkthdr->orp.seqnum = dqrr->seqnum;
+	} else if (qentry->s.param.sched.sync == ODP_SCHED_SYNC_ATOMIC) {
+		pkthdr->dqrr = dqrr;
+		return qman_cb_dqrr_defer;
+	}
+
+	return qman_cb_dqrr_consume;
 }
 
 int odp_cos_queue_set(odp_cos_t cos_id, odp_queue_t queue_id)
@@ -1186,7 +1186,7 @@ int odp_cos_queue_set(odp_cos_t cos_id, odp_queue_t queue_id)
 	cos_entry->s.queue = queue_id;
 	cos_queue = queue_to_qentry(cos_entry->s.queue);
 	if (cos_queue->s.type != ODP_QUEUE_TYPE_PLAIN)
-		cos_queue->s.fq.cb.dqrr = dqrr_cb_cos;
+		cos_queue->s.fq.cb.dqrr_ctx = dqrr_cb_cos;
 	odp_spinlock_unlock(&cos_entry->s.lock);
 
 	return 0;
@@ -1679,6 +1679,8 @@ static int is_valid_input(size_t val_sz, odp_cls_pmr_term_t term)
 	case ODP_PMR_SIP6_ADDR:
 	case ODP_PMR_DIP6_ADDR:
 		return (val_sz == (sizeof(uint64_t) + sizeof(uint64_t)));
+	default:
+		return false;
 	}
 
 
@@ -1976,7 +1978,7 @@ static netcfg_port_info *get_port(odp_pktio_t src_pktio)
 	return port_info;
 }
 
-odp_pmr_t odp_pmr_create(const odp_pmr_param_t *param)
+static odp_pmr_t odp_pmr_create(const odp_pmr_param_t *param)
 {
 	pmr_entry_t *pmr = NULL;
 	odp_pmr_t handle = ODP_PMR_INVAL;
@@ -2498,7 +2500,7 @@ static int update_pmr_set_ccnode(struct pmr_set_entry *pmr_set_ent,
 	return ret;
 }
 
-int odp_pktio_pmr_cos(odp_pmr_t pmr_id, odp_pktio_t src_pktio,
+static int odp_pktio_pmr_cos(odp_pmr_t pmr_id, odp_pktio_t src_pktio,
 		      odp_cos_t dst_cos)
 {
 	cos_entry_t *cos_entry, *def_cos_entry;
@@ -2754,7 +2756,8 @@ out:
 	return ret;
 }
 
-int odp_cos_pmr_cos(odp_pmr_t pmr_id, odp_cos_t src_cos, odp_cos_t dst_cos)
+#if 0
+static int odp_cos_pmr_cos(odp_pmr_t pmr_id, odp_cos_t src_cos, odp_cos_t dst_cos)
 {
 	cos_entry_t *dst_cos_entry, *src_cos_entry;
 	netcfg_port_info  *port_info, *dst_port_info;
@@ -2921,6 +2924,7 @@ out:
 
 	return ret;
 }
+#endif
 
 static int fm_ccnode_insert_entries(t_Handle ccnode,
 				    uint8_t key[],
@@ -3422,7 +3426,7 @@ static inline void update_pmr_set(struct pmr_set_entry *pmr_set,
 	new_pmr_set->root_id = pmr_set->root_id;
 }
 
-int odp_pmr_match_set_create(int num_terms, const odp_pmr_param_t *terms,
+static int odp_pmr_match_set_create(int num_terms, const odp_pmr_param_t *terms,
 			     odp_pmr_set_t *pmr_set_id)
 {
 	int loop, i;
@@ -3552,7 +3556,7 @@ static struct scheme_info *search_scheme(netcfg_port_info  *port_info,
 	return NULL;
 }
 
-int odp_pktio_pmr_match_set_cos(odp_pmr_set_t pmr_set_id, odp_pktio_t src_pktio,
+static int odp_pktio_pmr_match_set_cos(odp_pmr_set_t pmr_set_id, odp_pktio_t src_pktio,
 				odp_cos_t dst_cos)
 {
 	cos_entry_t *cos_entry, *def_cos_entry, *dst_cos_entry;
@@ -3848,7 +3852,7 @@ out:
 	return ret;
 }
 
-int odp_pmr_destroy(odp_pmr_t pmr_id)
+static int odp_pmr_destroy(odp_pmr_t pmr_id)
 {
 	netcfg_port_info  *port_info = NULL;
 	cos_entry_t *dst_cos_entry, *src_cos_entry;
@@ -4009,7 +4013,7 @@ out:
 	return ret;
 }
 
-int odp_pmr_match_set_destroy(odp_pmr_set_t pmr_set_id)
+static int odp_pmr_match_set_destroy(odp_pmr_set_t pmr_set_id)
 {
 	netcfg_port_info  *port_info = NULL;
 	pmr_set_entry_t *pmr_set;
@@ -4231,10 +4235,6 @@ out:
 	return ret;
 }
 
-t_Error FM_PORT_PcdPrsModifyStartOffset (t_Handle h_FmPort, t_FmPcdPrsStart *p_FmPcdPrsStart)
-{
-
-}
 int odp_pktio_skip_set(odp_pktio_t pktio_in, uint32_t offset)
 {
 	netcfg_port_info  *port_info = NULL;
@@ -4261,13 +4261,6 @@ int odp_pktio_skip_set(odp_pktio_t pktio_in, uint32_t offset)
 
 	params.parsingOffset = offset;
 	params.firstPrsHdr = HEADER_TYPE_ETH;
-
-	ret = FM_PORT_PcdPrsModifyStartOffset(port_info->port_handle, &params);
-	if (ret) {
-		ODP_ERR("Could change parser starting offset %d\n",
-			port_info->p_cfg->fman_if->mac_idx);
-		goto out;
-	}
 
 	ret = FM_PORT_AttachPCD(port_info->port_handle);
 	if (ret) {
@@ -4334,7 +4327,8 @@ int odp_pktio_headroom_set(odp_pktio_t pktio_in, uint32_t  headroom)
 	return -1;
 }
 
-unsigned odp_pmr_terms_avail(void)
+#if 0
+static unsigned odp_pmr_terms_avail(void)
 {
 	uint32_t count = 0;
 	int i;
@@ -4354,7 +4348,7 @@ unsigned odp_pmr_terms_avail(void)
 	return count;
 }
 
-unsigned long long odp_pmr_terms_cap(void)
+static unsigned long long odp_pmr_terms_cap(void)
 {
 	int field;
 	unsigned long long field_mask = 0;
@@ -4367,6 +4361,7 @@ unsigned long long odp_pmr_terms_cap(void)
 
 	return field_mask;
 }
+#endif
 
 int odp_cos_drop_set(odp_cos_t cos_id, odp_cls_drop_t drop_policy)
 {
@@ -4546,7 +4541,7 @@ odp_pmr_t odp_cls_pmr_create(const odp_pmr_param_t *terms, int num_terms,
 			     odp_cos_t src_cos, odp_cos_t dst_cos)
 {
 	odp_pmr_t pmr;
-	odp_pmr_set_t pmr_set_id;
+	odp_pmr_set_t pmr_set_id = _odp_cast_scalar(odp_pmr_set_t, 0);
 	int32_t retcode;
 	cos_entry_t *cos;
 
@@ -4599,7 +4594,7 @@ odp_queue_t odp_cos_queue(odp_cos_t cos_id ODP_UNUSED)
 int odp_cls_capability(odp_cls_capability_t *capability ODP_UNUSED)
 {
 	ODP_UNIMPLEMENTED();
-	return ODP_COS_INVALID;
+	return -1;
 }
 
 odp_cls_drop_t odp_cos_drop(odp_cos_t cos_id ODP_UNUSED)
