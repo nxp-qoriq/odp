@@ -41,7 +41,7 @@ extern "C" {
 /*
  * Number of scheduling groups
  */
-#define ODP_CONFIG_SCHED_GRPS 5
+#define ODP_CONFIG_SCHED_GRPS 11
 
 /*
  * Maximum number of packet IO resources
