@@ -6,19 +6,21 @@ help() {
 	echo
 	echo "USAGE: . ./loopback_sanity_test.sh <options>
 The Options are:
-	-a		Auto mode		Enabling the Auto mode. Default is manual
-						mode.
+	-a			Auto mode		Enabling the Auto mode. Default is manual
+							mode.
 
-	-c		Cunit			Enabling Cunit testing.
+	-c			Cunit			Enabling Cunit testing.
 
-	-p=\"num\"	Ping packets numbers	'num' is number of ping packets which will be used
-						for sanity testing. Default is 10.
+	-p=\"num\"		Ping packets numbers	'num' is number of ping packets which will be used
+							for sanity testing. Default is 10.
 
-	-d		Developer help		This option is only for developers. It will
-						print the help for developers, which describes
-						how to add a test case in the script.
+	--cunit-path=\"path\"	Cunit binaries path	'path' is absolute path of cunit applications.
 
-	-h		Help			Prints script help.
+	-d			Developer help		This option is only for developers. It will
+							print the help for developers, which describes
+							how to add a test case in the script.
+
+	-h			Help			Prints script help.
 
 Example:
 	. ./loopback_sanity_test.sh -a        OR     source ./loopback_sanity_test.sh -a
@@ -231,6 +233,7 @@ check_resources () {
 
 #creating the required resources
 get_resources() {
+	export DPIO_COUNT=10
 	#/*
 	# * creating the container "FDPRC" with 3 DPNIs which will not be connected to
 	# * any object.
@@ -1249,7 +1252,7 @@ run_cunit_command() {
 		else
 			sleep 10
 		fi
-		killall $1 > /dev/null 2>&1
+		killall -s SIGKILL $1 > /dev/null 2>&1
 		echo
 		echo -e " #$cunit_test_no)\tTest case:$MODULE\t\tCommand:($1)" >> cunit_tested_app
 		echo >> cunit_tested_app
@@ -1382,7 +1385,7 @@ main() {
 		#once the issue QODP-705 resolved change this to PUSH mode.
 		export ODP_SCH_PULL_MODE=1
 		cd - > /dev/null
-		cd /usr/odp/test/validation/
+		cd $CUNIT_PATH
 		if [[ $CUNIT_AUTO_INPUT != y ]]
 		then
 			PRINT_MSG="echo -e \"\tEnter 'y' to execute the test case\""
@@ -1430,24 +1433,24 @@ main() {
 		echo -e "\tNo. of CUNIT test modules with unknown results	\t\t= $cunit_na" >> result
 		echo -e "\tTotal number CUNIT test modules			\t\t= `expr $cunit_test_no - 1`" >> result
 		echo >> result
-		mv /usr/odp/test/validation/cunit_log /usr/odp/scripts/cunit_log
+		mv $CUNIT_PATH/cunit_log /usr/odp/scripts/cunit_log
 		echo >> /usr/odp/scripts/sanity_log
 		echo "#################################################### CUNIT ##############################################" >> /usr/odp/scripts/sanity_log
 		echo >> /usr/odp/scripts/sanity_log
 		cat /usr/odp/scripts/cunit_log >> /usr/odp/scripts/sanity_log
 		rm /usr/odp/scripts/cunit_log
-		if [[ -e "/usr/odp/test/validation/cunit_tested_app" ]]
+		if [[ -e "$CUNIT_PATH/cunit_tested_app" ]]
 		then
-			mv /usr/odp/test/validation/cunit_tested_app /usr/odp/scripts/cunit_tested_app
+			mv $CUNIT_PATH/cunit_tested_app /usr/odp/scripts/cunit_tested_app
 			echo >> /usr/odp/scripts/sanity_tested_apps
 			echo "#################################################### CUNIT ##############################################" >> /usr/odp/scripts/sanity_tested_apps
 			echo >> /usr/odp/scripts/sanity_tested_apps
 			cat /usr/odp/scripts/cunit_tested_app >> /usr/odp/scripts/sanity_tested_apps
 			rm /usr/odp/scripts/cunit_tested_app
 		fi
-		if [[ -e "/usr/odp/test/validation/cunit_untested_app" ]]
+		if [[ -e "$CUNIT_PATH/cunit_untested_app" ]]
 		then
-			mv /usr/odp/test/validation/cunit_untested_app /usr/odp/scripts/cunit_untested_app
+			mv $CUNIT_PATH/cunit_untested_app /usr/odp/scripts/cunit_untested_app
 			echo >> /usr/odp/scripts/sanity_untested_apps
 			echo "#################################################### CUNIT ##############################################" >> /usr/odp/scripts/sanity_untested_apps
 			echo >> /usr/odp/scripts/sanity_untested_apps
@@ -1500,15 +1503,13 @@ cunit_failed=0
 cunit_na=0
 cunit_untested=0
 CUNIT=0
+CUNIT_PATH="/usr/odp/test/validation"
 
 #/*
 # * Parsing the arguments.
 # */
-if [[ -z "$1" ]]
+if [[ $1 ]]
 then
-	PRINT_MSG="echo -e \"\tEnter 'y' to execute the test case\""
-	READ="read input"
-else
 	for i in "$@"
 	do
 		case $i in
@@ -1531,6 +1532,9 @@ else
 			-c)
 				CUNIT=1
 				;;
+			--cunit-path=*)
+				CUNIT_PATH="${i#*=}"
+				;;
 			*)
 				echo "Invalid option $i"
 				help
@@ -1538,6 +1542,12 @@ else
 				;;
 		esac
 	done
+fi
+
+if [[ $input != "y" ]]
+then
+	PRINT_MSG="echo -e \"\tEnter 'y' to execute the test case\""
+	READ="read input"
 fi
 
 if [[ -e "/usr/odp/scripts/sanity_log" ]]
