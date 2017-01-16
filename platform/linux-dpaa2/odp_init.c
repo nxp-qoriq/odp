@@ -40,8 +40,6 @@ struct dpaa2_resources dpaa2_res;
 odpfsl_dq_schedule_mode_t dq_schedule_mode = ODPFSL_PUSH;
 
 #define MAX_CPU		8
-#define DPAA2_DEFAULT_DATA_MEM_SIZE	(32 * 1024 * 1024)	/*32 MB*/
-
 
 struct dpio_user {
 	void *dpio_dev;
@@ -236,7 +234,7 @@ static int odp_dpaa2_init_global(const odp_platform_init_t *platform_params)
 	if (platform_params && platform_params->data_mem_size)
 		cfg.data_mem_size = platform_params->data_mem_size;
 	else
-		cfg.data_mem_size = DPAA2_DEFAULT_DATA_MEM_SIZE;
+		cfg.data_mem_size = 0;
 	cfg.buf_mem_size	= 0;
 	cfg.log_level		= DPAA2_LOG_WARNING;
 	cfg.flags		= DPAA2_SOFTQ_SUPPORT;
@@ -249,7 +247,7 @@ static int odp_dpaa2_init_global(const odp_platform_init_t *platform_params)
 	 */
 	printf("Initializing DPAA2 framework with following parameters:\n");
 	printf("\tResource container :%s\n", cfg.vfio_container);
-	printf("\tData Memory size:0x%p\n", (void *)cfg.data_mem_size);
+	printf("\tData Memory size:0x%lx bytes\n",  cfg.data_mem_size);
 	printf("\tLog_level:%d\n", cfg.log_level);
 	printf("\tFlags:0x%0x\n", cfg.flags);
 

@@ -97,6 +97,8 @@
 
 #include <dpaa2_mpool.h>
 
+#define DPAA2_DEFAULT_DATA_MEM_SIZE	(32 * 1024 * 1024)	/*32 MB*/
+
 /**
  * @file
  * Huge page mapping under linux
@@ -801,7 +803,13 @@ dpaa2_eal_hugepage_init(struct dpaa2_init_cfg *cfg)
 
 	/* hugetlbfs can be disabled */
 	if (internal_config.no_hugetlbfs) {
-		addr = malloc(internal_config.memory);
+		if(!internal_config.memory) {
+			addr = malloc(DPAA2_DEFAULT_DATA_MEM_SIZE);
+			internal_config.memory = DPAA2_DEFAULT_DATA_MEM_SIZE;
+			/* At init time, all memory is free memory */
+			internal_config.free_memory = DPAA2_DEFAULT_DATA_MEM_SIZE;
+		} else
+			addr = malloc(internal_config.memory);
 		mcfg->memseg[0].phys_addr = (phys_addr_t)(uintptr_t)addr;
 		mcfg->memseg[0].addr = addr;
 		mcfg->memseg[0].len = internal_config.memory;
@@ -918,8 +926,10 @@ dpaa2_eal_hugepage_init(struct dpaa2_init_cfg *cfg)
 		}
 	}
 
+	memory = eal_get_hugepage_mem_size();
+
 	/*if enough huge pages are not available as desired by app */
-	if (cfg->data_mem_size > eal_get_hugepage_mem_size()) {
+	if (cfg->data_mem_size > memory) {
 		DPAA2_ERR(MEMZONE,
 			 "Requesting %lu size, avaialable only %lu\n",
 			cfg->data_mem_size, eal_get_hugepage_mem_size());
@@ -927,7 +937,13 @@ dpaa2_eal_hugepage_init(struct dpaa2_init_cfg *cfg)
 	}
 
 	/*FIXME  */
-	internal_config.max_mem = cfg->data_mem_size;
+	if(!cfg->data_mem_size) {
+		internal_config.max_mem = memory;
+		internal_config.memory = memory;
+		/* At init time, all memory is free memory */
+		internal_config.free_memory = memory;
+	} else
+		internal_config.max_mem = cfg->data_mem_size;
 
 	/* make a copy of max_mem, needed for number of pages calculation */
 	memory = internal_config.max_mem;
