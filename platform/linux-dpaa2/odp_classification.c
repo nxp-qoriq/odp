@@ -277,6 +277,7 @@ static void print_all_rule_list(uint64_t pktio_idx)
 		printf("Traffic Class ID = %d\n", temp_rule->tc_id);
 		printf("Flow ID = %d\n", temp_rule->flow_id);
 		printf("PMR:\n");
+		i = 0;
 		while (i < key_cfg_len) {
 			printf("%0x\t", *temp);
 			temp++;
@@ -293,7 +294,6 @@ static void print_all_rule_list(uint64_t pktio_idx)
 		printf("\n");
 	}
 	printf("======================End PMR======================\n");
-	i = 0;
 	printf("L2 Matching rules information:\n");
 	printf("======================Start L2======================\n");
 	TAILQ_FOREACH(temp_rule, &l2_rule_list[pktio_idx], next) {
@@ -303,6 +303,7 @@ static void print_all_rule_list(uint64_t pktio_idx)
 		printf("Traffic Class ID = %d\n", temp_rule->tc_id);
 		printf("Flow ID = %d\n", temp_rule->flow_id);
 		printf("PMR:\n");
+		i = 0;
 		while (i < key_cfg_len) {
 			printf("%0x\t", *temp);
 			temp++;
@@ -319,7 +320,6 @@ static void print_all_rule_list(uint64_t pktio_idx)
 		printf("\n");
 	}
 	printf("======================End L2======================\n");
-	i = 0;
 	printf("L3 Matching rules information:\n");
 	printf("======================Start L3======================\n");
 	TAILQ_FOREACH(temp_rule, &l3_rule_list[pktio_idx], next) {
@@ -329,6 +329,7 @@ static void print_all_rule_list(uint64_t pktio_idx)
 		printf("Traffic Class ID = %d\n", temp_rule->tc_id);
 		printf("Flow ID = %d\n", temp_rule->flow_id);
 		printf("PMR:\n");
+		i = 0;
 		while (i < key_cfg_len) {
 			printf("%0x\t", *temp);
 			temp++;
@@ -418,9 +419,8 @@ static odp_pmr_t odp_pmr_create(const odp_pmr_param_t *terms)
 	return id;
 }
 
-static int odp_pmr_destroy(odp_pmr_t pmr_id)
+static int odp_pmr_destroy(pmr_t *pmr)
 {
-	pmr_t *pmr = get_pmr_entry(pmr_id);
 	uint32_t loop, pos;
 
 	if (pmr == NULL)
@@ -665,13 +665,11 @@ static int odp_pmr_match_set_create(int num_terms, const odp_pmr_param_t *terms,
 	return count;
 }
 
-static int odp_pmr_match_set_destroy(odp_pmr_set_t pmr_set_id)
+static int odp_pmr_match_set_destroy(pmr_set_t *pmr)
 {
 	int32_t pos, loop;
 	uint32_t i;
-	pmr_set_t *pmr;
 
-	pmr = get_pmr_set_entry(pmr_set_id);
 	if (pmr == NULL)
 		return -1;
 
@@ -2000,16 +1998,18 @@ odp_pmr_t odp_cls_pmr_create(const odp_pmr_param_t *terms, int num_terms,
 int odp_cls_pmr_destroy(odp_pmr_t pmr_id)
 {
 	pmr_t *pmr;
+	pmr_set_t *pmr_set;
 
-	pmr = get_pmr_entry(pmr_id);
-	if (!pmr) {
+	pmr = get_pmr_entry((odp_pmr_t)pmr_id);
+	pmr_set = get_pmr_set_entry((odp_pmr_set_t)pmr_id);
+	if (!pmr && !pmr_set) {
 		ODP_ERR("Invalid odp_pmr_t handle");
 		return -1;
 	}
-	if (pmr->s.num_pmr > 1)
-		return odp_pmr_match_set_destroy((odp_pmr_set_t)pmr_id);
+	if (pmr_set)
+		return odp_pmr_match_set_destroy(pmr_set);
 	else
-		return odp_pmr_destroy((odp_pmr_t)pmr_id);
+		return odp_pmr_destroy(pmr);
 }
 
 /*Update pmr_info array for created PMR and PMR set.*/

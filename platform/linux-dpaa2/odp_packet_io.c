@@ -335,6 +335,21 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 	int ret, loop_dev = 0;
 	pool_entry_t *phandle = (pool_entry_t *)pool;
 
+        if (!(strcmp(name, "loop"))) {
+                strcpy(container, vfio_container);
+                strcpy(loop_device, "LOOP_IF_");
+                strtok(container, ".");
+                strcat(loop_device, strtok(NULL, "."));
+
+                name = getenv(loop_device);
+                if (!name) {
+                        ODP_ERR("Unable to find loop device");
+                        return ODP_PKTIO_INVALID;
+                }
+                loop_dev = 1;
+                ODP_DBG("%s is mapped to loop device\n", name);
+        }
+
 	id = odp_pktio_lookup(name);
 	if (id != ODP_PKTIO_INVALID) {
 		/* interface is already open */
@@ -349,21 +364,6 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 		ODP_ERR("pktio name %s is too big, limit is %d bytes\n",
 			name, IFNAMSIZ);
 		return ODP_PKTIO_INVALID;
-	}
-
-	if (!(strcmp(name, "loop"))) {
-		strcpy(container, vfio_container);
-		strcpy(loop_device, "LOOP_IF_");
-		strtok(container, ".");
-		strcat(loop_device, strtok(NULL, "."));
-
-		name = getenv(loop_device);
-		if (!name) {
-			ODP_ERR("Unable to find loop device");
-			return ODP_PKTIO_INVALID;
-		}
-		loop_dev = 1;
-		ODP_DBG("%s is mapped to loop device\n", name);
 	}
 
 	ndev = odp_get_dpaa2_eth_dev(name);
@@ -403,7 +403,7 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 		odp_pktio_param_init(&pktio_entry->s.param);
 
 	ret = dpaa2_eth_attach_bp_list(ndev, (void *)(phandle->s.int_hdl));
-	if (ret != 0) {
+	if (ret < 0) {
 		unlock_entry_classifier(pktio_entry);
 		free_pktio_entry(id);
 		ODP_ERR("Unable to init any I/O type.\n");
