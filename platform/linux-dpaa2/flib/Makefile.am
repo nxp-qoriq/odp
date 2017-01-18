@@ -4,9 +4,9 @@ AM_CFLAGS += -Wno-error
 
 noinst_LTLIBRARIES = libflib.la
 nodist_libflib_la_SOURCES = mc/dprc.c \
-	mc/dprtc.o \
+	mc/dprtc.c \
 	mc/dpaiop.c \
-	mc/dpdbg.o \
+	mc/dpkg.c \
 	mc/dpdcei.c \
 	mc/dpdmai.c \
 	mc/dpmac.c \

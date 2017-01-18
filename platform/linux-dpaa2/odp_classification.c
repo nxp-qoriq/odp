@@ -1931,7 +1931,7 @@ int odp_setup_dist(pktio_entry_t *pktio_entry)
 
 	odp_setup_extract_key(key_cfg);
 	/* no need for mc portal lock*/
-	if (dpni_prepare_key_cfg(key_cfg, param) < 0) {
+	if (dpkg_prepare_key_cfg(key_cfg, param) < 0) {
 		ODP_ERR("Unable to prepare extract parameters");
 		return -1;
 	}

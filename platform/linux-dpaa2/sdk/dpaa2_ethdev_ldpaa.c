@@ -332,7 +332,7 @@ int32_t dpaa2_eth_setup_flow_distribution(struct dpaa2_dev *dev,
 	tc_cfg.dist_mode = DPNI_DIST_MODE_HASH;
 	q_config->tc_config[tc_index].num_dist_used = dist_size;
 
-	if (dpni_prepare_key_cfg(&kg_cfg, p_params))
+	if (dpkg_prepare_key_cfg(&kg_cfg, (uint8_t *)p_params))
 		DPAA2_WARN(BUF, "Unable to prepare extract parameters");
 
 	ret = dpni_set_rx_tc_dist(dpni, CMD_PRI_LOW, dev_priv->token, tc_index,
@@ -376,7 +376,7 @@ void dpaa2_eth_remove_flow_distribution(struct dpaa2_dev *dev,
 	tc_cfg.dist_size = 0;
 	tc_cfg.dist_mode = DPNI_DIST_MODE_NONE;
 
-	if (dpni_prepare_key_cfg(&kg_cfg, p_params))
+	if (dpkg_prepare_key_cfg(&kg_cfg, (uint8_t *)p_params))
 		DPAA2_WARN(BUF, "Unable to prepare extract parameters");
 
 	ret = dpni_set_rx_tc_dist(dpni, CMD_PRI_LOW, dev_priv->token, tc_index,
