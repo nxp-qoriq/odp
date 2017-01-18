@@ -226,51 +226,6 @@ int dpsw_reset(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
-int dpsw_set_irq(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
-		 uint16_t token,
-		 uint8_t irq_index,
-		 struct dpsw_irq_cfg *irq_cfg)
-{
-	struct mc_command cmd = { 0 };
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPSW_CMDID_SET_IRQ,
-					  cmd_flags,
-					  token);
-	DPSW_CMD_SET_IRQ(cmd, irq_index, irq_cfg);
-
-	/* send command to mc*/
-	return mc_send_command(mc_io, &cmd);
-}
-
-int dpsw_get_irq(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
-		 uint16_t token,
-		 uint8_t irq_index,
-		 int *type,
-		 struct dpsw_irq_cfg *irq_cfg)
-{
-	struct mc_command cmd = { 0 };
-	int err;
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPSW_CMDID_GET_IRQ,
-					  cmd_flags,
-					  token);
-	DPSW_CMD_GET_IRQ(cmd, irq_index);
-
-	/* send command to mc*/
-	err = mc_send_command(mc_io, &cmd);
-	if (err)
-		return err;
-
-	/* retrieve response parameters */
-	DPSW_RSP_GET_IRQ(cmd, *type, irq_cfg);
-
-	return 0;
-}
-
 int dpsw_set_irq_enable(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
@@ -422,7 +377,7 @@ int dpsw_get_attributes(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	DPSW_RSP_GET_ATTR(cmd, attr);
+	DPSW_RSP_GET_ATTRIBUTES(cmd, attr);
 
 	return 0;
 }

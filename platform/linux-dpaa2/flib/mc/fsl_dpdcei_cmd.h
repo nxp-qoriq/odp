@@ -37,30 +37,28 @@
 #define DPDCEI_VER_MINOR				2
 
 /* Command IDs */
-#define DPDCEI_CMDID_CLOSE                           ((0x800 << 4) | (0x1))
-#define DPDCEI_CMDID_OPEN                            ((0x80D << 4) | (0x1))
-#define DPDCEI_CMDID_CREATE                          ((0x90D << 4) | (0x1))
-#define DPDCEI_CMDID_DESTROY                         ((0x98D << 4) | (0x1))
-#define DPDCEI_CMDID_GET_API_VERSION                 ((0xa0D << 4) | (0x1))
+#define DPDCEI_CMDID_CLOSE                           0x8001
+#define DPDCEI_CMDID_OPEN                            0x80d1
+#define DPDCEI_CMDID_CREATE                          0x90d1
+#define DPDCEI_CMDID_DESTROY                         0x98d1
+#define DPDCEI_CMDID_GET_API_VERSION                 0xa0d1
 
-#define DPDCEI_CMDID_ENABLE                          ((0x002 << 4) | (0x1))
-#define DPDCEI_CMDID_DISABLE                         ((0x003 << 4) | (0x1))
-#define DPDCEI_CMDID_GET_ATTR                        ((0x004 << 4) | (0x1))
-#define DPDCEI_CMDID_RESET                           ((0x005 << 4) | (0x1))
-#define DPDCEI_CMDID_IS_ENABLED                      ((0x006 << 4) | (0x1))
+#define DPDCEI_CMDID_ENABLE                          0x0021
+#define DPDCEI_CMDID_DISABLE                         0x0031
+#define DPDCEI_CMDID_GET_ATTR                        0x0041
+#define DPDCEI_CMDID_RESET                           0x0051
+#define DPDCEI_CMDID_IS_ENABLED                      0x0061
 
-#define DPDCEI_CMDID_SET_IRQ                         ((0x010 << 4) | (0x1))
-#define DPDCEI_CMDID_GET_IRQ                         ((0x011 << 4) | (0x1))
-#define DPDCEI_CMDID_SET_IRQ_ENABLE                  ((0x012 << 4) | (0x1))
-#define DPDCEI_CMDID_GET_IRQ_ENABLE                  ((0x013 << 4) | (0x1))
-#define DPDCEI_CMDID_SET_IRQ_MASK                    ((0x014 << 4) | (0x1))
-#define DPDCEI_CMDID_GET_IRQ_MASK                    ((0x015 << 4) | (0x1))
-#define DPDCEI_CMDID_GET_IRQ_STATUS                  ((0x016 << 4) | (0x1))
-#define DPDCEI_CMDID_CLEAR_IRQ_STATUS                ((0x017 << 4) | (0x1))
+#define DPDCEI_CMDID_SET_IRQ_ENABLE                  0x0121
+#define DPDCEI_CMDID_GET_IRQ_ENABLE                  0x0131
+#define DPDCEI_CMDID_SET_IRQ_MASK                    0x0141
+#define DPDCEI_CMDID_GET_IRQ_MASK                    0x0151
+#define DPDCEI_CMDID_GET_IRQ_STATUS                  0x0161
+#define DPDCEI_CMDID_CLEAR_IRQ_STATUS                0x0171
 
-#define DPDCEI_CMDID_SET_RX_QUEUE                    ((0x1B0 << 4) | (0x1))
-#define DPDCEI_CMDID_GET_RX_QUEUE                    ((0x1B1 << 4) | (0x1))
-#define DPDCEI_CMDID_GET_TX_QUEUE                    ((0x1B2 << 4) | (0x1))
+#define DPDCEI_CMDID_SET_RX_QUEUE                    0x1b01
+#define DPDCEI_CMDID_GET_RX_QUEUE                    0x1b11
+#define DPDCEI_CMDID_GET_TX_QUEUE                    0x1b21
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPDCEI_CMD_OPEN(cmd, dpdcei_id) \
@@ -76,28 +74,6 @@ do { \
 /*                cmd, param, offset, width, type, arg_name */
 #define DPDCEI_RSP_IS_ENABLED(cmd, en) \
 	MC_RSP_OP(cmd, 0, 0,  1,  int,	    en)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_SET_IRQ(cmd, irq_index, irq_cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  irq_index);\
-	MC_CMD_OP(cmd, 0, 32, 32, uint32_t, irq_cfg->val);\
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr);\
-	MC_CMD_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-} while (0)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_GET_IRQ(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_RSP_GET_IRQ(cmd, type, irq_cfg) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, irq_cfg->val); \
-	MC_RSP_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr);\
-	MC_RSP_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-	MC_RSP_OP(cmd, 2, 32, 32, int,	    type); \
-} while (0)
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPDCEI_CMD_SET_IRQ_ENABLE(cmd, irq_index, enable_state) \
@@ -148,10 +124,10 @@ do { \
 } while (0)
 
 /*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_RSP_GET_ATTR(cmd, attr) \
+#define DPDCEI_RSP_GET_ATTRIBUTES(cmd, attr) \
 do { \
-	MC_RSP_OP(cmd, 0, 0,  32, int,	    attr->id); \
-	MC_RSP_OP(cmd, 0, 32,  8,  enum dpdcei_engine,  attr->engine); \
+	MC_RSP_OP(cmd, 0,  0, 32, int,                (attr)->id); \
+	MC_RSP_OP(cmd, 0, 32,  8, enum dpdcei_engine, (attr)->engine); \
 } while (0)
 
 /*                cmd, param, offset, width, type, arg_name */

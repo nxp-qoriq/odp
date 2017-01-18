@@ -32,6 +32,8 @@
 #ifndef __FSL_DPCI_H
 #define __FSL_DPCI_H
 
+#include <fsl_dpopr.h>
+
 /* Data Path Communication Interface API
  * Contains initialization APIs and runtime control APIs for DPCI
  */
@@ -93,13 +95,27 @@ int dpci_close(struct fsl_mc_io	*mc_io,
 	       uint16_t		token);
 
 /**
+ * Enable the Order Restoration support
+ */
+#define DPCI_OPT_HAS_OPR					0x000040
+
+/**
+ * Order Point Records are shared for the entire DPCI
+ */
+#define DPCI_OPT_OPR_SHARED					0x000080
+
+/**
  * struct dpci_cfg - Structure representing DPCI configuration
+ * @options: Any combination of the following options:
+ *		DPCI_OPT_HAS_OPR
+ *		DPCI_OPT_OPR_SHARED
  * @num_of_priorities:	Number of receive priorities (queues) for the DPCI;
  *			note, that the number of transmit priorities (queues)
  *			is determined by the number of receive priorities of
  *			the peer DPCI object
  */
 struct dpci_cfg {
+	uint32_t options;
 	uint8_t num_of_priorities;
 };
 
@@ -220,53 +236,6 @@ int dpci_reset(struct fsl_mc_io *mc_io,
  * IRQ event - indicates a disconnection event
  */
 #define DPCI_IRQ_EVENT_DISCONNECTED             0x00000004
-
-/**
- * struct dpci_irq_cfg - IRQ configuration
- * @addr:	Address that must be written to signal a message-based interrupt
- * @val:	Value to write into irq_addr address
- * @irq_num: A user defined number associated with this IRQ
- */
-struct dpci_irq_cfg {
-	     uint64_t		addr;
-	     uint32_t		val;
-	     int		irq_num;
-};
-
-/**
- * dpci_set_irq() - Set IRQ information for the DPCI to trigger an interrupt.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPCI object
- * @irq_index:	Identifies the interrupt index to configure
- * @irq_cfg:	IRQ configuration
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpci_set_irq(struct fsl_mc_io	*mc_io,
-		 uint32_t		cmd_flags,
-		 uint16_t		token,
-		 uint8_t		irq_index,
-		 struct dpci_irq_cfg	*irq_cfg);
-
-/**
- * dpci_get_irq() - Get IRQ information from the DPCI.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPCI object
- * @irq_index:	The interrupt index to configure
- * @type:	Interrupt type: 0 represents message interrupt
- *		type (both irq_addr and irq_val are valid)
- * @irq_cfg:	IRQ attributes
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpci_get_irq(struct fsl_mc_io	*mc_io,
-		 uint32_t		cmd_flags,
-		 uint16_t		token,
-		 uint8_t		irq_index,
-		 int			*type,
-		 struct dpci_irq_cfg	*irq_cfg);
 
 /**
  * dpci_set_irq_enable() - Set overall interrupt state.
@@ -603,5 +572,42 @@ int dpci_get_api_version(struct fsl_mc_io	*mc_io,
 			 uint32_t		cmd_flags,
 			 uint16_t		*major_ver,
 			 uint16_t		*minor_ver);
+
+/**
+ * dpci_set_opr() - Set Order Restoration configuration.
+ * @mc_io:		Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:		Token of DPCI object
+ * @index:  	The queue index
+ * @options:	Configuration mode options
+ *				can be OPR_OPT_CREATE or OPR_OPT_RETIRE
+ * @cfg:		Configuration options for the OPR
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpci_set_opr(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint8_t index,
+			 uint8_t options,
+			 struct opr_cfg *cfg);
+
+/**
+ * dpci_get_opr() - Retrieve Order Restoration config and query.
+ * @mc_io:		Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:		Token of DPCI object
+ * @index:  	The queue index
+ * @cfg:		Returned OPR configuration
+ * @qry:		Returned OPR query
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpci_get_opr(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint8_t index,
+			 struct opr_cfg *cfg,
+			 struct opr_qry *qry);
 
 #endif /* __FSL_DPCI_H */

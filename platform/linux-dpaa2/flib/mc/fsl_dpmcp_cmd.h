@@ -37,22 +37,20 @@
 #define DPMCP_VER_MINOR				0
 
 /* Command IDs */
-#define DPMCP_CMDID_CLOSE                               ((0x800 << 4) | (0x1))
-#define DPMCP_CMDID_OPEN                                ((0x80b << 4) | (0x1))
-#define DPMCP_CMDID_CREATE                              ((0x90b << 4) | (0x1))
-#define DPMCP_CMDID_DESTROY                             ((0x98b << 4) | (0x1))
-#define DPMCP_CMDID_GET_API_VERSION                     ((0xa0b << 4) | (0x1))
+#define DPMCP_CMDID_CLOSE                               0x8001
+#define DPMCP_CMDID_OPEN                                0x80b1
+#define DPMCP_CMDID_CREATE                              0x90b1
+#define DPMCP_CMDID_DESTROY                             0x98b1
+#define DPMCP_CMDID_GET_API_VERSION                     0xa0b1
 
-#define DPMCP_CMDID_GET_ATTR                            ((0x004 << 4) | (0x1))
-#define DPMCP_CMDID_RESET                               ((0x005 << 4) | (0x1))
+#define DPMCP_CMDID_GET_ATTR                            0x0041
+#define DPMCP_CMDID_RESET                               0x0051
 
-#define DPMCP_CMDID_SET_IRQ                             ((0x010 << 4) | (0x1))
-#define DPMCP_CMDID_GET_IRQ                             ((0x011 << 4) | (0x1))
-#define DPMCP_CMDID_SET_IRQ_ENABLE                      ((0x012 << 4) | (0x1))
-#define DPMCP_CMDID_GET_IRQ_ENABLE                      ((0x013 << 4) | (0x1))
-#define DPMCP_CMDID_SET_IRQ_MASK                        ((0x014 << 4) | (0x1))
-#define DPMCP_CMDID_GET_IRQ_MASK                        ((0x015 << 4) | (0x1))
-#define DPMCP_CMDID_GET_IRQ_STATUS                      ((0x016 << 4) | (0x1))
+#define DPMCP_CMDID_SET_IRQ_ENABLE                      0x0121
+#define DPMCP_CMDID_GET_IRQ_ENABLE                      0x0131
+#define DPMCP_CMDID_SET_IRQ_MASK                        0x0141
+#define DPMCP_CMDID_GET_IRQ_MASK                        0x0151
+#define DPMCP_CMDID_GET_IRQ_STATUS                      0x0161
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMCP_CMD_OPEN(cmd, dpmcp_id) \
@@ -61,28 +59,6 @@
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMCP_CMD_CREATE(cmd, cfg) \
 	MC_CMD_OP(cmd, 0, 0,  32, int,      cfg->portal_id)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_CMD_SET_IRQ(cmd, irq_index, irq_cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  irq_index);\
-	MC_CMD_OP(cmd, 0, 32, 32, uint32_t, irq_cfg->val);\
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr); \
-	MC_CMD_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-} while (0)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_CMD_GET_IRQ(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_RSP_GET_IRQ(cmd, type, irq_cfg) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, irq_cfg->val); \
-	MC_RSP_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr); \
-	MC_RSP_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-	MC_RSP_OP(cmd, 2, 32, 32, int,	    type); \
-} while (0)
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMCP_CMD_SET_IRQ_ENABLE(cmd, irq_index, en) \
@@ -127,7 +103,7 @@ do { \
 
 /*                cmd, param, offset, width, type,	arg_name */
 #define DPMCP_RSP_GET_ATTRIBUTES(cmd, attr) \
-	MC_RSP_OP(cmd, 0, 32, 32, int, attr->id)
+	MC_RSP_OP(cmd, 0, 32, 32, int, (attr)->id)
 
 /*                cmd, param, offset, width, type,      arg_name */
 #define DPMCP_RSP_GET_API_VERSION(cmd, major, minor) \

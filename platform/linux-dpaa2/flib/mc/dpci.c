@@ -184,51 +184,6 @@ int dpci_reset(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
-int dpci_set_irq(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
-		 uint16_t		token,
-		 uint8_t		irq_index,
-		 struct dpci_irq_cfg	*irq_cfg)
-{
-	struct mc_command cmd = { 0 };
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPCI_CMDID_SET_IRQ,
-					  cmd_flags,
-					  token);
-	DPCI_CMD_SET_IRQ(cmd, irq_index, irq_cfg);
-
-	/* send command to mc*/
-	return mc_send_command(mc_io, &cmd);
-}
-
-int dpci_get_irq(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
-		 uint16_t		token,
-		 uint8_t		irq_index,
-		 int			*type,
-		 struct dpci_irq_cfg	*irq_cfg)
-{
-	struct mc_command cmd = { 0 };
-	int err;
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPCI_CMDID_GET_IRQ,
-					  cmd_flags,
-					  token);
-	DPCI_CMD_GET_IRQ(cmd, irq_index);
-
-	/* send command to mc*/
-	err = mc_send_command(mc_io, &cmd);
-	if (err)
-		return err;
-
-	/* retrieve response parameters */
-	DPCI_RSP_GET_IRQ(cmd, *type, irq_cfg);
-
-	return 0;
-}
-
 int dpci_set_irq_enable(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
@@ -380,7 +335,7 @@ int dpci_get_attributes(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	DPCI_RSP_GET_ATTR(cmd, attr);
+	DPCI_RSP_GET_ATTRIBUTES(cmd, attr);
 
 	return 0;
 }
@@ -520,6 +475,53 @@ int dpci_get_api_version(struct fsl_mc_io *mc_io,
 		return err;
 
 	DPCI_RSP_GET_API_VERSION(cmd, *major_ver, *minor_ver);
+
+	return 0;
+}
+
+int dpci_set_opr(struct fsl_mc_io *mc_io,
+	      uint32_t cmd_flags,
+	      uint16_t token,
+		  uint8_t index,
+		  uint8_t options,
+		  struct opr_cfg *cfg)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(
+			DPCI_CMDID_SET_OPR,
+			cmd_flags,
+			token);
+	DPCI_CMD_SET_OPR(cmd, index, options, cfg);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpci_get_opr(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		     uint16_t token,
+			 uint8_t index,
+			 struct opr_cfg *cfg,
+			 struct opr_qry *qry)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPCI_CMDID_GET_OPR,
+					  cmd_flags,
+					  token);
+	DPCI_CMD_GET_OPR(cmd, index);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	DPCI_RSP_GET_OPR(cmd, cfg, qry);
 
 	return 0;
 }

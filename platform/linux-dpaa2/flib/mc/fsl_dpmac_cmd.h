@@ -37,29 +37,27 @@
 #define DPMAC_VER_MINOR				2
 
 /* Command IDs */
-#define DPMAC_CMDID_CLOSE                       ((0x800 << 4) | (0x1))
-#define DPMAC_CMDID_OPEN                        ((0x80c << 4) | (0x1))
-#define DPMAC_CMDID_CREATE                      ((0x90c << 4) | (0x1))
-#define DPMAC_CMDID_DESTROY                     ((0x98c << 4) | (0x1))
-#define DPMAC_CMDID_GET_API_VERSION             ((0xa0c << 4) | (0x1))
+#define DPMAC_CMDID_CLOSE                       0x8001
+#define DPMAC_CMDID_OPEN                        0x80c1
+#define DPMAC_CMDID_CREATE                      0x90c1
+#define DPMAC_CMDID_DESTROY                     0x98c1
+#define DPMAC_CMDID_GET_API_VERSION             0xa0c1
 
-#define DPMAC_CMDID_GET_ATTR                    ((0x004 << 4) | (0x1))
-#define DPMAC_CMDID_RESET                       ((0x005 << 4) | (0x1))
+#define DPMAC_CMDID_GET_ATTR                    0x0041
+#define DPMAC_CMDID_RESET                       0x0051
 
-#define DPMAC_CMDID_SET_IRQ                     ((0x010 << 4) | (0x1))
-#define DPMAC_CMDID_GET_IRQ                     ((0x011 << 4) | (0x1))
-#define DPMAC_CMDID_SET_IRQ_ENABLE              ((0x012 << 4) | (0x1))
-#define DPMAC_CMDID_GET_IRQ_ENABLE              ((0x013 << 4) | (0x1))
-#define DPMAC_CMDID_SET_IRQ_MASK                ((0x014 << 4) | (0x1))
-#define DPMAC_CMDID_GET_IRQ_MASK                ((0x015 << 4) | (0x1))
-#define DPMAC_CMDID_GET_IRQ_STATUS              ((0x016 << 4) | (0x1))
-#define DPMAC_CMDID_CLEAR_IRQ_STATUS            ((0x017 << 4) | (0x1))
+#define DPMAC_CMDID_SET_IRQ_ENABLE              0x0121
+#define DPMAC_CMDID_GET_IRQ_ENABLE              0x0131
+#define DPMAC_CMDID_SET_IRQ_MASK                0x0141
+#define DPMAC_CMDID_GET_IRQ_MASK                0x0151
+#define DPMAC_CMDID_GET_IRQ_STATUS              0x0161
+#define DPMAC_CMDID_CLEAR_IRQ_STATUS            0x0171
 
-#define DPMAC_CMDID_MDIO_READ                   ((0x0c0 << 4) | (0x1))
-#define DPMAC_CMDID_MDIO_WRITE                  ((0x0c1 << 4) | (0x1))
-#define DPMAC_CMDID_GET_LINK_CFG                ((0x0c2 << 4) | (0x1))
-#define DPMAC_CMDID_SET_LINK_STATE              ((0x0c3 << 4) | (0x1))
-#define DPMAC_CMDID_GET_COUNTER                 ((0x0c4 << 4) | (0x1))
+#define DPMAC_CMDID_MDIO_READ                   0x0c01
+#define DPMAC_CMDID_MDIO_WRITE                  0x0c11
+#define DPMAC_CMDID_GET_LINK_CFG                0x0c21
+#define DPMAC_CMDID_SET_LINK_STATE              0x0c31
+#define DPMAC_CMDID_GET_COUNTER                 0x0c41
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMAC_CMD_CREATE(cmd, cfg) \
@@ -68,28 +66,6 @@
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMAC_CMD_OPEN(cmd, dpmac_id) \
 	MC_CMD_OP(cmd, 0, 0,  32, int,	    dpmac_id)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMAC_CMD_SET_IRQ(cmd, irq_index, irq_cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  irq_index);\
-	MC_CMD_OP(cmd, 0, 32, 32, uint32_t, irq_cfg->val);\
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr); \
-	MC_CMD_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-} while (0)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMAC_CMD_GET_IRQ(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMAC_RSP_GET_IRQ(cmd, type, irq_cfg) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, irq_cfg->val); \
-	MC_RSP_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr); \
-	MC_RSP_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-	MC_RSP_OP(cmd, 2, 32, 32, int,	    type); \
-} while (0)
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMAC_CMD_SET_IRQ_ENABLE(cmd, irq_index, en) \
@@ -142,10 +118,10 @@ do { \
 /*                cmd, param, offset, width, type,	arg_name */
 #define DPMAC_RSP_GET_ATTRIBUTES(cmd, attr) \
 do { \
-	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,		attr->eth_if);\
-	MC_RSP_OP(cmd, 0, 8,  8,  uint8_t,		attr->link_type);\
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t,		attr->id);\
-	MC_RSP_OP(cmd, 0, 32, 32, uint32_t,		attr->max_rate);\
+	MC_RSP_OP(cmd, 0,  0,  8, uint8_t,  (attr)->eth_if);\
+	MC_RSP_OP(cmd, 0,  8,  8, uint8_t,  (attr)->link_type);\
+	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, (attr)->id);\
+	MC_RSP_OP(cmd, 0, 32, 32, uint32_t, (attr)->max_rate);\
 } while (0)
 
 /*                cmd, param, offset, width, type, arg_name */

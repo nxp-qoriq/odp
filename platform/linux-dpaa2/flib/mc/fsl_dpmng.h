@@ -59,6 +59,16 @@ struct mc_version {
 };
 
 /**
+ * struct mc_platform
+ * @svr: system version (content of platform SVR register)
+ * @pvr: processor version (content of platform PVR register)
+ */
+struct mc_soc_version {
+	uint32_t svr;
+	uint32_t pvr;
+};
+
+/**
  * mc_get_version() - Retrieves the Management Complex firmware
  *			version information
  * @mc_io:		Pointer to opaque I/O object
@@ -70,5 +80,19 @@ struct mc_version {
 int mc_get_version(struct fsl_mc_io	*mc_io,
 		   uint32_t		cmd_flags,
 		   struct mc_version	*mc_ver_info);
+
+/**
+ * mc_get_soc_version() - Retrieves the Management Complex firmware
+ *			version information
+ * @mc_io:		Pointer to opaque I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @mc_platform_info:	Returned version information structure. The structure contains the values of
+ * SVR and PVR registers. Please consult platform specific reference manual for detailed information.
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int mc_get_soc_version(struct fsl_mc_io *mc_io,
+		   uint32_t cmd_flags,
+		   struct mc_soc_version *mc_platform_info);
 
 #endif /* __FSL_DPMNG_H */

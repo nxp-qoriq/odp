@@ -185,51 +185,6 @@ int dpdmux_reset(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
-int dpdmux_set_irq(struct fsl_mc_io	*mc_io,
-		   uint32_t		cmd_flags,
-		   uint16_t		token,
-		   uint8_t		irq_index,
-		   struct dpdmux_irq_cfg *irq_cfg)
-{
-	struct mc_command cmd = { 0 };
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_SET_IRQ,
-					  cmd_flags,
-					  token);
-	DPDMUX_CMD_SET_IRQ(cmd, irq_index, irq_cfg);
-
-	/* send command to mc*/
-	return mc_send_command(mc_io, &cmd);
-}
-
-int dpdmux_get_irq(struct fsl_mc_io *mc_io,
-		   uint32_t cmd_flags,
-		   uint16_t		token,
-		   uint8_t		irq_index,
-		   int			*type,
-		   struct dpdmux_irq_cfg *irq_cfg)
-{
-	struct mc_command cmd = { 0 };
-	int err;
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_GET_IRQ,
-					  cmd_flags,
-					  token);
-	DPDMUX_CMD_GET_IRQ(cmd, irq_index);
-
-	/* send command to mc*/
-	err = mc_send_command(mc_io, &cmd);
-	if (err)
-		return err;
-
-	/* retrieve response parameters */
-	DPDMUX_RSP_GET_IRQ(cmd, *type, irq_cfg);
-
-	return 0;
-}
-
 int dpdmux_set_irq_enable(struct fsl_mc_io *mc_io,
 			  uint32_t cmd_flags,
 			  uint16_t token,
@@ -381,7 +336,7 @@ int dpdmux_get_attributes(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	DPDMUX_RSP_GET_ATTR(cmd, attr);
+	DPDMUX_RSP_GET_ATTRIBUTES(cmd, attr);
 
 	return 0;
 }
@@ -568,6 +523,61 @@ int dpdmux_if_get_link_state(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+
+int dpdmux_set_custom_key(struct fsl_mc_io		*mc_io,
+			uint32_t			cmd_flags,
+			uint16_t			token,
+			uint64_t			key_cfg_iova)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_SET_CUSTOM_KEY,
+					  cmd_flags,
+					  token);
+	DPDMUX_CMD_SET_CUSTOM_KEY(cmd, key_cfg_iova);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpdmux_add_custom_cls_entry(struct fsl_mc_io	*mc_io,
+		uint32_t				cmd_flags,
+		uint16_t				token,
+		struct dpdmux_rule_cfg			*rule,
+		struct dpdmux_cls_action		*action)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_ADD_CUSTOM_CLS_ENTRY,
+					  cmd_flags,
+					  token);
+
+	DPDMUX_CMD_ADD_CUSTOM_CLS_ENTRY(cmd, rule, action);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpdmux_remove_custom_cls_entry(struct fsl_mc_io	*mc_io,
+		uint32_t				cmd_flags,
+		uint16_t				token,
+		struct dpdmux_rule_cfg			*rule)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_REMOVE_CUSTOM_CLS_ENTRY,
+					  cmd_flags,
+					  token);
+
+	DPDMUX_CMD_REMOVE_CUSTOM_CLS_ENTRY(cmd, rule);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
 
 int dpdmux_get_api_version(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,

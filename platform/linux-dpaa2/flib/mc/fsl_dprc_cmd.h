@@ -37,46 +37,45 @@
 #define DPRC_VER_MINOR				1
 
 /* Command IDs */
-#define DPRC_CMDID_CLOSE                        ((0x800 << 4) | (0x1))
-#define DPRC_CMDID_OPEN                         ((0x805 << 4) | (0x1))
-#define DPRC_CMDID_CREATE                       ((0x905 << 4) | (0x1))
-#define DPRC_CMDID_GET_API_VERSION              ((0xa05 << 4) | (0x1))
+#define DPRC_CMDID_CLOSE                        0x8001
+#define DPRC_CMDID_OPEN                         0x8051
+#define DPRC_CMDID_GET_API_VERSION              0xa051
 
-#define DPRC_CMDID_GET_ATTR                     ((0x004 << 4) | (0x1))
-#define DPRC_CMDID_RESET_CONT                   ((0x005 << 4) | (0x1))
+#define DPRC_CMDID_GET_ATTR                     0x0041
+#define DPRC_CMDID_RESET_CONT                   0x0051
 
-#define DPRC_CMDID_SET_IRQ                      ((0x010 << 4) | (0x1))
-#define DPRC_CMDID_GET_IRQ                      ((0x011 << 4) | (0x1))
-#define DPRC_CMDID_SET_IRQ_ENABLE               ((0x012 << 4) | (0x1))
-#define DPRC_CMDID_GET_IRQ_ENABLE               ((0x013 << 4) | (0x1))
-#define DPRC_CMDID_SET_IRQ_MASK                 ((0x014 << 4) | (0x1))
-#define DPRC_CMDID_GET_IRQ_MASK                 ((0x015 << 4) | (0x1))
-#define DPRC_CMDID_GET_IRQ_STATUS               ((0x016 << 4) | (0x1))
-#define DPRC_CMDID_CLEAR_IRQ_STATUS             ((0x017 << 4) | (0x1))
+#define DPRC_CMDID_SET_IRQ                      0x0101
+#define DPRC_CMDID_GET_IRQ                      0x0111
+#define DPRC_CMDID_SET_IRQ_ENABLE               0x0121
+#define DPRC_CMDID_GET_IRQ_ENABLE               0x0131
+#define DPRC_CMDID_SET_IRQ_MASK                 0x0141
+#define DPRC_CMDID_GET_IRQ_MASK                 0x0151
+#define DPRC_CMDID_GET_IRQ_STATUS               0x0161
+#define DPRC_CMDID_CLEAR_IRQ_STATUS             0x0171
 
-#define DPRC_CMDID_CREATE_CONT                  ((0x151 << 4) | (0x1))
-#define DPRC_CMDID_DESTROY_CONT                 ((0x152 << 4) | (0x1))
-#define DPRC_CMDID_GET_CONT_ID                  ((0x830 << 4) | (0x1))
-#define DPRC_CMDID_SET_RES_QUOTA                ((0x155 << 4) | (0x1))
-#define DPRC_CMDID_GET_RES_QUOTA                ((0x156 << 4) | (0x1))
-#define DPRC_CMDID_ASSIGN                       ((0x157 << 4) | (0x1))
-#define DPRC_CMDID_UNASSIGN                     ((0x158 << 4) | (0x1))
-#define DPRC_CMDID_GET_OBJ_COUNT                ((0x159 << 4) | (0x1))
-#define DPRC_CMDID_GET_OBJ                      ((0x15A << 4) | (0x1))
-#define DPRC_CMDID_GET_RES_COUNT                ((0x15B << 4) | (0x1))
-#define DPRC_CMDID_GET_RES_IDS                  ((0x15C << 4) | (0x1))
-#define DPRC_CMDID_GET_OBJ_REG                  ((0x15E << 4) | (0x1))
-#define DPRC_CMDID_SET_OBJ_IRQ                  ((0x15F << 4) | (0x1))
-#define DPRC_CMDID_GET_OBJ_IRQ                  ((0x160 << 4) | (0x1))
-#define DPRC_CMDID_SET_OBJ_LABEL                ((0x161 << 4) | (0x1))
-#define DPRC_CMDID_GET_OBJ_DESC                 ((0x162 << 4) | (0x1))
+#define DPRC_CMDID_CREATE_CONT                  0x1511
+#define DPRC_CMDID_DESTROY_CONT                 0x1521
+#define DPRC_CMDID_GET_CONT_ID                  0x8301
+#define DPRC_CMDID_SET_RES_QUOTA                0x1551
+#define DPRC_CMDID_GET_RES_QUOTA                0x1561
+#define DPRC_CMDID_ASSIGN                       0x1571
+#define DPRC_CMDID_UNASSIGN                     0x1581
+#define DPRC_CMDID_GET_OBJ_COUNT                0x1591
+#define DPRC_CMDID_GET_OBJ                      0x15a1
+#define DPRC_CMDID_GET_RES_COUNT                0x15b1
+#define DPRC_CMDID_GET_RES_IDS                  0x15c1
+#define DPRC_CMDID_GET_OBJ_REG                  0x15e1
+#define DPRC_CMDID_SET_OBJ_IRQ                  0x15f1
+#define DPRC_CMDID_GET_OBJ_IRQ                  0x1601
+#define DPRC_CMDID_SET_OBJ_LABEL                0x1611
+#define DPRC_CMDID_GET_OBJ_DESC                 0x1621
 
-#define DPRC_CMDID_CONNECT                      ((0x167 << 4) | (0x1))
-#define DPRC_CMDID_DISCONNECT                   ((0x168 << 4) | (0x1))
-#define DPRC_CMDID_GET_POOL                     ((0x169 << 4) | (0x1))
-#define DPRC_CMDID_GET_POOL_COUNT               ((0x16A << 4) | (0x1))
+#define DPRC_CMDID_CONNECT                      0x1671
+#define DPRC_CMDID_DISCONNECT                   0x1681
+#define DPRC_CMDID_GET_POOL                     0x1691
+#define DPRC_CMDID_GET_POOL_COUNT               0x16a1
 
-#define DPRC_CMDID_GET_CONNECTION               ((0x16C << 4) | (0x1))
+#define DPRC_CMDID_GET_CONNECTION               0x16c1
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPRC_RSP_GET_CONTAINER_ID(cmd, container_id) \
@@ -198,10 +197,10 @@ do { \
 /*                cmd, param, offset, width, type, arg_name */
 #define DPRC_RSP_GET_ATTRIBUTES(cmd, attr) \
 do { \
-	MC_RSP_OP(cmd, 0, 0,  32, int,	    attr->container_id); \
-	MC_RSP_OP(cmd, 0, 32, 16, uint16_t, attr->icid); \
-	MC_RSP_OP(cmd, 1, 0,  32, uint32_t, attr->options);\
-	MC_RSP_OP(cmd, 1, 32, 32, int,      attr->portal_id); \
+	MC_RSP_OP(cmd, 0,  0, 32, int,      (attr)->container_id); \
+	MC_RSP_OP(cmd, 0, 32, 16, uint16_t, (attr)->icid); \
+	MC_RSP_OP(cmd, 1,  0, 32, uint32_t, (attr)->options);\
+	MC_RSP_OP(cmd, 1, 32, 32, int,      (attr)->portal_id); \
 } while (0)
 
 /*                cmd, param, offset, width, type, arg_name */

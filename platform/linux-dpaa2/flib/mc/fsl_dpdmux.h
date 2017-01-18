@@ -86,6 +86,11 @@ int dpdmux_close(struct fsl_mc_io	*mc_io,
  */
 #define DPDMUX_OPT_BRIDGE_EN		0x0000000000000002ULL
 
+/**
+ * Mask support for classification
+ */
+#define DPDMUX_OPT_CLS_MASK_SUPPORT		0x0000000000000020ULL
+
 #define DPDMUX_IRQ_INDEX_IF			0x0000
 #define DPDMUX_IRQ_INDEX		0x0001
 
@@ -106,7 +111,7 @@ enum dpdmux_manip {
 
 /**
  * enum dpdmux_method - DPDMUX method options
- * @DPDMUX_METHOD_NONE: no DPDMUX method
+ * @DPDMUX_METHOD_NONE: no DPDMUX method - depracated, don't use
  * @DPDMUX_METHOD_C_VLAN_MAC: DPDMUX based on C-VLAN and MAC address
  * @DPDMUX_METHOD_MAC: DPDMUX based on MAC address
  * @DPDMUX_METHOD_C_VLAN: DPDMUX based on C-VLAN
@@ -117,7 +122,8 @@ enum dpdmux_method {
 	DPDMUX_METHOD_C_VLAN_MAC = 0x1,
 	DPDMUX_METHOD_MAC = 0x2,
 	DPDMUX_METHOD_C_VLAN = 0x3,
-	DPDMUX_METHOD_S_VLAN = 0x4
+	DPDMUX_METHOD_S_VLAN = 0x4,
+	DPDMUX_METHOD_CUSTOM = 0x5,
 };
 
 /**
@@ -135,13 +141,18 @@ struct dpdmux_cfg {
 	/**
 	 * struct adv - Advanced parameters
 	 * @options: DPDMUX options - combination of 'DPDMUX_OPT_<X>' flags
-	 * @max_dmat_entries: Maximum entries in DPDMUX address table
-	 *		0 - indicates default: 64 entries per interface.
-	 * @max_mc_groups: Number of multicast groups in DPDMUX table
-	 *		0 - indicates default: 32 multicast groups
+	 * @max_dmat_entries: Maximum entries in DPDMUX address table.
+	 *		Maximum value supported is 64.
+	 *		Value 0 defaults to 64 entries.
+	 * @max_mc_groups: Number of multicast groups in DPDMUX table.
+	 *		Maximum value supported is 32.
+	 *		Value 0 defaults to 32 multicast groups.
 	 * @max_vlan_ids: max vlan ids allowed in the system -
 	 *		relevant only case of working in mac+vlan method.
-	 *		0 - indicates default 16 vlan ids.
+	 *		This value is used for flooding across all ports member
+	 *		in a given VLAN, if an exact match is not found.
+	 *		Maximum value supported is 16.
+	 *		Value 0 defaults to 16 VLANs.
 	 */
 	struct {
 		uint64_t options;
@@ -248,53 +259,6 @@ int dpdmux_is_enabled(struct fsl_mc_io	*mc_io,
 int dpdmux_reset(struct fsl_mc_io	*mc_io,
 		 uint32_t		cmd_flags,
 		 uint16_t		token);
-
-/**
- * struct dpdmux_irq_cfg - IRQ configuration
- * @addr:	Address that must be written to signal a message-based interrupt
- * @val:	Value to write into irq_addr address
- * @irq_num: A user defined number associated with this IRQ
- */
-struct dpdmux_irq_cfg {
-	     uint64_t		addr;
-	     uint32_t		val;
-	     int		irq_num;
-};
-
-/**
- * dpdmux_set_irq() - Set IRQ information for the DPDMUX to trigger an interrupt
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMUX object
- * @irq_index:	Identifies the interrupt index to configure
- * @irq_cfg:	IRQ configuration
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmux_set_irq(struct fsl_mc_io		*mc_io,
-		   uint32_t			cmd_flags,
-		   uint16_t			token,
-		   uint8_t			irq_index,
-		   struct dpdmux_irq_cfg	*irq_cfg);
-
-/**
- * dpdmux_get_irq() - Get IRQ information from the DPDMUX.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMUX object
- * @irq_index:	The interrupt index to configure
- * @type:	Interrupt type: 0 represents message interrupt
- *		type (both irq_addr and irq_val are valid)
- * @irq_cfg:	IRQ attributes
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmux_get_irq(struct fsl_mc_io		*mc_io,
-		   uint32_t			cmd_flags,
-		   uint16_t			token,
-		   uint8_t			irq_index,
-		   int				*type,
-		   struct dpdmux_irq_cfg	*irq_cfg);
 
 /**
  * dpdmux_set_irq_enable() - Set overall interrupt state.
@@ -686,7 +650,7 @@ struct dpdmux_link_cfg {
  * dpdmux_if_set_link_cfg() - set the link configuration.
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token: Token of DPSW object
+ * @token: Token of DPDMUX object
  * @if_id: interface id
  * @cfg: Link configuration
  *
@@ -713,7 +677,7 @@ struct dpdmux_link_state {
  * dpdmux_if_get_link_state - Return the link state
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token: Token of DPSW object
+ * @token: Token of DPDMUX object
  * @if_id: interface id
  * @state: link state
  *
@@ -724,6 +688,99 @@ int dpdmux_if_get_link_state(struct fsl_mc_io		*mc_io,
 			     uint16_t			token,
 			     uint16_t			if_id,
 			     struct dpdmux_link_state	*state);
+
+/**
+ * dpdmux_set_custom_key - Set a custom classification key.
+ *
+ * This API is only available for DPDMUX instance created with
+ * DPDMUX_METHOD_CUSTOM.  This API must be called before populating the
+ * classification table using dpdmux_add_custom_cls_entry.
+ *
+ * Calls to dpdmux_set_custom_key remove all existing classification entries
+ * that may have been added previously using dpdmux_add_custom_cls_entry.
+ *
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token: Token of DPSW object
+ * @if_id: interface id
+ * @key_cfg_iova: DMA address of a configuration structure set up using
+ * 	dpkg_prepare_key_cfg. Maximum key size is 24 bytes.
+ *
+ * @returns	'0' on Success; Error code otherwise.
+ */
+int dpdmux_set_custom_key(struct fsl_mc_io		*mc_io,
+			uint32_t			cmd_flags,
+			uint16_t			token,
+			uint64_t			key_cfg_iova);
+
+/**
+ * struct dpdmux_rule_cfg - Custom classification rule.
+ *
+ * @key_iova: DMA address of buffer storing the look-up value
+ * @mask_iova: DMA address of the mask used for TCAM classification
+ * @key_size: size, in bytes, of the look-up value. This must match the size
+ *	of the look-up key defined using dpdmux_set_custom_key, otherwise the
+ *	entry will never be hit
+ */
+struct dpdmux_rule_cfg {
+	uint64_t key_iova;
+	uint64_t mask_iova;
+	uint8_t key_size;
+};
+
+/**
+ * struct dpdmux_cls_action - Action to execute for frames matching the
+ *	classification entry
+ *
+ * @dest_if: Interface to forward the frames to. Port numbering is similar to
+ *	the one used to connect interfaces:
+ *	- 0 is the uplink port,
+ *	- all others are downlink ports.
+ */
+struct dpdmux_cls_action {
+	uint16_t dest_if;
+};
+
+/**
+ * dpdmux_add_custom_cls_entry - Adds a custom classification entry.
+ *
+ * This API is only available for DPDMUX instances created with
+ * DPDMUX_METHOD_CUSTOM.  Before calling this function a classification key
+ * composition rule must be set up using dpdmux_set_custom_key.
+ *
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token: Token of DPSW object
+ * @rule: Classification rule to insert.  Rules cannot be duplicated, if a
+ *	matching rule already exists, the action will be replaced.
+ * @action: Action to perform for matching traffic.
+ *
+ * @returns	'0' on Success; Error code otherwise.
+ */
+int dpdmux_add_custom_cls_entry(struct fsl_mc_io	*mc_io,
+		uint32_t				cmd_flags,
+		uint16_t				token,
+		struct dpdmux_rule_cfg			*rule,
+		struct dpdmux_cls_action		*action);
+
+/**
+ * dpdmux_remove_custom_cls_entry - Removes a custom classification entry.
+ *
+ * This API is only available for DPDMUX instances created with
+ * DPDMUX_METHOD_CUSTOM.  The API can be used to remove classification
+ * entries previously inserted using dpdmux_add_custom_cls_entry.
+ *
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token: Token of DPSW object
+ * @rule: Classification rule to remove
+ *
+ * @returns	'0' on Success; Error code otherwise.
+ */
+int dpdmux_remove_custom_cls_entry(struct fsl_mc_io	*mc_io,
+		uint32_t				cmd_flags,
+		uint16_t				token,
+		struct dpdmux_rule_cfg			*rule);
 
 /**
  * dpaiop_get_api_version() - Get Data Path Demux API version
