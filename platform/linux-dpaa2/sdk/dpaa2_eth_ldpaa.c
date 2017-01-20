@@ -243,6 +243,13 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 		dev->num_rx_vqueues += q_config->tc_config[i].num_dist;
 	}
 
+	/*
+	Resetting the "num_rx_vqueues" to equal number of queues in first TC as
+	only one TC is supported on Rx Side. Once Multiple TCs will be in use
+	for Rx processing then this is required to be changed or removed.
+	*/
+	dev->num_rx_vqueues = attr.num_queues;
+
 	DPAA2_INFO(ETH, "TX VQ = %d\t RX VQ = %d\n",
 		dev->num_tx_vqueues, dev->num_rx_vqueues);
 	dev_priv->hw = dpni_dev;
