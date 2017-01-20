@@ -189,7 +189,7 @@ odpplatinclude_HEADERS = \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/ticketlock_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/timer_types.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/plat/time_types.h \
-		  $(top_srcdir)/platform/linux-generic/include/odp/api/plat/traffic_mngr_types.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/traffic_mngr_types.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/plat/version_types.h
 
 odpplatcmdifincludedir= $(includedir)/odp/api/plat/cmdif
@@ -222,6 +222,7 @@ noinst_HEADERS = \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_atomic_internal.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_buffer_internal.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_pool_internal.h \
+		  ${top_srcdir}/platform/linux-dpaa2/include/odp_traffic_mngr_internal.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_posix_extensions.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_classification_datamodel.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_classification_internal.h \
@@ -258,6 +259,7 @@ __LIB__libodp_linux_la_SOURCES = \
 			   odp_packet_dpaa2.c \
 			   odp_pool.c \
 			   odp_queue.c \
+			   odp_traffic_mngr.c \
 			   ../linux-generic/odp_rwlock.c \
 			   ../linux-generic/odp_rwlock_recursive.c \
 			   odp_schedule.c \

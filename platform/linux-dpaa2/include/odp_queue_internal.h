@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 #include <odp/api/queue.h>
+#include <odp/api/traffic_mngr.h>
 #include <odp_buffer_internal.h>
 #include <odp_align_internal.h>
 #include <odp/api/packet_io.h>
@@ -83,6 +84,8 @@ struct queue_entry_s {
 	odp_pktio_t       pktout;
 	odp_dev_type_t    dev_type;
 	char              name[ODP_QUEUE_NAME_LEN];
+	odp_tm_queue_params_t tm_params;
+	uint8_t		tm_idx;
 	void		*priv;
 };
 
