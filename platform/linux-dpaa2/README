@@ -45,3 +45,4 @@ Note: Following environment variables can be used at run time:
 2. ODP_SCH_PULL_MODE to control Pull/Push mode for ODP scheduler.
 	set ODP_SCH_PULL_MODE=1 to set ODP scheduler in PULL mode.
    By default ODP scheduler will work in PUSH mode.
+3. APPL_MEM_SIZE user specified memory requirent for application in MB.

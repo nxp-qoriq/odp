@@ -231,7 +231,9 @@ static int odp_dpaa2_init_global(const odp_platform_init_t *platform_params)
 	}
 
 	cfg.vfio_container	= vfio_container;
-	if (platform_params && platform_params->data_mem_size)
+	if (getenv("APPL_MEM_SIZE"))
+		cfg.data_mem_size = (atoi(getenv("APPL_MEM_SIZE")) * 1024 * 1024);
+	else if (platform_params && platform_params->data_mem_size)
 		cfg.data_mem_size = platform_params->data_mem_size;
 	else
 		cfg.data_mem_size = 0;

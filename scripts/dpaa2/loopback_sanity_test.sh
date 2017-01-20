@@ -1371,6 +1371,7 @@ main() {
 	if [[ ! ($CUNIT == 1 && $input != y) ]]
 	then
 		export DPRC=$FDPRC
+		export APPL_MEM_SIZE=32
 		echo "############################################## TEST CASES ###############################################" >> sanity_tested_apps
 		echo >> sanity_tested_apps
 		run_odp

@@ -70,6 +70,9 @@ export DPCI_COUNT=12
 #/* To enable scheduler PULL mode, default is scheduler PUSH mode*/
 #export ODP_SCH_PULL_MODE=1
 
+#To specify memory requirement for application in MB.
+#export APPL_MEM_SIZE=32
+
 
 ########################### IPSEC ###############################
 
