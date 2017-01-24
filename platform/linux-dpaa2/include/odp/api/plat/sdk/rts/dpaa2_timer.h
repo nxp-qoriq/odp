@@ -135,6 +135,8 @@ typedef void (dpaa2_timer_cb_t)(struct dpaa2_timer *, void *);
  * A structure describing a timer in RTE.
  */
 struct dpaa2_timer {
+	TAILQ_ENTRY(dpaa2_timer) next; /**< Pointer to Next instance */
+	uint32_t index;
 	uint64_t expire;       /*!< Time when timer expire. */
 	struct dpaa2_timer *sl_next[MAX_SKIPLIST_DEPTH];/*!< Next timer. */
 	volatile union dpaa2_timer_status status; /*!< Status of timer. */

@@ -166,6 +166,8 @@ static void timer_fini(odp_timer *tim)
  * Inludes alloc and free timer
  *****************************************************************************/
 
+TAILQ_HEAD(odp_timer_list, dpaa2_timer); /*!< Timer List */
+
 typedef struct odp_timer_pool_s {
 /* Put frequently accessed fields in the first cache line */
 	odp_atomic_u64_t cur_tick;/* Current tick value */
@@ -173,6 +175,7 @@ typedef struct odp_timer_pool_s {
 	uint64_t max_rel_tck;
 	tick_buf_t *tick_buf;	/* Expiration tick and timeout buffer */
 	odp_timer *timers;	/* pointer to timers */
+	struct odp_timer_list *free_tim_list; /*!< Contains free timer objects */
 	odp_atomic_u32_t high_wm;/* High watermark of allocated timers */
 	odp_spinlock_t itimer_running;
 	odp_spinlock_t lock;
@@ -260,6 +263,17 @@ static odp_timer_pool *odp_timer_pool_new(
 	tp->tp_idx = tp_idx;
 	odp_spinlock_init(&tp->lock);
 	odp_spinlock_init(&tp->itimer_running);
+
+	/* Initialize free list */
+	tp->free_tim_list = dpaa2_malloc(NULL, sizeof(struct odp_timer_list));
+	TAILQ_INIT(tp->free_tim_list);
+	/* Initially all objects are free */
+	for (i = 0; i < param->num_timers; i++) {
+		odp_timer *tim = &tp->timers[i];
+		tim->index = i;
+		TAILQ_INSERT_TAIL(tp->free_tim_list, tim, next);
+	}
+
 	timer_pool[tp_idx] = tp;
 	return tp;
 }
@@ -278,6 +292,8 @@ static void odp_timer_pool_del(odp_timer_pool *tp)
 	int rc = odp_shm_free(tp->shm);
 	if (rc != 0)
 		ODP_ABORT("Failed to free shared memory (%d)\n", rc);
+	if (tp->free_tim_list)
+		dpaa2_free(tp->free_tim_list);
 }
 
 static inline odp_timer_t timer_alloc(odp_timer_pool *tp,
@@ -285,13 +301,13 @@ static inline odp_timer_t timer_alloc(odp_timer_pool *tp,
 				      void *user_ptr)
 {
 	odp_timer_t hdl;
-	int index;
 
 	odp_spinlock_lock(&tp->lock);
-	index = tp->num_alloc;
 	if (odp_likely(tp->num_alloc < tp->param.num_timers)) {
+		odp_timer *tim = TAILQ_FIRST(tp->free_tim_list);
+		TAILQ_REMOVE(tp->free_tim_list, tim, next);
+
 		tp->num_alloc++;
-		odp_timer *tim = &tp->timers[index];
 		/* Initialize timer */
 		dpaa2_timer_init(tim);
 		timer_init(tim, queue, user_ptr);
@@ -302,7 +318,7 @@ static inline odp_timer_t timer_alloc(odp_timer_pool *tp,
 			_odp_atomic_u32_store_mm(&tp->high_wm,
 						 tp->num_alloc,
 						 _ODP_MEMMODEL_RLS);
-		hdl = tp_idx_to_handle(tp, index);
+		hdl = tp_idx_to_handle(tp, tim->index);
 	} else {
 		__odp_errno = ENFILE; /* Reusing file table overflow */
 		hdl = ODP_TIMER_INVALID;
@@ -339,6 +355,7 @@ static inline odp_buffer_t timer_free(odp_timer_pool *tp, uint32_t idx)
 	}
 
 	timer_fini(tim);
+	TAILQ_INSERT_HEAD(tp->free_tim_list, tim, next);
 
 	odp_spinlock_unlock(&tp->lock);
 
