@@ -44,6 +44,7 @@
 
 /*MC header files*/
 #include <fsl_dpni.h>
+#include <fsl_dpopr.h>
 #include <fsl_dpni_cmd.h>
 #include <fsl_mc_sys.h>
 
@@ -763,6 +764,10 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 		if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf[loop])) {
 			eqcr->dca = ENABLE_DCA | GET_HOLD_DQRR_IDX;
 			MARK_HOLD_DQRR_PTR_INVALID;
+		} else if (mbuf[loop]->opr.orpid != INVALID_ORPID){
+			eqcr->orpid = mbuf[loop]->opr.orpid;
+			eqcr->seqnum = mbuf[loop]->opr.seqnum;
+			eqcr->verb |= (1 << EQCR_ENTRY_ORDER_RES_ENABLE);
 		}
 
 		/*Check whether mbuf has multiple segments or not.
@@ -985,9 +990,25 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 		if (vq_cfg->sync & ODP_SCHED_SYNC_ATOMIC) {
 			options |= DPNI_QUEUE_OPT_HOLD_ACTIVE;
 			cfg.destination.hold_active     = TRUE;
-			eth_rx_vq->sync = vq_cfg->sync;
+		}
+		if (vq_cfg->sync & ODP_SCHED_SYNC_ORDERED) {
+			struct opr_cfg cfg;
+
+			cfg.oprrws = 5;	/*Restoration window size = 1024 frames*/
+			cfg.oa = 0;	/*Auto advance NESN window disabled*/
+			cfg.olws = 2;	/*Late arrival window size = 1024 frames*/
+			cfg.oeane = 0;	/*ORL resource exhaustaion advance NESN disabled*/
+			cfg.oloe = 0;	/*Loose ordering disabled*/
+			retcode = dpni_set_opr(dpni, CMD_PRI_LOW, dev_priv->token,
+					tc_id, flow_id, OPR_OPT_CREATE, &cfg);
+			if (retcode) {
+				DPAA2_ERR(ETH, "Error in setting the order restoration: ErrorCode = %d\n",
+									retcode);
+				return DPAA2_FAILURE;
+			}
 
 		}
+		eth_rx_vq->sync = vq_cfg->sync;
 	}
 
 #if defined(BUILD_LS2088) || defined(BUILD_LS1088)

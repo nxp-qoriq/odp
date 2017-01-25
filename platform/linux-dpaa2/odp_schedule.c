@@ -416,10 +416,16 @@ static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num ODP_UNUSED
 	if (rvq) {
 		mbuf[0] = rvq->qmfq.cb(swp, (struct qbman_fd *)&dq->fd,
 				(struct qbman_result *)dq);
-		/* Set the current context in both threadinfo & buffer */
-		SAVE_HOLD_DQRR_PTR(dq);
-		SAVE_HOLD_BUF_PTR(mbuf[0]);
-		mbuf[0]->atomic_cntxt = (void *)dq;
+		if (dq->stat & (1 << QBMAN_DQRR_STAT_FQ_ODP_ENABLE)) {
+			mbuf[0]->opr.orpid = dq->orpid;
+			mbuf[0]->opr.seqnum = dq->seqnum;
+			qbman_swp_dqrr_consume(swp, (struct qbman_result *)dq);
+		} else {
+			/* Set the current context in both threadinfo & buffer */
+			SAVE_HOLD_DQRR_PTR(dq);
+			SAVE_HOLD_BUF_PTR(mbuf[0]);
+			mbuf[0]->atomic_cntxt = (void *)dq;
+		}
 	} else {
 		qbman_swp_dqrr_consume(swp, (struct qbman_result *)dq);
 		ODP_ERR("Null Return VQ received\n");
@@ -888,7 +894,12 @@ int odp_schedule_num_prio(void)
 }
 void odp_schedule_release_ordered(void)
 {
-	ODP_UNIMPLEMENTED();
+	/*Simple returning, Otherwise it becomes costly to store a context
+	  for each buffer and disable the ordering during enqueuing of same
+	  context buffers after this API call for 'this' thread. Also
+	  API doesn't make it compulsary to release the context. It only
+	  hints the scheduler*/
+	return;
 }
 void odp_schedule_release_context(void)
 {

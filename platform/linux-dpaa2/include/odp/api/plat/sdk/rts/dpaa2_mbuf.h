@@ -218,7 +218,15 @@ struct dpaa2_mbuf {
 			* packets. */
 	void *user_priv_area; /*!< Private data space location pointer for the user. */
 	uint64_t user_cnxt_ptr; /* user context ptr */
-	void *atomic_cntxt; /* The Atomic context hold by this buffer */
+	union {
+		void *atomic_cntxt; /* The Atomic context hold by this buffer */
+		struct {
+			uint16_t        seqnum; /*!< Order Restoration Sequence Number*/
+			uint16_t        orpid;  /*!< Order Restoration Point ID */
+			uint32_t        reserved;  /*!< reserved */
+		} opr;
+	};
+
 
 #ifdef ODP_IPSEC_DEBUG
 	void *drv_priv_cnxt1; /*!< Private context 1 for Driver usage */
