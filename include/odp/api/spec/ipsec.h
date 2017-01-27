@@ -12,7 +12,7 @@
 
 #ifndef ODP_API_IPSEC_H_
 #define ODP_API_IPSEC_H_
-#include <odp/visibility_begin.h>
+#include <odp/api/visibility_begin.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -889,5 +889,5 @@ void *odp_ipsec_sa_context(odp_ipsec_sa_t sa);
 }
 #endif
 
-#include <odp/visibility_end.h>
+#include <odp/api/visibility_end.h>
 #endif
