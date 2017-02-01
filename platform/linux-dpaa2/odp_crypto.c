@@ -46,7 +46,7 @@
 
 extern int32_t dpaa2_sec_dev_list_add(struct dpaa2_dev *dev);
 
-static odp_spinlock_t vq_lock;
+odp_spinlock_t vq_lock;
 uint8_t avail_vq_mask = 0xff;
 static crypto_ses_table_t *crypto_ses_tbl;
 static odp_spinlock_t lock;
@@ -552,129 +552,6 @@ out:
 	return DPAA2_FAILURE;
 }
 
-static int dpaa2_ipsec_init(crypto_ses_entry_t *session)
-{
-	struct dpaa2_ipsec_ctxt *ctxt = &(session->ext_params.ipsec_ctxt);
-	struct ctxt_priv *priv;
-	unsigned int bufsize;
-	struct alginfo cipherdata, authdata;
-	struct ipsec_encap_pdb encap_pdb;
-	struct ipsec_decap_pdb decap_pdb;
-	struct sec_flow_context *flc;
-	queue_entry_t *qentry = queue_to_qentry(session->compl_queue);
-	crypto_vq_t *crypto_vq = qentry->s.priv;
-
-	/* For Sec Proto only one descriptor is required. */
-	if (session->ctxt == NULL)
-		session->ctxt = (struct ctxt_priv *)dpaa2_data_zmalloc(NULL,
-				sizeof(struct ctxt_priv) +
-				sizeof(struct sec_flc_desc),
-				ODP_CACHE_LINE_SIZE);
-
-	if (session->ctxt == NULL) {
-		DPAA2_ERR(SEC, "\nNo memory for priv CTXT");
-		return DPAA2_FAILURE;
-	}
-	priv = session->ctxt;
-
-	cipherdata.key = (uint64_t)session->cipher_key.data;
-	cipherdata.keylen = session->cipher_key.length;
-	cipherdata.key_enc_flags = 0;
-	cipherdata.key_type = RTA_DATA_IMM;
-
-	switch (session->cipher_alg) {
-		case ODP_CIPHER_ALG_AES128_CBC:
-			cipherdata.algtype = OP_PCL_IPSEC_AES_CBC;
-			cipherdata.algmode = OP_ALG_AAI_CBC;
-			break;
-		case ODP_CIPHER_ALG_DES:
-			cipherdata.algtype = OP_PCL_IPSEC_DES;
-			cipherdata.algmode = OP_ALG_AAI_CBC;
-			break;
-		case ODP_CIPHER_ALG_3DES_CBC:
-			cipherdata.algtype = OP_PCL_IPSEC_3DES;
-			cipherdata.algmode = OP_ALG_AAI_CBC;
-			break;
-		case ODP_CIPHER_ALG_NULL:
-			cipherdata.algtype = OP_PCL_IPSEC_NULL;
-			break;
-		default:
-			DPAA2_ERR(SEC, "Invalid Cipher Algo");
-			goto out;
-	}
-
-	switch (session->auth_alg) {
-		case ODP_AUTH_ALG_SHA1_96:
-			authdata.algtype = OP_PCL_IPSEC_HMAC_SHA1_96;
-			break;
-		case ODP_AUTH_ALG_MD5_96:
-			authdata.algtype = OP_PCL_IPSEC_HMAC_MD5_96;
-			break;
-		case ODP_AUTH_ALG_SHA1_160:
-			authdata.algtype = OP_PCL_IPSEC_HMAC_SHA1_160;
-			break;
-		case ODP_AUTH_ALG_SHA256_128:
-			authdata.algtype = OP_PCL_IPSEC_HMAC_SHA2_256_128;
-			break;
-		case ODP_AUTH_ALG_SHA384_192:
-			authdata.algtype = OP_PCL_IPSEC_HMAC_SHA2_384_192;
-			break;
-		case ODP_AUTH_ALG_SHA512_256:
-			authdata.algtype = OP_PCL_IPSEC_HMAC_SHA2_512_256;
-			break;
-		case ODP_AUTH_ALG_AES_CMAC:
-			authdata.algtype = OP_PCL_IPSEC_AES_CMAC_96;
-			break;
-		case ODP_AUTH_ALG_NULL:
-			authdata.algtype = OP_PCL_IPSEC_HMAC_NULL;
-			break;
-		default:
-			DPAA2_ERR(SEC, "Invalid AUTH Algo");
-			goto out;
-	}
-
-	authdata.key = (uint64_t)session->auth_key.data;
-	authdata.keylen = session->auth_key.length;
-	authdata.key_enc_flags = 0;
-	authdata.algmode = OP_ALG_AAI_HMAC;
-	authdata.key_type = RTA_DATA_IMM;
-	if (session->dir == ODP_CRYPTO_OP_ENCODE) {
-		if (ctxt->iv.length > 128) {
-			DPAA2_ERR(SEC, "iv len cannot be more than 128 bits");
-			goto out;
-		}
-		memset(&encap_pdb, 0, sizeof(struct ipsec_encap_pdb));
-		encap_pdb.options = (ODPH_IPV4 << PDBNH_ESP_ENCAP_SHIFT) |
-			PDBOPTS_ESP_OIHI_PDB_INL |
-			PDBOPTS_ESP_IVSRC |
-			PDBHMO_ESP_ENCAP_DTTL;
-		encap_pdb.spi = ctxt->spi;
-		encap_pdb.ip_hdr_len = sizeof(odph_ipv4hdr_t);
-
-		bufsize = cnstr_shdsc_ipsec_new_encap(priv->flc_desc[0].desc,
-				1, 0, &encap_pdb,
-				(uint8_t *)&ctxt->hdr.ip4_hdr,
-				&cipherdata, &authdata);
-	} else if (session->dir == ODP_CRYPTO_OP_DECODE) {
-		memset(&decap_pdb, 0, sizeof(struct ipsec_decap_pdb));
-		decap_pdb.options = sizeof(odph_ipv4hdr_t) << 16;
-		bufsize = cnstr_shdsc_ipsec_new_decap(priv->flc_desc[0].desc, 1, 0,
-				&decap_pdb, &cipherdata, &authdata);
-	} else
-		goto out;
-	flc = &priv->flc_desc[0].flc;
-	flc->word1_sdl = (uint8_t)bufsize;
-	flc->word2_rflc_31_0 = lower_32_bits(
-			(uint64_t)sec_dev->rx_vq[crypto_vq->vq_id]);
-	flc->word3_rflc_63_32 = upper_32_bits(
-			(uint64_t)sec_dev->rx_vq[crypto_vq->vq_id]);
-
-	return DPAA2_SUCCESS;
-out:
-	dpaa2_data_free(session->ctxt);
-	return DPAA2_FAILURE;
-}
-
 static int sync_session_create(odp_crypto_session_params_t *params,
 		odp_crypto_session_t *session_out,
 		odp_crypto_ses_create_err_t *status)
@@ -980,7 +857,6 @@ int odp_crypto_session_destroy(odp_crypto_session_t session)
 	crypto_vq_t *crypto_vq = NULL;
 	struct dpaa2_cipher_ctxt *cipher_ctxt = NULL;
 	struct dpaa2_aead_ctxt *aead_ctxt = NULL;
-	struct dpaa2_ipsec_ctxt *ipsec_ctxt = NULL;
 
 	if (!ses || session == ODP_CRYPTO_SESSION_INVALID) {
 		ODP_ERR("Not a valid session");
@@ -1011,13 +887,6 @@ int odp_crypto_session_destroy(odp_crypto_session_t session)
 			dpaa2_data_free((void *)(aead_ctxt->iv.data));
 		break;
 
-	case DPAA2_SEC_IPSEC:
-
-		ipsec_ctxt = &(ses->ext_params.ipsec_ctxt);
-
-		if (ipsec_ctxt->iv.data)
-			dpaa2_data_free((void *)(ipsec_ctxt->iv.data));
-		break;
 	default:
 		break;
 
@@ -1039,85 +908,6 @@ int odp_crypto_session_destroy(odp_crypto_session_t session)
 	odp_spinlock_unlock(&lock);
 
 	return 0;
-}
-
-int odp_crypto_session_config_ipsec(
-			odp_crypto_session_t session,
-			enum odp_ipsec_mode ipsec_mode,
-			enum odp_ipsec_proto ipsec_proto ODP_UNUSED,
-			odp_ipsec_params_t *ipsec_params)
-{
-	crypto_ses_entry_t *ses = (crypto_ses_entry_t *)session;
-	struct dpaa2_ipsec_ctxt *ipsec_ctxt = &(ses->ext_params.ipsec_ctxt);
-	odp_crypto_iv_t iv;
-
-	if (!ses || session == ODP_CRYPTO_SESSION_INVALID) {
-		ODP_ERR("Not a valid session");
-		return DPAA2_FAILURE;
-	}
-
-	/*Backup and clear existing contexts*/
-	switch (ses->ctxt_type) {
-	case DPAA2_SEC_AEAD:
-	{
-		struct dpaa2_aead_ctxt *aead_ctxt = &(ses->ext_params.aead_ctxt);
-
-		iv.data = aead_ctxt->iv.data;
-		iv.length = aead_ctxt->iv.length;
-		break;
-	}
-	case DPAA2_SEC_AUTH:
-	{
-		iv.data = NULL;
-		iv.length = 0;
-		break;
-	}
-	case DPAA2_SEC_CIPHER:
-	{
-		struct dpaa2_cipher_ctxt *cipher_ctxt =
-					&(ses->ext_params.cipher_ctxt);
-		iv.data = cipher_ctxt->iv.data;
-		iv.length = cipher_ctxt->iv.length;
-		break;
-	}
-	case DPAA2_SEC_NONE:
-	{
-		struct dpaa2_null_sec_ctxt *null_ctxt =
-					&(ses->ext_params.null_sec_ctxt);
-		null_ctxt->ipsec_mode = ipsec_mode;
-		null_ctxt->spi = ipsec_params->spi;
-		null_ctxt->seq_no = 0;
-		null_ctxt->null_ctxt_type = NULL_IPSEC;
-		memcpy(&null_ctxt->hdr.ip4_hdr,
-			ipsec_params->out_hdr, ipsec_params->out_hdr_size);
-		ODP_DBG("NULL SEC Operation session created");
-		return 0;
-	}
-	default:
-		ODP_ERR("unsupported session");
-		return -1;
-	}
-
-	memset(ipsec_ctxt, 0, sizeof(struct dpaa2_ipsec_ctxt));
-	ipsec_ctxt->iv.data = iv.data;
-	ipsec_ctxt->iv.length = iv.length;
-	ipsec_ctxt->ipsec_mode = ipsec_mode;
-	ipsec_ctxt->spi = ipsec_params->spi;
-	memcpy(&ipsec_ctxt->hdr.ip4_hdr,
-	       ipsec_params->out_hdr, ipsec_params->out_hdr_size);
-
-	if (dpaa2_ipsec_init(ses) == DPAA2_FAILURE) {
-		ODP_ERR("dpaa2_sec_proto_init() failed");
-		goto init_fail;
-	}
-	ses->ctxt_type = DPAA2_SEC_IPSEC;
-	return 0;
-
-init_fail:
-	dpaa2_data_free((void *)ipsec_ctxt->iv.data);
-	dpaa2_data_free((void *)ses->cipher_key.data);
-	dpaa2_data_free((void *)ses->auth_key.data);
-	return -1;
 }
 
 int odp_crypto_session_config_pdcp(odp_crypto_session_t session,
@@ -1786,7 +1576,7 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 
 	memset(&fd, 0, sizeof(struct qbman_fd));
 	switch (session->ctxt_type) {
-	case DPAA2_SEC_IPSEC:
+
 	case DPAA2_SEC_PDCP:
 			offset = params->cipher_range.offset;
 			if (odp_likely(!BIT_ISSET_AT_POS(mbuf->eth_flags,
@@ -1797,6 +1587,7 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 				ret = build_proto_sg_fd(session, mbuf,
 					     &params->cipher_range, &fd);
 			break;
+
 	case DPAA2_SEC_CIPHER:
 			offset = params->cipher_range.offset;
 			ret = build_cipher_fd(session, mbuf,
@@ -1875,6 +1666,7 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 		MARK_HOLD_DQRR_PTR_INVALID;
 	}
 
+	_odp_buffer_type_set(mbuf, ODP_EVENT_CRYPTO_COMPL);
 #if SYNC_MODE_EN
 	if (session->compl_queue != ODP_QUEUE_INVALID) {
 #endif
@@ -1945,8 +1737,7 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 		}
 
 		buf_ptr[0]->data -= offset;
-		if (session->ctxt_type == DPAA2_SEC_IPSEC ||
-				session->ctxt_type == DPAA2_SEC_PDCP) {
+		if (session->ctxt_type == DPAA2_SEC_PDCP) {
 			buf_ptr[0]->frame_len += offset;
 			buf_ptr[0]->tot_frame_len += offset;
 		} else {
@@ -2144,8 +1935,6 @@ odp_crypto_print_stats(void)
 {
 	crypto_ses_entry_t *session;
 	odp_crypto_ses_stats_t stats;
-	struct dpaa2_ipsec_ctxt *ipsec_ctxt;
-	odph_ipv4hdr_t *hdr;
 	int i = 0, j = 0, ret;
 
 	printf("########################## SAs for Encryption #####################################\n\n");
@@ -2160,13 +1949,6 @@ odp_crypto_print_stats(void)
 			}
 			printf("%d. Session handle = 0x%lx Operation type = %d\n", j, (odp_crypto_session_t)session,
 					session->ctxt_type);
-			if (session->ctxt_type == DPAA2_SEC_IPSEC) {
-				ipsec_ctxt = &(session->ext_params.ipsec_ctxt);
-				hdr = &ipsec_ctxt->hdr.ip4_hdr;
-				printf("   SA spi = %d Tun_src_addr = 0x%x Tun_dst_addr = 0x%x\n", ipsec_ctxt->spi,
-							odp_be_to_cpu_32(hdr->src_addr),
-							odp_be_to_cpu_32(hdr->dst_addr));
-			}
 			printf("\t  Number of Operations Requests   = %28ld\n", stats.op_requests);
 			printf("\t  Number of Operations Completed  = %28ld\n", stats.op_complete);
 			printf("\t  Total Bytes Processed           = %28ld\n", stats.bytes);
@@ -2189,13 +1971,6 @@ odp_crypto_print_stats(void)
 			}
 			printf("%d. Session handle = 0x%lx Operation type = %d\n", j, (odp_crypto_session_t)session,
 					session->ctxt_type);
-			if (session->ctxt_type == DPAA2_SEC_IPSEC) {
-				ipsec_ctxt = &(session->ext_params.ipsec_ctxt);
-				hdr = &ipsec_ctxt->hdr.ip4_hdr;
-				printf("   SA spi = %d Tunnel_src_addr = 0x%x Tunnel_dst_addr = 0x%x\n", ipsec_ctxt->spi,
-							odp_be_to_cpu_32(hdr->src_addr),
-							odp_be_to_cpu_32(hdr->dst_addr));
-			}
 			printf("\t  Number of Operations Requests   = %28ld\n", stats.op_requests);
 			printf("\t  Number of Operations Completed  = %28ld\n", stats.op_complete);
 			printf("\t  Total Bytes Processed           = %28ld\n", stats.bytes);

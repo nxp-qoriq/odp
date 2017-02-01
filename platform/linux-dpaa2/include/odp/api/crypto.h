@@ -28,7 +28,6 @@ extern "C" {
 
 #include <odp/api/plat/crypto_types.h>
 #include <odp/api/plat/crypto_pdcp_types.h>
-#include <odp/api/plat/crypto_ipsec_types.h>
 /** @ingroup odp_crypto
  *  @{
  */
@@ -38,7 +37,6 @@ extern "C" {
  */
 
 #include <odp/api/spec/crypto.h>
-#include <odp/api/spec/crypto_ipsec.h>
 #include <odp/api/spec/crypto_pdcp.h>
 
 typedef struct {

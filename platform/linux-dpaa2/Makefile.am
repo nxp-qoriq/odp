@@ -55,6 +55,7 @@ odpinclude_HEADERS = \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/cpu.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/cpumask.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/crypto.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/ipsec.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/debug.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/errno.h \
 		  $(top_srcdir)/platform/linux-generic/include/odp/api/event.h \
@@ -167,7 +168,6 @@ odpplatinclude_HEADERS = \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/byteorder_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/classification_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/cpumask_types.h \
-		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/crypto_ipsec_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/crypto_pdcp_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/crypto_types.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/event_types.h \
@@ -215,7 +215,6 @@ odpplatcountersinclude_HEADERS = \
 
 odpapiincludedir= $(includedir)/odp/api/spec
 odpapiinclude_HEADERS = \
-		  $(top_srcdir)/include/odp/api/spec/crypto_ipsec.h \
 		  $(top_srcdir)/include/odp/api/spec/crypto_pdcp.h 
 noinst_HEADERS = \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_align_internal.h \
@@ -226,6 +225,7 @@ noinst_HEADERS = \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_classification_datamodel.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_classification_internal.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_crypto_internal.h \
+		  ${top_srcdir}/platform/linux-dpaa2/include/odp_ipsec_internal.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_debug_internal.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_internal.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_packet_internal.h \
@@ -252,6 +252,7 @@ __LIB__libodp_linux_la_SOURCES = \
 			   odp_init.c \
 			   odp_dpaa2_debug.c \
 			   odp_crypto.c \
+			   odp_ipsec.c \
 			   ../linux-generic/odp_impl.c \
 			   odp_packet.c \
 			   odp_packet_io.c \

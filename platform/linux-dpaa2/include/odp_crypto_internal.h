@@ -14,6 +14,7 @@
 extern "C" {
 #endif
 #include <odp/api/crypto.h>
+#include <odp/api/ipsec.h>
 #include <odp/helper/ip.h>
 #include <odp/helper/udp.h>
 #include <dpaa2_sec_priv.h>
@@ -36,7 +37,6 @@ enum dpaa2_op_type {
 	DPAA2_SEC_CIPHER,/*!< CIPHER operations */
 	DPAA2_SEC_AUTH,	/*!< Authentication Operations */
 	DPAA2_SEC_AEAD,	/*!< Authenticated Encryption with associated data */
-	DPAA2_SEC_IPSEC,	/*!< IPSEC protocol operations*/
 	DPAA2_SEC_PDCP,	/*!< PDCP protocol operations*/
 	DPAA2_SEC_PKC,	/*!< Public Key Cryptographic Operations */
 	DPAA2_SEC_MAX
@@ -99,21 +99,6 @@ union header {
 
 /*!
  * The structure is to be filled by user as a part of
- * dpaa2_sec_proto_ctxt
- */
-struct dpaa2_ipsec_ctxt {
-	enum odp_ipsec_mode ipsec_mode; /*!< Operation Mode Tunnel/Transport*/
-	uint16_t proto_flags;	/*!< Protocol specific bit-flags */
-	odp_crypto_iv_t  iv;	/**< Cipher Initialization Vector (IV) */
-	uint32_t salt_nounce;	/*!< Nounce for CTR mode algo's and salt
-				 * for GCM mode*/
-	uint32_t init_count;	/*!< Initial counter for counter mode algo's*/
-	uint32_t spi;		/*!< SPI value */
-	union header hdr;	/*!< Header options for IPSec Protocol */
-};
-
-/*!
- * The structure is to be filled by user as a part of
  * dpaa2_sec_proto_ctxt for PDCP Control Plane Protocol
  */
 struct dpaa2_pdcp_ctxt {
@@ -131,7 +116,6 @@ struct dpaa2_pdcp_ctxt {
 #define NULL_CRYPTO	1
 #define NULL_IPSEC	2
 struct dpaa2_null_sec_ctxt {
-	enum odp_ipsec_mode ipsec_mode; /*!< Operation Mode Tunnel/Transport*/
 	uint8_t null_ctxt_type; /*!< NULL CRYPTO or NULL IPSEC context */
 	uint32_t spi;           /*!< SPI value */
 	uint32_t seq_no;         /**< ESP TX sequence number */
@@ -155,7 +139,6 @@ typedef struct crypto_ses_entry_u {
 		struct dpaa2_cipher_ctxt cipher_ctxt;
 		struct dpaa2_auth_ctxt auth_ctxt;
 		struct dpaa2_aead_ctxt aead_ctxt;
-		struct dpaa2_ipsec_ctxt ipsec_ctxt;
 		struct dpaa2_pdcp_ctxt pdcp_ctxt;
 		struct dpaa2_null_sec_ctxt null_sec_ctxt;
 	} ext_params;
