@@ -23,7 +23,6 @@ typedef struct sp_db_entry_s {
 	odp_bool_t            input;       /**< Direction when applied */
 	odp_bool_t            esp;         /**< Enable cipher (ESP) */
 	odp_bool_t            ah;          /**< Enable authentication (AH) */
-	proto_params_t        params;      /**< IPSEC protocol parameters */
 } sp_db_entry_t;
 
 /**
@@ -44,8 +43,7 @@ void init_sp_db(void);
 /**
  * Create an SP DB entry
  *
- * String is of the format:
- *	"SrcSubNet:DstSubNet:(in|out):(ah|esp|both|proto-esp)"
+ * String is of the format "SrcSubNet:DstSubNet:(in|out):(ah|esp|both)"
  *
  * @param input  Pointer to string describing SP
  *
