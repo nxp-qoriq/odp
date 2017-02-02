@@ -769,12 +769,12 @@ pkt_disposition_e do_ipsec_in_finish(odp_packet_t pkt,
 		odph_ethhdr_t *eth;
 
 		eth = (odph_ethhdr_t *)odp_packet_l2_ptr(pkt, NULL);
-		eth->type = ODPH_ETHTYPE_IPV4;
+		eth->type = odp_cpu_to_be_16(ODPH_ETHTYPE_IPV4);
 		ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr(pkt, NULL);
 
 		/* Check inbound policy */
-		if ((ip->src_addr != ctx->ipsec.src_ip ||
-		     ip->dst_addr != ctx->ipsec.dst_ip))
+		if (odp_be_to_cpu_32(ip->src_addr) != ctx->ipsec.src_ip ||
+			odp_be_to_cpu_32(ip->dst_addr) != ctx->ipsec.dst_ip)
 			return PKT_DROP;
 
 		return PKT_CONTINUE;
