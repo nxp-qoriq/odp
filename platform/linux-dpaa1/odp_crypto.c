@@ -943,8 +943,8 @@ static int create_ses_shdesc(crypto_ses_entry_t *ses)
  * @return 0 - success, -1 - algorithm combination not supported
  * */
 static int create_ipsec_ses_shdesc(crypto_ses_entry_t *ses,
-				enum odp_ipsec_mode ipsec_mode,
-				enum odp_ipsec_proto ipsec_proto ODP_UNUSED,
+				odp_ipsec_mode_t ipsec_mode,
+				odp_ipsec_protocol_t ipsec_proto ODP_UNUSED,
 				odp_ipsec_params_t *ipsec_params)
 {
 	struct sec_descriptor_t		*prehdr_desc;
@@ -1903,8 +1903,8 @@ ses_alloc_fail:
 }
 
 int odp_crypto_session_config_ipsec(odp_crypto_session_t session,
-					enum odp_ipsec_mode ipsec_mode,
-					enum odp_ipsec_proto ipsec_proto,
+					odp_ipsec_mode_t ipsec_mode,
+					odp_ipsec_protocol_t ipsec_proto,
 					odp_ipsec_params_t *ipsec_params)
 {
 	uint32_t		out_fqid;
