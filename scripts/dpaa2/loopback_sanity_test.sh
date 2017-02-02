@@ -120,28 +120,28 @@ Test case command syntax:
 Mandatory arguments:
 	argument1	Test module	First argument should be Test Module, which is predefined
 					Macro for each odp application as:
-					PKTIO      => odp_pktio
-					REFLECTOR  => odp_reflector
-					KNI	   => odp_kni_demo
-					L3FWD	   => odp_l3fwd
-					GENERATOR  => odp_generator
-					CLASSIFIER => odp_classifier
-					IPSEC	   => odp_ipsec
-					IPSEC_PROTO=> odp_ipsec_proto
-					TIMER	   => odp_timer
+					PKTIO        => odp_pktio
+					REFLECTOR    => odp_reflector
+					KNI	     => odp_kni_demo
+					L3FWD	     => odp_l3fwd
+					GENERATOR    => odp_generator
+					CLASSIFIER   => odp_classifier
+					IPSEC	     => odp_ipsec
+					IPSEC_OFFLOAD=> odp_ipsec_offload
+					TIMER	     => odp_timer
 
 	argument2	command		Actual command to run.
 	argument3	command2	Only mandatory for 'odp_ipsec' test cases.
 
 Optional arguments:
-	There are some optional arguments that can only be used for 'odp_ipsec' and 'odp_ipsec_proto'
+	There are some optional arguments that can only be used for 'odp_ipsec' and 'odp_ipsec_offload'
 	applications.
 	-p		MODE		To enable the ODP_IPSEC_USE_POLL_QUEUES
 	-s		MODE		To enable the HASH and SCHED_PUSH
 	-i='x'		INFO		User information, helpful for test reports,
 					where x is the information
 	-o		INTEROPS	To enable the interops testing, only valid for
-					'odp_ipsec_proto' application.
+					'odp_ipsec_offload' application.
 
 Process of testing:
 	* odp_pktio, odp_reflector and odp_kni_demo:
@@ -171,7 +171,7 @@ Process of testing:
 		---- with ping from NI to NI3 interface. For command1 FDPNI0 and FDPNI1 and for command2 SDPNI0 and SDPNI1
 		     are valid interfaces for testing.
 
-	* odp_ipsec_proto
+	* odp_ipsec_offload
 		---- with ping from NI to NI3 interface. For interops testing only command1 is required having DPNIs
 		     FDPNI0 and FDPNI2.
 
@@ -634,7 +634,7 @@ EOF
 	sleep 5
 	ip netns exec sanity_ns setkey -F
 	ip netns exec sanity_ns setkey -PF
-	rm ipsec_proto_setkey.sh
+	rm ipsec_offload_setkey.sh
 	rm log
 	unconfigure_ethif
 	sleep 2
@@ -653,26 +653,22 @@ unset_ipsec_macros
 test_no=`expr $test_no + 1`
 }
 
-#/* Function to test the odp_ipsec_proto test cases*/
+#/* Function to test the odp_ipsec_offload test cases*/
 
-run_ipsec_proto() {
+run_ipsec_offload() {
 for i in "$@"
 do
-	arg=$(echo "$i" | grep -o "odp_ipsec_proto")
+	arg=$(echo "$i" | grep -o "odp_ipsec_offload")
 	if [[ -z $arg ]]
 	then
 		arg="$i"
 	fi
 	case $arg in
-		-p )
-			export ODP_IPSEC_USE_POLL_QUEUES="yes"
-			MODE="ODP_IPSEC_USE_POLL_QUEUES"
-			;;
 		-s )
 			MODE="ODP_SCH_PUSH_MODE"
 		        ;;
-                IPSEC_PROTO )
-			MODULE="IPSEC_PROTO"
+                IPSEC_OFFLOAD )
+			MODULE="IPSEC_OFFLOAD"
 			;;
 		-i=*)
 			INFO="${i#*=}"
@@ -680,7 +676,7 @@ do
 		-o )
 			INTEROPS=1
 			;;
-                odp_ipsec_proto )
+                odp_ipsec_offload )
 			if [[ -z $COMMAND1 ]]
 			then
 				COMMAND1="$i"
@@ -702,13 +698,6 @@ do
 		        ;;
 	esac
 done
-
-if [[ -z $MODE ]]
-then
-	export ODP_SCH_PULL_MODE=1
-	MODE="ODP_SCH_PULL_MODE"
-fi
-
 
 echo -e " #$test_no)\tTest case:$MODULE\t\tMODE=>($MODE)\tINTEROPS=>($INTEROPS)\tINFO=>($INFO)\tCommand1:($COMMAND1)\tCommand2:($COMMAND2)"
 echo
@@ -740,7 +729,7 @@ then
 		cat log >> sanity_log
 		print_result "$RESULT"
 		sleep 2
-		killall odp_ipsec_proto
+		killall odp_ipsec_offload
 		sleep 6
 		ip netns exec sanity_ipsec_ns killall tcpdump
 		sleep 5
@@ -751,7 +740,7 @@ then
 		echo
 		echo
 	else
-		cat > ipsec_proto_setkey.sh << EOF
+		cat > ipsec_offload_setkey.sh << EOF
 #!/usr/sbin/setkey -f
 # Flush the SAD and SPD
 flush;
@@ -776,8 +765,8 @@ add 192.168.160.2 192.168.160.1 esp 0x2 -m tunnel
 	-E aes-cbc 0x0102030405060708090a0b0c0d0e0f10
 	-A hmac-sha1 0x2122232425262728292a2b2c2d2e2f3031323334;
 EOF
-	chmod 777 ipsec_proto_setkey.sh
-	ip netns exec sanity_ns ./ipsec_proto_setkey.sh
+	chmod 777 ipsec_offload_setkey.sh
+	ip netns exec sanity_ns ./ipsec_offload_setkey.sh
 	ip netns exec sanity_ipsec_ns ip link set $NI3 netns sanity_ns
 	ip netns exec sanity_ns ifconfig $NI2 0.0.0.0 down
 	ip netns exec sanity_ns ifconfig $NI2 192.168.160.2
@@ -798,13 +787,13 @@ EOF
 	cat log >> sanity_log
 	print_result "$RESULT"
 	sleep 2
-	killall odp_ipsec_proto
+	killall odp_ipsec_offload
 	sleep 5
 	ip netns exec sanity_ns killall tcpdump
 	sleep 5
 	ip netns exec sanity_ns setkey -F
 	ip netns exec sanity_ns setkey -PF
-	rm ipsec_proto_setkey.sh
+	rm ipsec_offload_setkey.sh
 	rm log
 	unconfigure_ethif
 	sleep 2
@@ -1095,8 +1084,8 @@ case $1 in
 	IPSEC )
 		run_ipsec "$@"
 		;;
-	IPSEC_PROTO )
-		run_ipsec_proto "$@"
+	IPSEC_OFFLOAD )
+		run_ipsec_offload "$@"
 		;;
 	*)
 		echo "Invalid test case $1"
@@ -1197,13 +1186,13 @@ run_odp() {
 	# */
 	run_command IPSEC "./odp_ipsec -i $FDPNI0,$FDPNI1 -r 192.168.111.2/32:$FDPNI0:00.00.00.00.08.01 -r 192.168.222.2/32:$FDPNI1:00.00.00.00.06.01 -p 192.168.111.0/24:192.168.222.0/24:out:both -e 192.168.111.2:192.168.222.2:3des:1:0102030405060708090a0b0c0d0e0f101112131415161718 -a 192.168.111.2:192.168.222.2:md5:1:2122232425262728292a2b2c2d2e2f30 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:in:both -e 192.168.222.2:192.168.111.2:3des:2:0102030405060708090a0b0c0d0e0f101112131415161718 -a 192.168.222.2:192.168.111.2:md5:2:2122232425262728292a2b2c2d2e2f30 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8 -m 1" "./odp_ipsec -i $SDPNI0,$SDPNI1 -r 192.168.222.2/32:$SDPNI1:00.00.00.00.08.03 -r 192.168.111.2/32:$SDPNI0:00.00.00.00.05.02 -p 192.168.111.0/24:192.168.222.0/24:in:both -e 192.168.111.2:192.168.222.2:3des:1:0102030405060708090a0b0c0d0e0f101112131415161718 -a 192.168.111.2:192.168.222.2:md5:1:2122232425262728292a2b2c2d2e2f30 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:out:both -e 192.168.222.2:192.168.111.2:3des:2:0102030405060708090a0b0c0d0e0f101112131415161718 -a 192.168.222.2:192.168.111.2:md5:2:2122232425262728292a2b2c2d2e2f30 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8 -m 1" -s -i="ALGO: AEAD"
 
-	#/* ODP_IPSEC_PROTO ( POLL_QUEUE ) (TUNNEL)
+	#/* ODP_IPSEC_OFFLOAD ( SCHED_PUSH ) (TUNNEL)
 	# */
-	run_command IPSEC_PROTO "./odp_ipsec_proto -i $FDPNI0,$FDPNI1 -r 192.168.111.2/32:$FDPNI0:00.00.00.00.08.01 -r 192.168.222.2/32:$FDPNI1:00.00.00.00.06.01 -p 192.168.111.0/24:192.168.222.0/24:out:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:in:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8 -m 1" "./odp_ipsec_proto -i $SDPNI0,$SDPNI1 -r 192.168.222.2/32:$SDPNI1:00.00.00.00.08.03 -r 192.168.111.2/32:$SDPNI0:00.00.00.00.05.02 -p 192.168.111.0/24:192.168.222.0/24:in:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:out:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8 -m 1" -p
+	run_command IPSEC_OFFLOAD "./odp_ipsec_offload -i $FDPNI0,$FDPNI1 -r 192.168.111.2/32:$FDPNI0:00.00.00.00.08.01 -r 192.168.222.2/32:$FDPNI1:00.00.00.00.06.01 -p 192.168.111.0/24:192.168.222.0/24:out:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:in:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8" "./odp_ipsec_offload -i $SDPNI0,$SDPNI1 -r 192.168.222.2/32:$SDPNI1:00.00.00.00.08.03 -r 192.168.111.2/32:$SDPNI0:00.00.00.00.05.02 -p 192.168.111.0/24:192.168.222.0/24:in:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:out:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8" -s
 
-	#/* ODP_IPSEC_PROTO ( POLL_QUEUE ) (TUNNEL) (INTEROPS)
+	#/* ODP_IPSEC_OFFLOAD ( SCHED_PUSH ) (TUNNEL) (INTEROPS)
 	# */
-	run_command IPSEC_PROTO "./odp_ipsec_proto -i $FDPNI0,$FDPNI2 -r 192.168.111.2/32:$FDPNI0:00.00.00.00.08.01 -r 192.168.222.2/32:$FDPNI2:00.00.00.00.08.02 -p 192.168.111.0/24:192.168.222.0/24:out:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:in:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8 -m 1" -o
+	run_command IPSEC_OFFLOAD "./odp_ipsec_offload -i $FDPNI0,$FDPNI2 -r 192.168.111.2/32:$FDPNI0:00.00.00.00.08.01 -r 192.168.222.2/32:$FDPNI2:00.00.00.00.08.02 -p 192.168.111.0/24:192.168.222.0/24:out:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:in:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8" -o
 
 	#/* ODP_GENERATOR
 	# */
