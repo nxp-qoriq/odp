@@ -40,6 +40,8 @@ static odp_spinlock_t lock;
 extern odp_spinlock_t vq_lock;
 extern uint8_t avail_vq_mask;
 static uint32_t bucket_count = ODP_CONFIG_IPSEC_BUCKET;
+static ipsec_sa_table_t *ipsec_sa_tbl;
+static sa_bucket_t *insa_hash_table;
 
 static inline uint64_t calculate_hash(uint32_t spi)
 {
@@ -387,7 +389,9 @@ static int dpaa2_ipsec_init(ipsec_sa_entry_t *sa, odp_ipsec_sa_param_t *param)
 	authdata.key_enc_flags = 0;
 	authdata.algmode = OP_ALG_AAI_HMAC;
 	authdata.key_type = RTA_DATA_IMM;
+	flc = &priv->flc_desc[0].flc;
 	if (param->dir == ODP_IPSEC_DIR_OUTBOUND) {
+		flc->dhr = SEC_FLC_DHR_OUTBOUND;
 		odph_ipv4hdr_t ip4_hdr;
 		ip4_hdr.ver_ihl = (ODPH_IPV4 << 4) | ODPH_IPV4HDR_IHL_MIN;;
 		ip4_hdr.tot_len = odp_cpu_to_be_16(sizeof(ip4_hdr));
@@ -416,17 +420,23 @@ static int dpaa2_ipsec_init(ipsec_sa_entry_t *sa, odp_ipsec_sa_param_t *param)
 				(uint8_t *)&ip4_hdr,
 				&cipherdata, &authdata);
 	} else if (param->dir == ODP_IPSEC_DIR_INBOUND) {
+		flc->dhr = SEC_FLC_DHR_INBOUND;
 		memset(&decap_pdb, 0, sizeof(struct ipsec_decap_pdb));
 		decap_pdb.options = sizeof(odph_ipv4hdr_t) << 16;
 		bufsize = cnstr_shdsc_ipsec_new_decap(priv->flc_desc[0].desc, 1, 0,
 				&decap_pdb, &cipherdata, &authdata);
 	} else
 		goto out;
-	flc = &priv->flc_desc[0].flc;
 	flc->word1_sdl = (uint8_t)bufsize;
 	flc->word2_rflc_31_0 = lower_32_bits(
 			(uint64_t)sec_dev->rx_vq[ipsec_vq->vq_id]);
-	flc->word1_bits23_16 = 0x1;
+	/* Set EWS bit i.e. enable write-safe */
+	DPAA2_SET_FLC_EWS(flc);
+	/* Set BS = 1 i.e reuse input buffers as output buffers */
+	DPAA2_SET_FLC_REUSE_BS(flc);
+	/* Set FF = 10 (bit)
+	Reuse input buffers if they provide sufficient space */
+	DPAA2_SET_FLC_REUSE_FF(flc);
 	flc->word3_rflc_63_32 = upper_32_bits(
 			(uint64_t)sec_dev->rx_vq[ipsec_vq->vq_id]);
 
@@ -549,6 +559,7 @@ odp_ipsec_sa_t odp_ipsec_sa_create(odp_ipsec_sa_param_t *param)
 	sa->dest_queue = param->dest_queue;
 	sa->user_context = param->context;
 	sa->lookup_mode = param->lookup_mode;
+	sa->dir = param->dir;
 
 	if (param->crypto.cipher_alg != ODP_CIPHER_ALG_NULL
 			&& param->crypto.auth_alg == ODP_AUTH_ALG_NULL) {
@@ -855,47 +866,21 @@ static inline int build_proto_fd(ipsec_sa_entry_t *sa, dpaa2_mbuf_pt mbuf,
 				struct qbman_fd *fd)
 {
 	struct ctxt_priv *priv;
-	struct qbman_fle *fle;
 	struct sec_flow_context *flc;
-
-	if ((mbuf->priv_meta_off - DPAA2_MBUF_HW_ANNOTATION) >=
-			2*sizeof(struct qbman_fle)) {
-		fle = (struct qbman_fle *)dpaa2_mbuf_frame_addr(mbuf);
-		memset(fle, 0, 2*sizeof(*fle));
-		DPAA2_DBG(SEC, "fle not allocated separately");
-	} else {
-		fle = dpaa2_data_zmalloc(NULL, (2*sizeof(struct qbman_fle)),
-				ODP_CACHE_LINE_SIZE);
-		if (!fle) {
-			DPAA2_ERR(SEC, "Failed to allocate fle\n");
-			return DPAA2_FAILURE;
-		}
-		DPAA2_DBG(SEC, "fle allocated separately");
-	}
 
 	if (odp_likely(mbuf->bpid < MAX_BPID)) {
 		DPAA2_SET_FD_BPID(fd, mbuf->bpid);
-		DPAA2_SET_FLE_BPID(fle, mbuf->bpid);
-		DPAA2_SET_FLE_BPID((fle+1), mbuf->bpid);
 	} else {
 		DPAA2_SET_FD_IVP(fd);
-		DPAA2_SET_FLE_IVP(fle);
-		DPAA2_SET_FLE_IVP((fle+1));
 	}
 
 	/* Save the shared descriptor */
 	priv = sa->context;
 	flc = &priv->flc_desc[0].flc;
-	DPAA2_SET_FLE_ADDR(fle, odp_packet_l3_ptr((odp_packet_t)mbuf, NULL));
-	fle->length = mbuf->end_off - dpaa2_mbuf_headroom(mbuf);
 
-	DPAA2_SET_FD_ADDR(fd, fle);
+	DPAA2_SET_FD_ADDR(fd, mbuf->head);
+	DPAA2_SET_FD_OFFSET(fd, (odp_packet_headroom(mbuf) + odp_packet_l3_offset((odp_packet_t)mbuf)));
 	DPAA2_SET_FD_LEN(fd, mbuf->frame_len - odp_packet_l3_offset((odp_packet_t)mbuf));
-	DPAA2_SET_FD_COMPOUND_FMT(fd);
-	fle++;
-	DPAA2_SET_FLE_ADDR(fle, odp_packet_l3_ptr((odp_packet_t)mbuf, NULL));
-	fle->length = mbuf->frame_len - odp_packet_l3_offset((odp_packet_t)mbuf);
-	DPAA2_SET_FLE_FIN(fle);
 	DPAA2_SET_FD_FLC(fd, ((uint64_t)flc));
 
 	return DPAA2_SUCCESS;

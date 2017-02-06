@@ -13,6 +13,8 @@ extern "C" {
 
 #define ODP_CONFIG_IPSEC_SA 1024
 #define ODP_CONFIG_IPSEC_BUCKET 1024
+#define SEC_FLC_DHR_OUTBOUND -114
+#define SEC_FLC_DHR_INBOUND 0
 
 #define SA_STATUS_FREE     0
 #define SA_STATUS_INUSE    1
@@ -30,7 +32,9 @@ typedef struct ipsec_sa_entry_u {
 	odp_queue_t dest_queue;
 
 	/** SA lookup mode */
-	odp_ipsec_lookup_mode_t lookup_mode;
+	uint8_t lookup_mode;
+	uint8_t dir;
+	uint8_t status;
 
 	/** User defined SA context pointer
 	 *
@@ -42,7 +46,6 @@ typedef struct ipsec_sa_entry_u {
 	void *context;
 	void *cipher_key;
 	void *auth_key;
-	uint8_t status;
 	void *next;
 
 } ipsec_sa_entry_t;
@@ -50,8 +53,6 @@ typedef struct ipsec_sa_entry_u {
 typedef struct ipsec_sa_table_t {
 	ipsec_sa_entry_t sa[ODP_CONFIG_IPSEC_SA];
 } ipsec_sa_table_t;
-
-static ipsec_sa_table_t *ipsec_sa_tbl;
 
 typedef struct ipsec_vq_t {
 	void *rx_vq;
@@ -85,7 +86,6 @@ typedef struct {
 	odp_spinlock_t		lock;	/**< Bucket lock*/
 	ipsec_sa_entry_t	*next;	/**< Pointer to first sa entry in bucket*/
 } sa_bucket_t;
-static sa_bucket_t *insa_hash_table;
 
 #ifdef __cplusplus
 }

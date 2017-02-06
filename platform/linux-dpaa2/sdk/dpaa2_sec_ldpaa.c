@@ -33,6 +33,8 @@
 #include <odp/api/plat/event_types.h>
 #include <odp_buffer_internal.h>
 #include <odp/api/plat/sdk/eth/dpaa2_eth_ldpaa_annot.h>
+#include <odp_ipsec_internal.h>
+#include <dpaa2_fd_priv.h>
 
 #ifdef ODP_IPSEC_DEBUG
 #include <odp_crypto_internal.h>
@@ -56,6 +58,31 @@ struct sec_dev_list *sec_dev_map, *last_used_dev = NULL;
 
 void *dpaa2_sec_contig_fd_to_mbuf(const struct qbman_fd *fd);
 void *dpaa2_sec_sg_fd_to_mbuf(const struct qbman_fd *fd);
+void *dpaa2_sec_contig_simple_fd_to_mbuf(const struct qbman_fd *fd);
+
+void *dpaa2_sec_contig_simple_fd_to_mbuf(const struct qbman_fd *fd)
+{
+	ipsec_sa_entry_t *sa;
+	dpaa2_mbuf_pt mbuf;
+	DPAA2_DBG(SEC, "INLINE SHELL Retrieved, meta_data_size: %x",
+		 bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
+	mbuf = DPAA2_INLINE_MBUF_FROM_BUF(DPAA2_GET_FD_ADDR(fd),
+		(bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size +
+		DPAA2_MBUF_HW_ANNOTATION + DPAA2_MBUF_SW_ANNOTATION));
+
+	sa = (ipsec_sa_entry_t *)mbuf->drv_priv_cnxt;
+	if (sa->dir == ODP_IPSEC_DIR_OUTBOUND)
+		mbuf->data += SEC_FLC_DHR_OUTBOUND;
+	else
+		mbuf->data += SEC_FLC_DHR_INBOUND;
+
+	mbuf->frame_len = DPAA2_GET_FD_LEN(fd);;
+	mbuf->tot_frame_len = mbuf->frame_len;
+	mbuf->drv_priv_resv[1] = fd->simple.frc;
+	mbuf->flags |= DPAA2BUF_SEC_CNTX_VALID;
+	mbuf->vq = (void *)DPAA2_GET_FD_FLC(fd);
+	return mbuf;
+}
 
 void *dpaa2_sec_contig_fd_to_mbuf(const struct qbman_fd *fd)
 {
@@ -193,17 +220,21 @@ void *dpaa2_sec_cb_dqrr_fd_to_mbuf(
 		const struct qbman_fd *fd,
 		const struct qbman_result *dqrr ODP_UNUSED)
 {
-	struct qbman_fle *fle;
-	fle = (struct qbman_fle *)DPAA2_GET_FD_ADDR(fd);
-	/*First check FLE format i.e. contigous or S/G ?*/
-	if (DPAA2_IS_SET_FLE_SG_EXT(fle)) {
-		struct qbman_fle *sge;
-		sge = (struct qbman_fle *)DPAA2_GET_FLE_ADDR(fle);
-		if (((void *)fle + DPAA2_MBUF_HW_ANNOTATION +
-				DPAA2_FD_PTA_SIZE) == (void *)sge)
+	if (!qbman_fd_get_format(fd))
+		return dpaa2_sec_contig_simple_fd_to_mbuf(fd);
+	else {
+		struct qbman_fle *fle;
+		fle = (struct qbman_fle *)DPAA2_GET_FD_ADDR(fd);
+		/*First check FLE format i.e. contigous or S/G ?*/
+		if (DPAA2_IS_SET_FLE_SG_EXT(fle)) {
+			struct qbman_fle *sge;
+			sge = (struct qbman_fle *)DPAA2_GET_FLE_ADDR(fle);
+			if (((void *)fle + DPAA2_MBUF_HW_ANNOTATION +
+					DPAA2_FD_PTA_SIZE) == (void *)sge)
 					return dpaa2_sec_sg_fd_to_mbuf(fd);
+		}
+		return dpaa2_sec_contig_fd_to_mbuf(fd);
 	}
-	return dpaa2_sec_contig_fd_to_mbuf(fd);
 }
 
 int32_t dpaa2_sec_attach_bp_list(struct dpaa2_dev *dev,
