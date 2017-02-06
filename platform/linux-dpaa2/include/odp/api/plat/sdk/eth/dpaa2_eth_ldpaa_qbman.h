@@ -15,7 +15,10 @@
 /* Enqueue with response only, if rejected
    and enqueue target type is QD*/
 #define QBMAN_RESP_IF_REJ_QUE_DEST	0x12
+#define QBMAN_DQRR_STAT_FQ_ODP_ENABLE	0x02
+#define EQCR_ENTRY_ORDER_RES_ENABLE	0x02
 #define ENABLE_DCA	0x80
+#define INVALID_ORPID	0xFFFF
 
 struct dqrr_entry {
         uint8_t         verb;

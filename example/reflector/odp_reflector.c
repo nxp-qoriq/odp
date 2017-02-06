@@ -75,6 +75,7 @@ typedef struct {
 	int mode;		/**< Packet IO mode */
 	int buf_size;		/**< Size of each buffer in packet pool*/
 	char *if_str;		/**< Storage for interface names */
+	int queue_type;		/**< Scheduler Queue synchronization type*/
 } appl_args_t;
 
 /**
@@ -129,12 +130,12 @@ char *mac_addr_str(char *b, uint8_t *mac)
  *
  * @param dev Name of device to open
  * @param pool Pool to associate with device for packet RX/TX
- * @param mode Packet processing mode for this device (BURST or QUEUE)
+ * @param queue_type type of queue to configure.
  *
  * @return The handle of the created pktio object.
  * @retval ODP_PKTIO_INVALID if the create fails.
  */
-static odp_pktio_t create_pktio(const char *name, odp_pool_t pool)
+static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int queue_type)
 {
 	odp_pktio_t pktio;
 	int ret;
@@ -153,7 +154,7 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool)
 		EXAMPLE_ABORT("Error: pktio create failed for %s\n", name);
 
 	odp_pktin_queue_param_init(&pktin_param);
-	pktin_param.queue_param.sched.sync = ODP_SCHED_SYNC_ATOMIC;
+	pktin_param.queue_param.sched.sync = queue_type;
 	pktin_param.queue_param.sched.group = ODP_SCHED_GROUP_ALL;
 	pktin_param.queue_param.sched.prio = ODP_SCHED_PRIO_DEFAULT;
 	pktin_param.queue_param.type = ODP_QUEUE_TYPE_SCHED;
@@ -206,6 +207,7 @@ static void swap_spkt_addrs(odp_packet_t pkt)
 	if (odp_packet_has_ipv4(pkt)) {
 		odph_ipv4hdr_t *ip = (odph_ipv4hdr_t *)
 			odp_packet_l3_ptr(pkt, NULL);
+
 		odp_u32be_t ip_tmp_addr = ip->src_addr;
 
 		ip->src_addr = ip->dst_addr;
@@ -243,10 +245,8 @@ static void *pktio_alloc_thread(void *arg)
 		return NULL;
 	}
 
-	printf("  [%02i] looked up pktio:%02" PRIu64
-	       ", queue mode (ATOMIC queues)\n"
-	       "         default pktio%02" PRIu64 "\n",
-	       thr, odp_pktio_to_u64(pktio), odp_pktio_to_u64(pktio));
+	printf("  [%02i] looked up pktio:%02" PRIu64 "\n",
+				thr, odp_pktio_to_u64(pktio));
 
 	/* Loop packets */
 	for (;;) {
@@ -277,7 +277,7 @@ static void *pktio_alloc_thread(void *arg)
 			odp_packet_free(pkt2);
 			continue;
 		}
-		odp_packet_free(pkt);
+		odp_packet_free(pkt2);
 
 #ifdef PERF_MONITOR
 		read2 = arm_read_counter(PM_COUNTER_1);
@@ -327,10 +327,8 @@ static void *pktio_thread(void *arg)
 		return NULL;
 	}
 
-	printf("  [%02i] looked up pktio:%02" PRIu64
-	       ", queue mode (ATOMIC queues)\n"
-	       "         default pktio%02" PRIu64 "\n",
-	       thr, odp_pktio_to_u64(pktio), odp_pktio_to_u64(pktio));
+	printf("  [%02i] looked up pktio:%02" PRIu64 "\n",
+				thr, odp_pktio_to_u64(pktio));
 
 	/* Loop packets */
 	for (;;) {
@@ -481,8 +479,11 @@ int main(int argc, char *argv[])
 
 	/* Create a pktio instance for each interface */
 	for (i = 0; i < args->appl.if_count; ++i)
-		create_pktio(args->appl.if_names[i], pool);
+		create_pktio(args->appl.if_names[i], pool, args->appl.queue_type);
 
+	printf("  Configured queues SYNC type: [%s]\n", (args->appl.queue_type == 0)?
+							"PARALLEL":(args->appl.queue_type == 1)?
+							"ATOMIC":"ORDERED");
 	/* Create and init worker threads */
 	memset(thread_tbl, 0, sizeof(thread_tbl));
 
@@ -587,15 +588,17 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 		{"interface", required_argument, NULL, 'i'},	/* return 'i' */
 		{"mode", required_argument, NULL, 'm'},		/* return 'm' */
 		{"bufsize", required_argument, NULL, 's'},	/* return 's' */
+		{"queue type", required_argument, NULL, 'q'},	/* return 'q' */
 		{"help", no_argument, NULL, 'h'},		/* return 'h' */
 		{NULL, 0, NULL, 0}
 	};
 
 	appl_args->mode = APPL_MODE_PKT_SCHED_PUSH;
 	appl_args->buf_size = SHM_PKT_POOL_BUF_SIZE;
+	appl_args->queue_type = ODP_SCHED_SYNC_ATOMIC;
 
 	while (1) {
-		opt = getopt_long(argc, argv, "+c:+w:i:+m:s:h",
+		opt = getopt_long(argc, argv, "+c:+w:i:+m:s:q:h",
 				  longopts, &long_index);
 
 		if (opt == -1)
@@ -681,6 +684,16 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 				exit(EXIT_FAILURE);
 			}
 			break;
+
+		case 'q':
+			i = atoi(optarg);
+			if (i > ODP_SCHED_SYNC_ORDERED || i < ODP_SCHED_SYNC_PARALLEL) {
+				printf("Invalid queue type: setting default to atomic");
+				break;
+			}
+			appl_args->queue_type = i;
+			break;
+
 		case 'h':
 			usage(argv[0]);
 			exit(EXIT_SUCCESS);
@@ -764,7 +777,12 @@ static void usage(char *progname)
 	       "  -c, --cpumask to set on cores\n"
 	       "  -m, --mode      0:	Receive Packets in Schedule PULL Mode.\n"
 	       "                  1:	Receive Packets in Schedule PUSH Mode.\n"
-		   "                  2:	Receive Packets in Schedule PUSH Mode - with alloc and free\n"
+		"                  2:	Receive Packets in Schedule PUSH Mode - with alloc and free\n"
+		"  -q		specify the queue type\n"
+		"		0:	ODP_SCHED_SYNC_PARALLEL\n"
+		"		1:	ODP_SCHED_SYNC_ATOMIC\n"
+		"		2:	ODP_SCHED_SYNC_ORDERED\n"
+		"			default is ODP_SCHED_SYNC_ATOMIC\n"
 	       "  -h, --help		Display help and exit.\n"
 	       "\n", NO_PATH(progname), NO_PATH(progname)
 	    );

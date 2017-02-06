@@ -20,6 +20,7 @@
 #include <dpaa2_vq.h>
 #include <dpaa2_memconfig.h>
 #include <dpaa2_eth_ldpaa_annot.h>
+#include <dpaa2_eth_ldpaa_qbman.h>
 
 /* QBMAN header files */
 #include <fsl_qbman_portal.h>
@@ -315,6 +316,7 @@ alloc_try_again:
 	mbuf->hw_annot = (uint64_t)(mbuf->head - DPAA2_MBUF_HW_ANNOTATION);
 	mbuf->frame_len = mbuf->end_off - (mbuf->head - mbuf->data);
 	mbuf->tot_frame_len = mbuf->frame_len;
+	mbuf->opr.orpid = INVALID_ORPID;
 
 	return mbuf;
 }
@@ -349,6 +351,18 @@ void dpaa2_mbuf_free(dpaa2_mbuf_pt mbuf)
 	if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf)) {
 		qbman_swp_dqrr_consume(swp, GET_HOLD_DQRR_PTR);
 		MARK_HOLD_DQRR_PTR_INVALID;
+	} else if (mbuf->opr.orpid != INVALID_ORPID) {
+		struct eqcr_entry eqcr = {0};
+		struct qbman_fd fd;
+
+		eqcr.orpid = mbuf->opr.orpid;
+		eqcr.seqnum = mbuf->opr.seqnum;
+		eqcr.verb |= (1 << EQCR_ENTRY_ORDER_RES_ENABLE);
+		/*calling fake enqueue command to fill ORP gaps*/
+		ret = qbman_swp_enqueue(swp, (struct qbman_eq_desc *)&eqcr, &fd);
+		if (ret != 0) {
+			DPAA2_DBG(ETH, "Error while filling ORP gaps\n");
+		}
 	}
 
 	seg = DPAA2_INLINE_MBUF_FROM_BUF((mbuf->hw_annot - DPAA2_FD_PTA_SIZE),

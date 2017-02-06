@@ -19,6 +19,7 @@
 #include <dpaa2_io_portal_priv.h>
 #include <dpaa2_conc_priv.h>
 #include <dpaa2_mbuf_priv.h>
+#include <dpaa2_eth_ldpaa_qbman.h>
 
  /*MC header files*/
 #include <fsl_dpci.h>
@@ -427,6 +428,9 @@ int dpaa2_hwq_xmit(void *h_dpaa2_hwq,
 		if (ANY_ATOMIC_CNTXT_TO_FREE(buf_list[loop])) {
 			qbman_eq_desc_set_dca(&eqdesc, 1, GET_HOLD_DQRR_IDX, 0);
 			MARK_HOLD_DQRR_PTR_INVALID;
+		} else if (buf_list[loop]->opr.orpid != INVALID_ORPID) {
+			qbman_eq_desc_set_orp(&eqdesc, 0, buf_list[loop]->opr.orpid,
+					buf_list[loop]->opr.seqnum, 0);
 		}
 
 		/* Enqueue a packet to the QBMAN */

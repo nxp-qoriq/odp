@@ -655,6 +655,20 @@ int odp_pktio_inq_rem(odp_pktio_t id, uint8_t vq_id)
 	qentry->s.pktin = ODP_PKTIO_INVALID;
 	qentry->s.priv = NULL;
 	if (qentry->s.param.type == ODP_QUEUE_TYPE_SCHED) {
+		struct dpaa2_dev_priv *dev_priv = ndev->priv;
+		struct fsl_mc_io *dpni = dev_priv->hw;
+		struct dpaa2_vq *vq = ndev->rx_vq[vq_id];
+
+		if (vq->sync == ODP_SCHED_SYNC_ORDERED) {
+			/*XXX API may return error in case setting the opr on TC rather than on a queue*/
+			ret = dpni_set_opr(dpni, CMD_PRI_LOW, dev_priv->token,
+						vq->tc_index, vq->flow_id, OPR_OPT_RETIRE, NULL);
+			if (ret) {
+				DPAA2_ERR(ETH, "Error in queue retire: ErrorCode = %d\n",
+										ret);
+				return DPAA2_FAILURE;
+			}
+		}
 		ret = odp_sub_queue_to_group(qentry->s.param.sched.group);
 		if (!ret)
 			odp_deaffine_group(qentry->s.param.sched.group, NULL);
