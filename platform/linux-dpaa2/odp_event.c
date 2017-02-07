@@ -37,6 +37,9 @@ void odp_event_free(odp_event_t event)
 	case ODP_EVENT_CRYPTO_COMPL:
 		odp_crypto_compl_free(odp_crypto_compl_from_event(event));
 		break;
+	case ODP_EVENT_IPSEC_RESULT:
+		/*Nothing as of now*/
+		break;
 	default:
 		ODP_ABORT("Invalid event type: %d\n", odp_event_type(event));
 	}

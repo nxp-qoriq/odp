@@ -1,22 +1,20 @@
-/* Copyright (c) 2014, Linaro Limited
+/* Copyright (c) 2017, Linaro Limited
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
  */
 
 /* enable strtok */
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
+#define _POSIX_C_SOURCE 200112L
 
 #include <stdlib.h>
 #include <string.h>
 
 #include <example_debug.h>
 
-#include <odp_api.h>
+#include <odp.h>
 
-#include <odp_ipsec_sp_db.h>
+#include <odp_ipsec_offload_sp_db.h>
 
 /** Global pointer to sp db */
 sp_db_t *sp_db;
@@ -33,15 +31,14 @@ void init_sp_db(void)
 	sp_db = odp_shm_addr(shm);
 
 	if (sp_db == NULL) {
-		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
-		exit(EXIT_FAILURE);
+		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}
 	memset(sp_db, 0, sizeof(*sp_db));
 }
 
-int create_sp_db_entry(char *input)
+int create_sp_db_entry(char *input, int entries)
 {
-	int pos = 0;
+	int pos = 0, count = 0;
 	char *local;
 	char *str;
 	char *save;
@@ -117,6 +114,27 @@ int create_sp_db_entry(char *input)
 	sp_db->index++;
 	entry->next = sp_db->list;
 	sp_db->list = entry;
+	count++;
+	while (count < entries) {
+		sp_db_entry_t *new_entry = &sp_db->array[sp_db->index];
+
+		/* Verify we have a good entry */
+		if (MAX_DB <= sp_db->index)
+			return -1;
+
+		new_entry->src_subnet.addr = entry->src_subnet.addr + count;
+		new_entry->src_subnet.mask = entry->src_subnet.mask;
+		new_entry->dst_subnet.addr = entry->dst_subnet.addr + count;
+		new_entry->dst_subnet.mask = entry->dst_subnet.mask;
+		new_entry->input = entry->input;
+		new_entry->esp = entry->esp;
+		new_entry->ah = entry->ah;
+		/* Add route to the list */
+		sp_db->index++;
+		new_entry->next = sp_db->list;
+		sp_db->list = new_entry;
+		count++;
+	}
 
 	free(local);
 	return 0;

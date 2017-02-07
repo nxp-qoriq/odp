@@ -59,7 +59,6 @@ typedef struct ipsec_cache_entry_s {
 		uint8_t       iv[MAX_IV_LEN];  /**< ESP IV storage */
 		odp_u16be_t    tun_hdr_id;     /**< Tunnel header IP ID */
 	} state;
-	proto_params_t        params;          /**< IPSEC protocol parameters */
 } ipsec_cache_entry_t;
 
 /**
@@ -86,7 +85,6 @@ void init_ipsec_cache(void);
  * @param tun         Tunnel DB entry pointer
  * @param api_mode    Crypto API mode for testing
  * @param in          Direction (input versus output)
- * @param proto_param IPSEC protocol parameters
  * @param completionq Completion queue
  * @param out_pool    Output buffer pool
  *
@@ -97,7 +95,6 @@ int create_ipsec_cache_entry(sa_db_entry_t *cipher_sa,
 			     tun_db_entry_t *tun,
 			     crypto_api_mode_e api_mode,
 			     odp_bool_t in,
-			     proto_params_t *proto_param,
 			     odp_queue_t completionq,
 			     odp_pool_t out_pool);
 

@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <example_debug.h>
 
@@ -141,7 +142,6 @@ typedef struct {
 				      buffer start */
 	uint16_t ah_offset;      /**< Offset of AH header from buffer start */
 	uint16_t esp_offset;     /**< Offset of ESP header from buffer start */
-	enum odp_ipsec_proto proto;  /**< IPSEC protocol */
 
 	/* Input only */
 	uint32_t src_ip;         /**< SA source IP address */
@@ -398,7 +398,6 @@ void ipsec_init_post(crypto_api_mode_e api_mode)
 						     tun,
 						     api_mode,
 						     entry->input,
-						     &entry->params,
 						     completionq,
 						     out_pool)) {
 				EXAMPLE_ERR("Error: IPSec cache entry failed.\n"
@@ -645,11 +644,13 @@ pkt_disposition_e do_ipsec_in_classify(odp_packet_t pkt,
 				       odp_bool_t *skip,
 				       odp_crypto_op_result_t *result)
 {
+	uint8_t *buf = odp_packet_data(pkt);
 	odph_ipv4hdr_t *ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr(pkt, NULL);
 	int hdr_len;
 	odph_ahhdr_t *ah = NULL;
 	odph_esphdr_t *esp = NULL;
 	ipsec_cache_entry_t *entry;
+	odp_crypto_op_params_t params;
 	odp_bool_t posted = 0;
 
 	/* Default to skip IPsec */
@@ -666,59 +667,50 @@ pkt_disposition_e do_ipsec_in_classify(odp_packet_t pkt,
 	if (!entry)
 		return PKT_CONTINUE;
 
-	ctx->ipsec.proto = entry->params.proto;
-	ctx->ipsec.params.ctx = ctx;
-	ctx->ipsec.params.session = entry->state.session;
-	ctx->ipsec.params.pkt = pkt;
-	ctx->ipsec.params.out_pkt = entry->in_place ? pkt : ODP_PACKET_INVALID;
+	/* Account for configured ESP IV length in packet */
+	hdr_len += entry->esp.iv_len;
+
+	/* Initialize parameters block */
+	memset(&params, 0, sizeof(params));
+	params.ctx = ctx;
+	params.session = entry->state.session;
+	params.pkt = pkt;
+	params.out_pkt = entry->in_place ? pkt : ODP_PACKET_INVALID;
+
+	/*Save everything to context */
+	ctx->ipsec.ip_tos = ip->tos;
+	ctx->ipsec.ip_frag_offset = odp_be_to_cpu_16(ip->frag_offset);
+	ctx->ipsec.ip_ttl = ip->ttl;
+	ctx->ipsec.ah_offset = ah ? ((uint8_t *)ah) - buf : 0;
+	ctx->ipsec.esp_offset = esp ? ((uint8_t *)esp) - buf : 0;
+	ctx->ipsec.hdr_len = hdr_len;
+	ctx->ipsec.trl_len = 0;
 	ctx->ipsec.src_ip = entry->src_ip;
 	ctx->ipsec.dst_ip = entry->dst_ip;
 
-	if (ODP_IPSEC_ESP != ctx->ipsec.proto) {
-		uint8_t *buf = odp_packet_data(pkt);
+	/*If authenticating, zero the mutable fields build the request */
+	if (ah) {
+		ip->chksum = 0;
+		ip->tos = 0;
+		ip->frag_offset = 0;
+		ip->ttl = 0;
 
-		/* Account for configured ESP IV length in packet */
-		hdr_len += entry->esp.iv_len;
-		/*Save everything to context */
-		ctx->ipsec.ip_tos = ip->tos;
-		ctx->ipsec.ip_frag_offset = odp_be_to_cpu_16(ip->frag_offset);
-		ctx->ipsec.ip_ttl = ip->ttl;
-		ctx->ipsec.ah_offset = ah ? ((uint8_t *)ah) - buf : 0;
-		ctx->ipsec.esp_offset = esp ? ((uint8_t *)esp) - buf : 0;
-		ctx->ipsec.hdr_len = hdr_len;
-		ctx->ipsec.trl_len = 0;
-		ctx->ipsec.src_ip = entry->src_ip;
-		ctx->ipsec.dst_ip = entry->dst_ip;
+		params.auth_range.offset = ((uint8_t *)ip) - buf;
+		params.auth_range.length = odp_be_to_cpu_16(ip->tot_len);
+		params.hash_result_offset = ah->icv - buf;
+	}
 
-			/* If authenticating, zero the mutable fields build the
-			 * request */
-		if (ah) {
-			ip->chksum = 0;
-			ip->tos = 0;
-			ip->frag_offset = 0;
-			ip->ttl = 0;
-
-			ctx->ipsec.params.auth_range.offset =
-					((uint8_t *)ip) - buf;
-			ctx->ipsec.params.auth_range.length =
-					odp_be_to_cpu_16(ip->tot_len);
-			ctx->ipsec.params.hash_result_offset = ah->icv - buf;
-		}
-
-		/* If deciphering build request */
-		if (esp) {
-			ctx->ipsec.params.cipher_range.offset =
-					ipv4_data_p(ip) + hdr_len - buf;
-			ctx->ipsec.params.cipher_range.length =
-					ipv4_data_len(ip) - hdr_len;
-			ctx->ipsec.params.override_iv_ptr = esp->iv;
-		}
+	/* If deciphering build request */
+	if (esp) {
+		params.cipher_range.offset = ipv4_data_p(ip) + hdr_len - buf;
+		params.cipher_range.length = ipv4_data_len(ip) - hdr_len;
+		params.override_iv_ptr = esp->iv;
 	}
 
 	/* Issue crypto request */
 	*skip = FALSE;
 	ctx->state = PKT_STATE_IPSEC_IN_FINISH;
-	if (odp_crypto_operation(&ctx->ipsec.params,
+	if (odp_crypto_operation(&params,
 				 &posted,
 				 result)) {
 		abort();
@@ -740,6 +732,7 @@ pkt_disposition_e do_ipsec_in_finish(odp_packet_t pkt,
 				     odp_crypto_op_result_t *result)
 {
 	odph_ipv4hdr_t *ip;
+	int hdr_len = ctx->ipsec.hdr_len;
 	int trl_len = 0;
 
 	/* Check crypto result */
@@ -751,66 +744,61 @@ pkt_disposition_e do_ipsec_in_finish(odp_packet_t pkt,
 	}
 	ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr(pkt, NULL);
 
-	if (ODP_IPSEC_ESP != ctx->ipsec.proto) {
-		int hdr_len = ctx->ipsec.hdr_len;
+	/*
+	 * Finish auth
+	 */
+	if (ctx->ipsec.ah_offset) {
+		uint8_t *buf = odp_packet_data(pkt);
+		odph_ahhdr_t *ah;
 
-		/*
-		 * Finish auth
-		 */
-		if (ctx->ipsec.ah_offset) {
-			uint8_t *buf = odp_packet_data(pkt);
-			odph_ahhdr_t *ah;
-
-			ah = (odph_ahhdr_t *)(ctx->ipsec.ah_offset + buf);
-			ip->proto = ah->next_header;
-	}
-		/*
-		 * Finish cipher by finding ESP trailer and processing
-		 *
-		 * NOTE: ESP authentication ICV not supported
-		 */
-		if (ctx->ipsec.esp_offset) {
-			uint8_t *eop = (uint8_t *)(ip) +
-						odp_be_to_cpu_16(ip->tot_len);
-			odph_esptrl_t *esp_t = (odph_esptrl_t *)(eop) - 1;
-
-			ip->proto = esp_t->next_header;
-			trl_len += esp_t->pad_len + sizeof(*esp_t);
-		}
-
-		/* We have a tunneled IPv4 packet */
-		if (ip->proto == ODPH_IPV4) {
-			odp_packet_pull_head(pkt, sizeof(*ip) + hdr_len);
-			odp_packet_pull_tail(pkt, trl_len);
-			odph_ethhdr_t *eth;
-
-			eth = (odph_ethhdr_t *)odp_packet_l2_ptr(pkt, NULL);
-			eth->type = odp_cpu_to_be_16(ODPH_ETHTYPE_IPV4);
-			ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr(pkt, NULL);
-		} else {
-			/* Finalize the IPv4 header */
-			ipv4_adjust_len(ip, -(hdr_len + trl_len));
-			ip->ttl = ctx->ipsec.ip_ttl;
-			ip->tos = ctx->ipsec.ip_tos;
-			ip->frag_offset =
-				odp_cpu_to_be_16(ctx->ipsec.ip_frag_offset);
-			ip->chksum = 0;
-			odph_ipv4_csum_update(pkt);
-
-			/* Correct the packet length and move payload into
-			 * position */
-			memmove(ipv4_data_p(ip),
-				ipv4_data_p(ip) + hdr_len,
-				odp_be_to_cpu_16(ip->tot_len));
-			odp_packet_pull_tail(pkt, hdr_len + trl_len);
-					return PKT_CONTINUE;
-		}
+		ah = (odph_ahhdr_t *)(ctx->ipsec.ah_offset + buf);
+		ip->proto = ah->next_header;
 	}
 
-	/* Check inbound policy */
-	if (odp_be_to_cpu_32(ip->src_addr) != ctx->ipsec.src_ip ||
-	    odp_be_to_cpu_32(ip->dst_addr) != ctx->ipsec.dst_ip)
-		return PKT_DROP;
+	/*
+	 * Finish cipher by finding ESP trailer and processing
+	 *
+	 * NOTE: ESP authentication ICV not supported
+	 */
+	if (ctx->ipsec.esp_offset) {
+		uint8_t *eop = (uint8_t *)(ip) + odp_be_to_cpu_16(ip->tot_len);
+		odph_esptrl_t *esp_t = (odph_esptrl_t *)(eop) - 1;
+
+		ip->proto = esp_t->next_header;
+		trl_len += esp_t->pad_len + sizeof(*esp_t);
+	}
+
+	/* We have a tunneled IPv4 packet */
+	if (ip->proto == ODPH_IPV4) {
+		odp_packet_pull_head(pkt, sizeof(*ip) + hdr_len);
+		odp_packet_pull_tail(pkt, trl_len);
+		odph_ethhdr_t *eth;
+
+		eth = (odph_ethhdr_t *)odp_packet_l2_ptr(pkt, NULL);
+		eth->type = odp_cpu_to_be_16(ODPH_ETHTYPE_IPV4);
+		ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr(pkt, NULL);
+
+		/* Check inbound policy */
+		if (odp_be_to_cpu_32(ip->src_addr) != ctx->ipsec.src_ip ||
+			odp_be_to_cpu_32(ip->dst_addr) != ctx->ipsec.dst_ip)
+			return PKT_DROP;
+
+		return PKT_CONTINUE;
+	}
+
+	/* Finalize the IPv4 header */
+	ipv4_adjust_len(ip, -(hdr_len + trl_len));
+	ip->ttl = ctx->ipsec.ip_ttl;
+	ip->tos = ctx->ipsec.ip_tos;
+	ip->frag_offset = odp_cpu_to_be_16(ctx->ipsec.ip_frag_offset);
+	ip->chksum = 0;
+	odph_ipv4_csum_update(pkt);
+
+	/* Correct the packet length and move payload into position */
+	memmove(ipv4_data_p(ip),
+		ipv4_data_p(ip) + hdr_len,
+		odp_be_to_cpu_16(ip->tot_len));
+	odp_packet_pull_tail(pkt, hdr_len + trl_len);
 
 	/* Fall through to next state */
 	return PKT_CONTINUE;
@@ -836,8 +824,16 @@ pkt_disposition_e do_ipsec_out_classify(odp_packet_t pkt,
 					pkt_ctx_t *ctx,
 					odp_bool_t *skip)
 {
+	uint8_t *buf = odp_packet_data(pkt);
 	odph_ipv4hdr_t *ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr(pkt, NULL);
+	uint16_t ip_data_len = ipv4_data_len(ip);
+	uint8_t *ip_data = ipv4_data_p(ip);
 	ipsec_cache_entry_t *entry;
+	odp_crypto_op_params_t params;
+	int hdr_len = 0;
+	int trl_len = 0;
+	odph_ahhdr_t *ah = NULL;
+	odph_esphdr_t *esp = NULL;
 
 	/* Default to skip IPsec */
 	*skip = TRUE;
@@ -849,29 +845,17 @@ pkt_disposition_e do_ipsec_out_classify(odp_packet_t pkt,
 	if (!entry)
 		return PKT_CONTINUE;
 
-	ctx->ipsec.proto = entry->params.proto;
-
-	ctx->ipsec.params.session = entry->state.session;
-	ctx->ipsec.params.ctx = ctx;
-	ctx->ipsec.params.pkt = pkt;
-	ctx->ipsec.params.out_pkt = entry->in_place ? pkt : ODP_PACKET_INVALID;
-	if (ODP_IPSEC_ESP == ctx->ipsec.proto) {
-		*skip = FALSE;
-		return PKT_CONTINUE;
-	}
-
-	uint8_t *buf = odp_packet_data(pkt);
-	uint16_t ip_data_len = ipv4_data_len(ip);
-	uint8_t *ip_data = ipv4_data_p(ip);
-	int hdr_len = 0;
-	int trl_len = 0;
-	odph_ahhdr_t *ah = NULL;
-	odph_esphdr_t *esp = NULL;
-
 	/* Save IPv4 stuff */
 	ctx->ipsec.ip_tos = ip->tos;
 	ctx->ipsec.ip_frag_offset = odp_be_to_cpu_16(ip->frag_offset);
 	ctx->ipsec.ip_ttl = ip->ttl;
+
+	/* Initialize parameters block */
+	memset(&params, 0, sizeof(params));
+	params.session = entry->state.session;
+	params.ctx = ctx;
+	params.pkt = pkt;
+	params.out_pkt = entry->in_place ? pkt : ODP_PACKET_INVALID;
 
 	if (entry->mode == IPSEC_SA_MODE_TUNNEL) {
 		hdr_len += sizeof(odph_ipv4hdr_t);
@@ -897,9 +881,6 @@ pkt_disposition_e do_ipsec_out_classify(odp_packet_t pkt,
 		/* tunnel addresses */
 		ip->src_addr = odp_cpu_to_be_32(entry->tun_src_ip);
 		ip->dst_addr = odp_cpu_to_be_32(entry->tun_dst_ip);
-		/* Recompute IP checksum after IP header update */
-		ip->chksum = 0;
-		odph_ipv4_csum_update(pkt);
 	}
 
 	/* For cipher, compute encrypt length, build headers and request */
@@ -922,9 +903,9 @@ pkt_disposition_e do_ipsec_out_classify(odp_packet_t pkt,
 		else
 			esp_t->next_header = ip->proto;
 		ip->proto = ODPH_IPPROTO_ESP;
-		ctx->ipsec.params.cipher_range.offset = ip_data - buf;
-		ctx->ipsec.params.cipher_range.length = encrypt_len;
 
+		params.cipher_range.offset = ip_data - buf;
+		params.cipher_range.length = encrypt_len;
 	}
 
 	/* For authentication, build header clear mutables and build request */
@@ -943,10 +924,10 @@ pkt_disposition_e do_ipsec_out_classify(odp_packet_t pkt,
 		ip->frag_offset = 0;
 		ip->ttl = 0;
 
-		ctx->ipsec.params.auth_range.offset = ((uint8_t *)ip) - buf;
-		ctx->ipsec.params.auth_range.length =
+		params.auth_range.offset = ((uint8_t *)ip) - buf;
+		params.auth_range.length =
 			odp_be_to_cpu_16(ip->tot_len) + (hdr_len + trl_len);
-		ctx->ipsec.params.hash_result_offset = ah->icv - buf;
+		params.hash_result_offset = ah->icv - buf;
 	}
 
 	/* Set IPv4 length before authentication */
@@ -964,6 +945,7 @@ pkt_disposition_e do_ipsec_out_classify(odp_packet_t pkt,
 	ctx->ipsec.ah_seq = &entry->state.ah_seq;
 	ctx->ipsec.esp_seq = &entry->state.esp_seq;
 	ctx->ipsec.tun_hdr_id = &entry->state.tun_hdr_id;
+	memcpy(&ctx->ipsec.params, &params, sizeof(params));
 
 	*skip = FALSE;
 
@@ -988,36 +970,32 @@ pkt_disposition_e do_ipsec_out_seq(odp_packet_t pkt,
 	uint8_t *buf = odp_packet_data(pkt);
 	odp_bool_t posted = 0;
 
-	if (ODP_IPSEC_ESP != ctx->ipsec.proto) {
-		/* We were dispatched from atomic queue, assign sequence
-		 * numbers */
-		if (ctx->ipsec.ah_offset) {
-			odph_ahhdr_t *ah;
-			ah = (odph_ahhdr_t *)(ctx->ipsec.ah_offset + buf);
-			ah->seq_no = odp_cpu_to_be_32((*ctx->ipsec.ah_seq)++);
-		}
-		if (ctx->ipsec.esp_offset) {
-			odph_esphdr_t *esp;
+	/* We were dispatched from atomic queue, assign sequence numbers */
+	if (ctx->ipsec.ah_offset) {
+		odph_ahhdr_t *ah;
 
-			esp = (odph_esphdr_t *)(ctx->ipsec.esp_offset + buf);
-			esp->seq_no = odp_cpu_to_be_32((*ctx->ipsec.esp_seq)++);
-		}
-		if (ctx->ipsec.tun_hdr_offset) {
-			odph_ipv4hdr_t *ip;
+		ah = (odph_ahhdr_t *)(ctx->ipsec.ah_offset + buf);
+		ah->seq_no = odp_cpu_to_be_32((*ctx->ipsec.ah_seq)++);
+	}
+	if (ctx->ipsec.esp_offset) {
+		odph_esphdr_t *esp;
 
-			ip = (odph_ipv4hdr_t *)
-					(ctx->ipsec.tun_hdr_offset + buf);
-			ip->id = odp_cpu_to_be_16((*ctx->ipsec.tun_hdr_id)++);
-			if (!ip->id) {
-				/* re-init tunnel hdr id */
-				int ret;
-				uint8_t *pid;
+		esp = (odph_esphdr_t *)(ctx->ipsec.esp_offset + buf);
+		esp->seq_no = odp_cpu_to_be_32((*ctx->ipsec.esp_seq)++);
+	}
+	if (ctx->ipsec.tun_hdr_offset) {
+		odph_ipv4hdr_t *ip;
+		int ret;
 
-				pid = (uint8_t *)ctx->ipsec.tun_hdr_id;
-				ret = odp_random_data(pid, sizeof(uint16_t), 1);
-				if (ret != sizeof(*ctx->ipsec.tun_hdr_id))
-					abort();
-			}
+		ip = (odph_ipv4hdr_t *)(ctx->ipsec.tun_hdr_offset + buf);
+		ip->id = odp_cpu_to_be_16((*ctx->ipsec.tun_hdr_id)++);
+		if (!ip->id) {
+			/* re-init tunnel hdr id */
+			ret = odp_random_data((uint8_t *)ctx->ipsec.tun_hdr_id,
+					      sizeof(*ctx->ipsec.tun_hdr_id),
+					      1);
+			if (ret != sizeof(*ctx->ipsec.tun_hdr_id))
+				abort();
 		}
 	}
 
@@ -1043,6 +1021,7 @@ pkt_disposition_e do_ipsec_out_finish(odp_packet_t pkt,
 				      pkt_ctx_t *ctx,
 				      odp_crypto_op_result_t *result)
 {
+	odph_ipv4hdr_t *ip;
 
 	/* Check crypto result */
 	if (!result->ok) {
@@ -1051,18 +1030,15 @@ pkt_disposition_e do_ipsec_out_finish(odp_packet_t pkt,
 		if (!is_crypto_compl_status_ok(&result->auth_status))
 			return PKT_DROP;
 	}
+	ip = (odph_ipv4hdr_t *)odp_packet_l3_ptr(pkt, NULL);
 
-	if (ODP_IPSEC_ESP != ctx->ipsec.proto) {
-		odph_ipv4hdr_t *ip =
-			(odph_ipv4hdr_t *)odp_packet_l3_ptr(pkt, NULL);
+	/* Finalize the IPv4 header */
+	ip->ttl = ctx->ipsec.ip_ttl;
+	ip->tos = ctx->ipsec.ip_tos;
+	ip->frag_offset = odp_cpu_to_be_16(ctx->ipsec.ip_frag_offset);
+	ip->chksum = 0;
+	odph_ipv4_csum_update(pkt);
 
-		/* Finalize the IPv4 header */
-		ip->ttl = ctx->ipsec.ip_ttl;
-		ip->tos = ctx->ipsec.ip_tos;
-		ip->frag_offset = odp_cpu_to_be_16(ctx->ipsec.ip_frag_offset);
-		ip->chksum = 0;
-		odph_ipv4_csum_update(pkt);
-	}
 	/* Fall through to next state */
 	return PKT_CONTINUE;
 }
@@ -1078,12 +1054,12 @@ pkt_disposition_e do_ipsec_out_finish(odp_packet_t pkt,
  *  - Sequence number assignment queue
  *  - Per packet crypto API completion queue
  *
- * @param arg  Required by "odph_linux_pthread_create", unused
+ * @param arg  Required by "odph_odpthreads_create", unused
  *
  * @return NULL (should never return)
  */
 static
-void *pktio_thread(void *arg EXAMPLE_UNUSED)
+int pktio_thread(void *arg EXAMPLE_UNUSED)
 {
 	int thr;
 	odp_packet_t pkt;
@@ -1183,8 +1159,6 @@ void *pktio_thread(void *arg EXAMPLE_UNUSED)
 					ctx->state = PKT_STATE_TRANSMIT;
 				} else {
 					ctx->state = PKT_STATE_IPSEC_OUT_SEQ;
-					if (ODP_IPSEC_ESP == ctx->ipsec.proto)
-						break;
 					if (odp_queue_enq(seqnumq, ev))
 						rc = PKT_DROP;
 				}
@@ -1236,7 +1210,7 @@ void *pktio_thread(void *arg EXAMPLE_UNUSED)
 	}
 
 	/* unreachable */
-	return NULL;
+	return 0;
 }
 
 /**
@@ -1245,7 +1219,7 @@ void *pktio_thread(void *arg EXAMPLE_UNUSED)
 int
 main(int argc, char *argv[])
 {
-	odph_linux_pthread_t thread_tbl[MAX_WORKERS];
+	odph_odpthread_t thread_tbl[MAX_WORKERS];
 	int num_workers;
 	int i;
 	int stream_count;
@@ -1254,14 +1228,7 @@ main(int argc, char *argv[])
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
 	odp_pool_param_t params;
 	odp_instance_t instance;
-	odph_linux_thr_params_t thr_params;
-	/*Validate if user has passed only help option*/
-	if (argc == 2) {
-		if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
-			usage(argv[0]);
-			exit(EXIT_SUCCESS);
-		}
-	}
+	odph_odpthread_params_t thr_params;
 
 	/* create by default scheduled queues */
 	queue_create = odp_queue_create;
@@ -1381,8 +1348,7 @@ main(int argc, char *argv[])
 	thr_params.arg      = NULL;
 	thr_params.thr_type = ODP_THREAD_WORKER;
 	thr_params.instance = instance;
-
-	odph_linux_pthread_create(thread_tbl, &cpumask, &thr_params);
+	odph_odpthreads_create(thread_tbl, &cpumask, &thr_params);
 
 	/*
 	 * If there are streams attempt to verify them else
@@ -1396,7 +1362,7 @@ main(int argc, char *argv[])
 		} while (!done);
 		printf("All received\n");
 	} else {
-		odph_linux_pthread_join(thread_tbl, num_workers);
+		odph_odpthreads_join(thread_tbl);
 	}
 
 	free(args->appl.if_names);
@@ -1422,7 +1388,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 	int rc = 0;
 	int i;
 
-	static struct option longopts[] = {
+	static const struct option longopts[] = {
 		{"count", required_argument, NULL, 'c'},
 		{"interface", required_argument, NULL, 'i'},	/* return 'i' */
 		{"mode", required_argument, NULL, 'm'},		/* return 'm' */
@@ -1436,13 +1402,19 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 		{NULL, 0, NULL, 0}
 	};
 
+	static const char *shortopts = "+c:i:m:h:r:p:a:e:t:s:";
+
+	/* let helper collect its own arguments (e.g. --odph_proc) */
+	odph_parse_options(argc, argv, shortopts, longopts);
+
 	printf("\nParsing command line options\n");
 
 	appl_args->mode = 0;  /* turn off async crypto API by default */
 
+	opterr = 0; /* do not issue errors on helper options */
+
 	while (!rc) {
-		opt = getopt_long(argc, argv, "+c:i:m:h:r:p:a:e:t:s:",
-				  longopts, &long_index);
+		opt = getopt_long(argc, argv, shortopts, longopts, &long_index);
 
 		if (-1 == opt)
 			break;	/* No more options */
@@ -1602,7 +1574,7 @@ static void usage(char *progname)
 	       "\n"
 	       "Routing / IPSec OPTIONS:\n"
 	       " -r, --route SubNet:Intf:NextHopMAC\n"
-	       " -p, --policy SrcSubNet:DstSubNet:(in|out):(ah|esp|both|proto-esp)\n"
+	       " -p, --policy SrcSubNet:DstSubNet:(in|out):(ah|esp|both)\n"
 	       " -e, --esp SrcIP:DstIP:(3des|null):SPI:Key192\n"
 	       " -a, --ah SrcIP:DstIP:(sha256|md5|null):SPI:Key(256|128)\n"
 	       "\n"
@@ -1621,17 +1593,7 @@ static void usage(char *progname)
 	       "Optional OPTIONS\n"
 	       "  -c, --count <number> CPU count.\n"
 	       "  -h, --help           Display help and exit.\n"
-	       "Optional proto-esp parameters:\n"
-	       "  proto-esp[:par1=v1[,par2=v2] ...] set named parameter value.\n"
-	       "      Protocol specific named parameters list :\n"
-	       "      esn - Use extended sequence numbers. Allowed values : 0(default), 1\n"
-	       "  Example:\n"
-	       "     -p 192.168.111.0/24:192.168.222.0/24:out:proto-esp:esn=1\n"
-	       " environment variables: ODP_PKTIO_DISABLE_NETMAP\n"
-	       "                        ODP_PKTIO_DISABLE_SOCKET_MMAP\n"
-	       "                        ODP_PKTIO_DISABLE_SOCKET_MMSG\n"
-	       " can be used to advanced pkt I/O selection for linux-generic\n"
-	       "                        ODP_IPSEC_USE_POLL_QUEUES\n"
+	       " environment variables: ODP_IPSEC_USE_POLL_QUEUES\n"
 	       " to enable use of poll queues instead of scheduled (default)\n"
 	       "                        ODP_IPSEC_STREAM_VERIFY_MDEQ\n"
 	       " to enable use of multiple dequeue for queue draining during\n"

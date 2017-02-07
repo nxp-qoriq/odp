@@ -13,7 +13,6 @@ AC_ARG_ENABLE([test-example],
 AC_CONFIG_FILES([example/classifier/Makefile
 		 example/generator/Makefile
 		 example/ipsec/Makefile
-		 example/ipsec_proto/Makefile
 		 example/Makefile
 		 example/packet/Makefile
 		 example/time/Makefile
@@ -28,4 +27,5 @@ AC_CONFIG_FILES([example/classifier/Makefile
 		 example/switch/Makefile])
 AM_COND_IF([BUILD_DPAA2], [AC_CONFIG_FILES([example/kni_demo/Makefile
 		 example/cmdif_demo/Makefile
-		])])
+		 example/ipsec_offload/Makefile
+		])], [AC_CONFIG_FILES([example/ipsec_proto/Makefile])])

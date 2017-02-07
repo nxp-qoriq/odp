@@ -21,15 +21,6 @@ extern "C" {
  *  @{
  */
 
-enum odp_ipsec_mode{
-	ODP_IPSEC_MODE_TUNNEL,	    /**< IPSec tunnel mode */
-	ODP_IPSEC_MODE_TRANSPORT,   /**< IPSec transport mode */
-} ;
-
-enum odp_ipsec_proto{
-	ODP_IPSEC_ESP,		   /**< ESP protocol */
-} ;
-
 enum odp_ipsec_outhdr_type {
 	ODP_IPSEC_OUTHDR_IPV4,	  /**< Outer header is IPv4 */
 	ODP_IPSEC_OUTHDR_IPV6,	  /**< Outer header is IPv6 */

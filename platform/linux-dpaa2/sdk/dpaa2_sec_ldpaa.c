@@ -120,8 +120,6 @@ void *dpaa2_sec_contig_fd_to_mbuf(const struct qbman_fd *fd)
 	/*TODO Stash bits are not taken care currently*/
 	mbuf->vq = (void *)DPAA2_GET_FD_FLC(fd);
 
-	_odp_buffer_type_set(mbuf, ODP_EVENT_CRYPTO_COMPL);
-
 	/*todo - based on vq type, store the DQRR in mbuf*/
 	return mbuf;
 }
@@ -185,8 +183,6 @@ void *dpaa2_sec_sg_fd_to_mbuf(const struct qbman_fd *fd)
 
 	/*TODO Stash bits are not taken care currently*/
 	mbuf->vq = (void *)DPAA2_GET_FD_FLC(fd);
-
-	_odp_buffer_type_set(mbuf, ODP_EVENT_CRYPTO_COMPL);
 
 	/*todo - based on vq type, store the DQRR in mbuf*/
 	return mbuf;

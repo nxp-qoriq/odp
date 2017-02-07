@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, Linaro Limited
+/* Copyright (c) 2017, Linaro Limited
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include <odp_ipsec_misc.h>
+#include <odp_ipsec_offload_misc.h>
 
 /**
  * Security Policy (SP) data base entry
@@ -47,9 +47,11 @@ void init_sp_db(void);
  *
  * @param input  Pointer to string describing SP
  *
+ * @param entries  number of entries
+ *
  * @return 0 if successful else -1
  */
-int create_sp_db_entry(char *input);
+int create_sp_db_entry(char *input, int entries);
 
 /**
  * Display one SP DB entry

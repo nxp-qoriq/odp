@@ -96,8 +96,8 @@ typedef struct odp_ipsec_params {
  * @retval <0 on failure
  */
 int odp_crypto_session_config_ipsec(odp_crypto_session_t session,
-				    enum odp_ipsec_mode ipsec_mode,
-				    enum odp_ipsec_proto ipsec_proto,
+				    odp_ipsec_mode_t ipsec_mode,
+				    odp_ipsec_protocol_t ipsec_proto,
 				    odp_ipsec_params_t *ipsec_params);
 
 /**

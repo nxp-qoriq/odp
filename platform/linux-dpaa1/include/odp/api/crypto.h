@@ -23,11 +23,12 @@ extern "C" {
 #include <odp/api/pool.h>
 #include <odp/api/queue.h>
 #include <odp/api/packet.h>
-
 #include <odp/api/plat/crypto_types.h>
+#include <odp/api/spec/crypto.h>
+#include <odp/api/ipsec.h>
+
 #include <odp/api/plat/crypto_ipsec_types.h>
 
-#include <odp/api/spec/crypto.h>
 #include <odp/api/spec/crypto_ipsec.h>
 
 #ifdef __cplusplus

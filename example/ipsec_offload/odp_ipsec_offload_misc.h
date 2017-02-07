@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, Linaro Limited
+/* Copyright (c) 2017, Linaro Limited
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include <odp_api.h>
+#include <odp.h>
 #include <odp/helper/eth.h>
 #include <odp/helper/ip.h>
 #include <odp/helper/ipsec.h>
@@ -23,28 +23,62 @@ extern "C" {
 #define FALSE 0
 #endif
 
-#define MAX_DB          32   /**< maximum number of data base entries */
-#define MAX_LOOPBACK    10   /**< maximum number of loop back interfaces */
+#define MAX_DB          1024   /**< maximum number of data base entries */
 #define MAX_STRING      32   /**< maximum string length */
-#define MAX_IV_LEN      32   /**< Maximum IV length in bytes */
+#define KEY_BITS_3DES      192  /**< 3DES cipher key length in bits */
+#define KEY_BITS_MD5_96    128  /**< MD5_96 auth key length in bits */
+#define KEY_BITS_AES       128  /**< AES cipher key length in bits */
+#define KEY_BITS_SHA1_96   160  /**< SHA1_96 auth key length in bits */
+#define KEY_BITS_SHA2_256   256  /**< SHA2_256 auth key length in bits */
 
-#define KEY_BITS_3DES       192  /**< 3DES cipher key length in bits */
-#define KEY_BITS_MD5_96     128  /**< MD5_96 auth key length in bits */
-#define KEY_BITS_SHA256_128 256  /**< SHA256_128 auth key length in bits */
+/**
+ * Number of buckets in hash table
+ */
+extern uint32_t bucket_count;
+
+#define LOCK(a)      odp_spinlock_lock(a)
+#define UNLOCK(a)    odp_spinlock_unlock(a)
+#define LOCK_INIT(a) odp_spinlock_init(a)
+
+/**
+ * Hash calculation utility
+ */
+#define JHASH_GOLDEN_RATIO	0x9e3779b9
+#define rot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
+#define ODP_BJ3_MIX(a, b, c) \
+{ \
+	a -= c; a ^= rot(c, 4); c += b; \
+	b -= a; b ^= rot(a, 6); a += c; \
+	c -= b; c ^= rot(b, 8); b += a; \
+	a -= c; a ^= rot(c, 16); c += b; \
+	b -= a; b ^= rot(a, 19); a += c; \
+	c -= b; c ^= rot(b, 4); b += a; \
+}
+
+/**
+ * Default Hash bucket number
+ */
+#define ODP_DEFAULT_BUCKET_COUNT	1024
 
 /**< Number of bits represnted by a string of hexadecimal characters */
 #define KEY_STR_BITS(str) (4 * strlen(str))
 
 /** IPv4 helpers for data length and uint8t pointer */
-#define ipv4_data_len(ip) (odp_be_to_cpu_16(ip->tot_len) - sizeof(odph_ipv4hdr_t))
 #define ipv4_data_p(ip) ((uint8_t *)((odph_ipv4hdr_t *)ip + 1))
-
-/** Helper for calculating encode length using data length and block size */
-#define ESP_ENCODE_LEN(x, b) ((((x) + (b - 1)) / b) * b)
 
 /** Get rid of path in filename - only for unix-type paths using '/' */
 #define NO_PATH(file_name) (strrchr((file_name), '/') ?                 \
 			    strrchr((file_name), '/') + 1 : (file_name))
+
+/**
+ * Actual entries
+ */
+typedef struct {
+	odp_pktout_queue_t pktout;		/**< queue handle*/
+	odph_ethaddr_t	addr;		/**< pktio MAC Address*/
+	odph_ethaddr_t	next_hop_addr;	/**< Next Hop MAC Address*/
+	odp_ipsec_sa_t sa;	/**< IPSec sa handle*/
+} odp_out_entry_t;
 
 /**
  * IPsec key
@@ -98,13 +132,18 @@ int parse_key_string(char *keystring,
 		if ((alg->u.cipher == ODP_CIPHER_ALG_3DES_CBC) &&
 		    (KEY_BITS_3DES == key_bits_in))
 			key->length = key_bits_in / 8;
-
+		if ((alg->u.cipher == ODP_CIPHER_ALG_AES128_CBC) &&
+		    (KEY_BITS_AES == key_bits_in))
+			key->length = key_bits_in / 8;
 	} else {
 		if ((alg->u.auth == ODP_AUTH_ALG_MD5_96) &&
 		    (KEY_BITS_MD5_96 == key_bits_in))
 			key->length = key_bits_in / 8;
-		else if ((alg->u.auth == ODP_AUTH_ALG_SHA256_128) &&
-			 (KEY_BITS_SHA256_128 == key_bits_in))
+		if ((alg->u.auth == ODP_AUTH_ALG_SHA1_96) &&
+		    (KEY_BITS_SHA1_96 == key_bits_in))
+			key->length = key_bits_in / 8;
+		if ((alg->u.auth == ODP_AUTH_ALG_SHA256_128) &&
+		    (KEY_BITS_SHA2_256 == key_bits_in))
 			key->length = key_bits_in / 8;
 	}
 

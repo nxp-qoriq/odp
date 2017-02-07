@@ -38,10 +38,11 @@ typedef enum odp_event_type_t {
 	ODP_EVENT_PACKET       = 0x02,
 	ODP_EVENT_TIMEOUT      = 0x04,
 	ODP_EVENT_CRYPTO_COMPL = 0x08,
+	ODP_EVENT_IPSEC_RESULT = 0x10,
 } odp_event_type_t;
 
 /** Mask for all the event types */
-#define ODP_EVENT_TYPES		0x0f
+#define ODP_EVENT_TYPES		0xff
 
 /** Get printable format of odp_event_t */
 static inline uint64_t odp_event_to_u64(odp_event_t hdl)
