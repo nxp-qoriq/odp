@@ -38,8 +38,6 @@
 #include <usdpaa/usdpaa_netcfg.h>
 #include <usdpaa/dma_mem.h>
 
-#define ENABLE_CLASSIFICATION 0
-
 static const char __PCD_PATH[] = __stringify(DEF_PCD_PATH);
 static const char __CFG_PATH[] = __stringify(DEF_CFG_PATH);
 static const char *PCD_PATH = __PCD_PATH;
@@ -254,14 +252,12 @@ int odp_init_global(odp_instance_t *instance,
 		return -1;
 	}
 
-#if ENABLE_CLASSIFICATION
 	if (!getenv("APP_RESTART")) {
 		if (odp_classification_init_global()) {
 			ODP_ERR("ODP classification init failed.\n");
 			return -1;
 		}
 	}
-#endif
 	odp_init = TRUE;
 
 	/* Dummy support for single instance */
@@ -273,9 +269,7 @@ int odp_term_global(odp_instance_t instance ODP_UNUSED)
 {
 	/* Workaround for App-Restart */
 	/* When proper cleanup is done remove if 0 */
-#if ENABLE_CLASSIFICATION
 	odp_classification_term_global();
-#endif
 	if (!odp_init)
 		return 0;
 
