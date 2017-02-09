@@ -71,6 +71,10 @@ odp_packet_t odp_packet_alloc(odp_pool_t pool_hdl, uint32_t len)
 	next_seg = first_seg;
 	while (seg_required && length > 0) {
 		cur_seg = dpaa2_mbuf_alloc_from_bpid(pool->s.bpid);
+		if (!cur_seg) {
+			ODP_ERR("Segmented alloc failure for len =%d\n", len);
+			goto buffer_cleanup;
+		}
 		if (is_first_seg) {
 			hw_annot = (uint64_t)first_seg->hw_annot;
 			first_seg = cur_seg;
@@ -97,6 +101,11 @@ odp_packet_t odp_packet_alloc(odp_pool_t pool_hdl, uint32_t len)
 	}
 
 	return (odp_packet_t)first_seg;
+
+buffer_cleanup:
+	first_seg->hw_annot = hw_annot;
+	dpaa2_mbuf_free(first_seg);
+	return ODP_PACKET_INVALID;
 }
 
 void odp_packet_free(odp_packet_t pkt)
