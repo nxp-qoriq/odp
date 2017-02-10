@@ -1,5 +1,5 @@
-SUBDIRS = classifier generator ipsec packet time timer l2fwd_simple switch l3fwd reflector lpm-ipfwd
-DIST_SUBDIRS = classifier generator ipsec packet time timer l2fwd_simple switch l3fwd reflector lpm-ipfwd
+SUBDIRS = classifier generator ipsec packet time timer l2fwd_simple switch l3fwd reflector lpm-ipfwd traffic_manager
+DIST_SUBDIRS = classifier generator ipsec packet time timer l2fwd_simple switch l3fwd reflector lpm-ipfwd traffic_manager
 if BUILD_DPAA2
 SUBDIRS += kni_demo ipsec_offload
 DIST_SUBDIRS += kni_demo ipsec_offload

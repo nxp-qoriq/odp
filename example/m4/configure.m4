@@ -18,6 +18,7 @@ AC_CONFIG_FILES([example/classifier/Makefile
 		 example/time/Makefile
 		 example/timer/Makefile
 		 example/reflector/Makefile
+		 example/traffic_manager/Makefile
 		 example/l2fwd_simple/Makefile
 		 example/l3fwd/Makefile
 		 example/lpm-ipfwd/Makefile
