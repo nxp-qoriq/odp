@@ -168,6 +168,7 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 	uint8_t mac_addr[ETH_ADDR_LEN];
 	struct dpni_buffer_layout layout;
 	struct queues_config *q_config;
+	struct dpni_tx_priorities_cfg tx_prio_cfg;
 
 	/*Allocate space for device specific data*/
 	eth_priv = (struct dpaa2_eth_priv *)dpaa2_calloc(NULL, 1,
@@ -230,6 +231,9 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 	q_config = &(eth_priv->q_config);
 	q_config->num_tcs = attr.num_tcs;
 	dev->num_tx_vqueues = attr.num_queues;
+	if (attr.num_tcs > 1)
+		dev->num_tx_vqueues = attr.num_tcs;
+
 	dev->num_rx_vqueues = 0;
 
 	j = 0;
@@ -367,6 +371,18 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 		}
 		epriv->cfg.hw_features |= DPAA2_PROMISCUOUS_ENABLE;
 		ODP_PRINT("Promiscous mode enabled at device = %s\n", dev->dev_string);
+	}
+
+	/*Configure TX priorities for each TC*/
+	memset(&tx_prio_cfg, 0, sizeof(struct dpni_tx_priorities_cfg));
+	for (i = 0; i < attr.num_tcs; i++)
+		tx_prio_cfg.tc_sched[i].mode = DPNI_TX_SCHED_STRICT_PRIORITY;
+
+	retcode = dpni_set_tx_priorities(dpni_dev, CMD_PRI_LOW,
+					dev_priv->token, &tx_prio_cfg);
+	if (retcode < 0) {
+		DPAA2_ERR(ETH, "Unable to Set Tx Priorities: Error = %d\n", retcode);
+		goto get_attr_failure;
 	}
 
 	return DPAA2_SUCCESS;
@@ -1103,6 +1119,7 @@ int32_t dpaa2_eth_setup_tx_vq(struct dpaa2_dev *dev, uint32_t num,
 	 */
 	int32_t retcode;
 	uint16_t flow_id = 0;
+	 uint8_t tc_index = 0;
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
 	struct fsl_mc_io *dpni = dev_priv->hw;
 	struct dpni_queue tx_flow_cfg;
@@ -1112,9 +1129,9 @@ int32_t dpaa2_eth_setup_tx_vq(struct dpaa2_dev *dev, uint32_t num,
 	struct dpni_queue_id qid;
 
 	memset(&tx_flow_cfg, 0, sizeof(struct dpni_queue));
-	for (flow_id = 0; flow_id < num; flow_id++) {
+	for (tc_index = 0; tc_index < num; tc_index++) {
 		retcode = dpni_set_queue(dpni, CMD_PRI_LOW, dev_priv->token,
-					 DPNI_QUEUE_TX, 0, flow_id,
+					 DPNI_QUEUE_TX, tc_index, flow_id,
 					options, &tx_flow_cfg);
 		if (retcode) {
 			DPAA2_ERR(ETH, "Error in setting the tx flow\n"
@@ -1123,16 +1140,15 @@ int32_t dpaa2_eth_setup_tx_vq(struct dpaa2_dev *dev, uint32_t num,
 		}
 		memset(&qid, 0, sizeof(struct dpni_queue_id));
 		retcode = dpni_get_queue(dpni, CMD_PRI_LOW, dev_priv->token,
-					 DPNI_QUEUE_TX, 0, flow_id,
+					 DPNI_QUEUE_TX, tc_index, flow_id,
 					&tx_flow_attr, &qid);
 		if (retcode) {
 			DPAA2_ERR(ETH, "Error in getting the tx flow\n"
 				"ErrorCode = %d", retcode);
 			return DPAA2_FAILURE;
 		}
-
-		eth_tx_vq = (struct dpaa2_vq *)(dev->tx_vq[flow_id]);
-		eth_tx_vq->tc_index = 0; /*Hard Coding for default TC value*/
+		eth_tx_vq = (struct dpaa2_vq *)(dev->tx_vq[tc_index]);
+		eth_tx_vq->tc_index = tc_index;
 		eth_tx_vq->flow_id = flow_id;
 		eth_tx_vq->fq_type = DPAA2_FQ_TYPE_TX;
 		eth_tx_vq->fqid = qid.fqid;
