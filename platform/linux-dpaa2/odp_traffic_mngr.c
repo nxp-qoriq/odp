@@ -791,8 +791,7 @@ int odp_tm_queue_connect(odp_tm_queue_t tm_queue, odp_tm_node_t dst_tm_node)
 	/* Finally add this src_tm_queue_obj to the dst_tm_node_obj's fanin
 	 * list. */
 	tm_vq = (struct dpaa2_vq *)(src_tm_queue_obj->s.priv);
-	tm_vq->tc_index = ODP_TM_BASE_PRIO -
-				src_tm_queue_obj->s.tm_params.priority;
+	tm_vq->tc_index = src_tm_queue_obj->s.tm_params.priority;
 	return 0;
 }
 

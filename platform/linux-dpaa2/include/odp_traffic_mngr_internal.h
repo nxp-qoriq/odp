@@ -61,10 +61,6 @@ typedef uint64_t tm_handle_t;
 
 #define ODP_TM_NUM_PROFILES  4
 
-/*Base priority which is used to convert correct TC number corresponding to
-prio*/
-#define ODP_TM_BASE_PRIO  7
-
 #define ODP_TM_NAME_LENGTH	32
 
 typedef struct tm_queue_obj_s tm_queue_obj_t;
