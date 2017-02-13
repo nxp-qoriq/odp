@@ -939,6 +939,15 @@ int odp_ipsec_in_enq(const odp_ipsec_op_param_t *input)
 	num_pkt = input->num_pkt;
 	num_sa = input->num_sa;
 
+	if (odp_unlikely(sec_dev->state == DEV_INACTIVE))
+	{
+		ret = dpaa2_sec_start(sec_dev);
+		if (ret == DPAA2_FAILURE) {
+			DPAA2_ERR(APP1, "dpaa2_sec_start_failed\n");
+			return DPAA2_FAILURE;
+		}
+	}
+
 	if (num_sa == 1) {
 		inc = 0;
 		/* 1 SA for each pkt */
@@ -1051,6 +1060,15 @@ int odp_ipsec_out_enq(const odp_ipsec_op_param_t *input)
 
 	num_pkt = input->num_pkt;
 	num_sa = input->num_sa;
+
+	if (odp_unlikely(sec_dev->state == DEV_INACTIVE))
+	{
+		ret = dpaa2_sec_start(sec_dev);
+		if (ret == DPAA2_FAILURE) {
+			DPAA2_ERR(APP1, "dpaa2_sec_start_failed\n");
+			return DPAA2_FAILURE;
+		}
+	}
 
 	if (num_sa == 1) {
 		inc = 0;

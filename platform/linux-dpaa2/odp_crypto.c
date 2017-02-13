@@ -1562,6 +1562,15 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 	queue_entry_t *qentry;
 	crypto_vq_t *crypto_vq;
 
+	if (odp_unlikely(sec_dev->state == DEV_INACTIVE))
+	{
+		ret = dpaa2_sec_start(sec_dev);
+		if (ret == DPAA2_FAILURE) {
+			DPAA2_ERR(APP1, "dpaa2_sec_start_failed\n");
+			return DPAA2_FAILURE;
+		}
+	}
+
 	if (odp_unlikely(!session)) {
 		*posted = 0;
 		ODP_ERR("No Session specified for crypto operation");
@@ -1790,7 +1799,7 @@ odp_crypto_init_global(void)
 			for (i = 0; i < max_rx_vq; i++) {
 				dpaa2_sec_setup_rx_vq(dev, i, NULL);
 			}
-			ret = dpaa2_sec_start(dev);
+			ret = dpaa2_sec_stop(dev);
 			if (ret == DPAA2_FAILURE) {
 				DPAA2_ERR(APP1, "dpaa2_sec_start_failed\n");
 				return -1;

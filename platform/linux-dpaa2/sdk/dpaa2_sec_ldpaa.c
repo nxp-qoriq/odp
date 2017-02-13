@@ -288,6 +288,8 @@ int32_t dpaa2_sec_start(struct dpaa2_dev *dev)
 		vq->fqid = tx_attr.fqid;
 		DPAA2_INFO(SEC, "\ttx_fqid: %d", vq->fqid);
 	}
+	dev->state = DEV_ACTIVE;
+
 	return DPAA2_SUCCESS;
 
 get_attr_failure:
@@ -516,7 +518,7 @@ int32_t dpaa2_sec_probe(struct dpaa2_dev *dev, ODP_UNUSED const void *cfg)
 	dev_priv->drv_priv = sec_priv;
 	dev_priv->hw = dpseci;
 	dev_priv->token = token;
-	dev->state = DEV_ACTIVE;
+	dev->state = DEV_INACTIVE;
 	sprintf(dev->dev_string, "dpseci.%u", dev_priv->hw_id);
 	return DPAA2_SUCCESS;
 
@@ -537,7 +539,6 @@ int32_t dpaa2_sec_remove(struct dpaa2_dev *dev)
 
 	/*TODO add device busy attribute also.*/
 
-	dev->state = DEV_INACTIVE;
 	/*First close the device at underlying layer*/
 	retcode = dpseci_close(dpseci, CMD_PRI_LOW, dev_priv->token);
 	if (retcode < 0) {
