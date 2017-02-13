@@ -27,6 +27,7 @@
 #include <dpaa2_dev_priv.h>
 #include <dpaa2_mbuf_priv.h>
 #include <dpaa2_io_portal_priv.h>
+#include <dpaa2_eth_ldpaa_qbman.h>
 #include <odp/helper/ip.h>
 #include <odp/helper/ipsec.h>
 #include <odp/helper/eth.h>
@@ -1664,6 +1665,9 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 	if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf)) {
 		qbman_eq_desc_set_dca(&eqdesc, 1, GET_HOLD_DQRR_IDX, 0);
 		MARK_HOLD_DQRR_PTR_INVALID;
+	} else if (mbuf->opr.orpid != INVALID_ORPID) {
+		qbman_eq_desc_set_orp(&eqdesc, 0, mbuf->opr.orpid,
+					mbuf->opr.seqnum, 0);
 	}
 
 	_odp_buffer_type_set(mbuf, ODP_EVENT_CRYPTO_COMPL);

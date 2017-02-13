@@ -26,6 +26,7 @@
 #include <flib/desc/jobdesc.h>
 #include <fsl_dpseci.h>
 #include <fsl_dpseci_cmd.h>
+#include <fsl_mc_cmd.h>
 #include <odp/api/byteorder.h>
 #include <dpaa2_queue.h>
 #include <dpaa2_time.h>
@@ -356,8 +357,25 @@ int32_t dpaa2_sec_setup_rx_vq(struct dpaa2_dev *dev,
 			cfg.options = cfg.options |
 				DPSECI_QUEUE_OPT_ORDER_PRESERVATION;
 			cfg.order_preservation_en = TRUE;
-			rx_vq->sync = vq_cfg->sync;
 		}
+		if (vq_cfg->sync & ODP_SCHED_SYNC_ORDERED) {
+			struct opr_cfg cfg;
+
+			cfg.oprrws = 5;	/*Restoration window size = 1024 frames*/
+			cfg.oa = 0;	/*Auto advance NESN window disabled*/
+			cfg.olws = 2;	/*Late arrival window size = 1024 frames*/
+			cfg.oeane = 0;	/*ORL resource exhaustaion advance NESN disabled*/
+			cfg.oloe = 0;	/*Loose ordering disabled*/
+			retcode = dpseci_set_opr(dpseci, MC_CMD_FLAG_PRI, dev_priv->token,
+					vq_id, OPR_OPT_CREATE, &cfg);
+			if (retcode) {
+				DPAA2_ERR(ETH, "Error in setting the order restoration for sec: ErrorCode = %d\n",
+									retcode);
+				return DPAA2_FAILURE;
+			}
+
+		}
+		rx_vq->sync = vq_cfg->sync;
 	}
 
 	cfg.options = cfg.options | DPSECI_QUEUE_OPT_USER_CTX;

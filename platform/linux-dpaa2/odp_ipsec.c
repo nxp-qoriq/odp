@@ -23,6 +23,7 @@
 #include <dpaa2_sec_priv.h>
 #include <dpaa2_dev_priv.h>
 #include <dpaa2_mbuf_priv.h>
+#include <dpaa2_eth_ldpaa_qbman.h>
 #include <odp_queue_internal.h>
 #include <odp_schedule_internal.h>
 #include <odp/api/init.h>
@@ -993,6 +994,9 @@ int odp_ipsec_in_enq(const odp_ipsec_op_param_t *input)
 		if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf)) {
 			qbman_eq_desc_set_dca(&eqdesc, 1, GET_HOLD_DQRR_IDX, 0);
 			MARK_HOLD_DQRR_PTR_INVALID;
+		} else if (mbuf->opr.orpid != INVALID_ORPID) {
+			qbman_eq_desc_set_orp(&eqdesc, 0, mbuf->opr.orpid,
+						mbuf->opr.seqnum, 0);
 		}
 
 		mbuf->drv_priv_resv[0] = odp_packet_l3_offset((odp_packet_t)mbuf);
@@ -1086,6 +1090,9 @@ int odp_ipsec_out_enq(const odp_ipsec_op_param_t *input)
 		if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf)) {
 			qbman_eq_desc_set_dca(&eqdesc, 1, GET_HOLD_DQRR_IDX, 0);
 			MARK_HOLD_DQRR_PTR_INVALID;
+		} else if (mbuf->opr.orpid != INVALID_ORPID) {
+			qbman_eq_desc_set_orp(&eqdesc, 0, mbuf->opr.orpid,
+						mbuf->opr.seqnum, 0);
 		}
 
 		mbuf->drv_priv_resv[0] = odp_packet_l3_offset((odp_packet_t)mbuf);

@@ -190,11 +190,7 @@ get_dpni_parameters() {
 			echo "Invalid board type"
 			exit
 		fi
-		RES_VER=`restool --version | sed 's/.*v//' | sed 's/..$//'`
-		if [ $(bc <<< "$RES_VER > 1.4") -eq 1 ]
-		then
-			DPNI_OPTIONS="$DPNI_OPTIONS,DPNI_OPT_HAS_OPR"
-		fi
+		DPNI_OPTIONS="$DPNI_OPTIONS,DPNI_OPT_HAS_OPR"
 	fi
 	if [[ -z "$MAX_DIST_KEY_SIZE" ]]
 	then
@@ -613,7 +609,7 @@ then
 
 	#/* DPSECI objects creation*/
 	for i in $(seq 1 ${DPSECI_COUNT}); do
-		DPSEC=$(restool -s dpseci create --num-queues=$DPSECI_QUEUES --priorities=$DPSECI_PRIORITIES --container=$DPRC)
+		DPSEC=$(restool -s dpseci create --num-queues=$DPSECI_QUEUES --priorities=$DPSECI_PRIORITIES --options="DPSECI_OPT_HAS_OPR" --container=$DPRC)
 		echo $DPSEC "Created" >> dynamic_dpl_logs
 		restool dprc sync
 		TEMP=$(restool dprc assign $DPRC --object=$DPSEC --child=$DPRC --plugged=1)
