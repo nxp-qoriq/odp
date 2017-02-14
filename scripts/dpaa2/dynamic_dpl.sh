@@ -70,7 +70,7 @@ script help :----->
 		    dpni.y = 00:00:00:00:00:x
 		    where x is the ID of the dpmac.x
 
-	By default, this script will create 4 DPBP, 10 DPIOs, 10 DPCIs, 5 DPCON, 1 DPSEC,
+	By default, this script will create 4 DPBP, 10 DPIOs, 12 DPCIs, 5 DPCON, 1 DPSEC,
 	1 loop (dpni-self) device and DPNIs depend upon the arguments given during command line.
 
 	Note: Please refer to /usr/odp/scripts/dynamic_dpl_logs file for script logs
@@ -159,9 +159,7 @@ script help :----->
 		DPCI_COUNT	    = DPCI objects count for software queues
 					Set the parameter using below command:
 					'export DPCI_COUNT=<Num of dpci objects>'
-					where "Number of dpci objects" is an
-					even number value.
-					e.g export DPCI_COUNT=12"
+					e.g export DPCI_COUNT=15"
 
 EOF
 
@@ -297,16 +295,8 @@ get_dpio_parameters() {
 #/* Function, to intialize the DPCI related parameters
 #*/
 get_dpci_parameters() {
-	if [[ "$DPCI_COUNT" ]]
+	if [[ -z "$DPCI_COUNT" ]]
 	then
-		rem=`expr $DPCI_COUNT % 2`
-		if [[ $rem -eq 1 ]]
-		then
-			echo -e "\tDPCI_COUNT value should be an even number" >> dynamic_dpl_logs
-			echo -e $RED"\tDPCI_COUNT value should be an even number"$NC
-			return 1;
-		fi
-	else
 		DPCI_COUNT=12
 	fi
 	echo "DPCI parameters :-->" >> dynamic_dpl_logs
@@ -634,29 +624,12 @@ then
 	# Create DPCI's for software queues
 	unset DPCI
 	for i in $(seq 1 ${DPCI_COUNT}); do
-		if [[ -z "$DPCI" ]]
-		then
-			DPCI=$(restool -s dpci create --container=$DPRC)
-			echo $DPCI "Created" >> dynamic_dpl_logs
-		else
-			DPCI1=$(restool -s dpci create --container=$DPRC)
-			echo $DPCI1 "Created" >> dynamic_dpl_logs
-		fi
+		DPCI=$(restool -s dpci create --container=$DPRC)
+		echo $DPCI "Created" >> dynamic_dpl_logs
 		restool dprc sync
-		if [[ "$DPCI" && "$DPCI1" ]]
-		then
-			TEMP=$(restool dprc connect dprc.1 --endpoint1=$DPCI --endpoint2=$DPCI1)
-			echo  $DPCI" Linked with "$DPCI1 >> dynamic_dpl_logs
-			restool dprc sync
-			TEMP=$(restool dprc assign $DPRC --object=$DPCI --child=$DPRC --plugged=1)
-			echo $DPCI "moved to plugged state" >> dynamic_dpl_logs
-			restool dprc sync
-			TEMP=$(restool dprc assign $DPRC --object=$DPCI1 --child=$DPRC --plugged=1)
-			echo $DPCI1 "moved to plugged state" >> dynamic_dpl_logs
-			restool	dprc sync
-			unset DPCI
-			unset DPCI1
-		fi
+		TEMP=$(restool dprc assign $DPRC --object=$DPCI --child=$DPRC --plugged=1)
+		echo $DPCI "moved to plugged state" >> dynamic_dpl_logs
+		restool dprc sync
 	done;
 
 	dmesg -D
