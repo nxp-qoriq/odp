@@ -26,7 +26,7 @@ extern "C" {
 /*
  * Maximum number of queues
  */
-#define ODP_CONFIG_QUEUES	128
+#define ODP_CONFIG_QUEUES	1024
 
 /*
  * Number of ordered locks per queue
