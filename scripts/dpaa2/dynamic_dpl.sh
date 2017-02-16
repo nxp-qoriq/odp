@@ -90,7 +90,7 @@ script help :----->
 					Set the parameter using below command:
 					'export MAX_TCS=<Num of traffic class>'
 					where "Number of traffic classes" is an
-					integer value. "e.g export MAX_TCS=8"
+					integer value. "e.g export MAX_TCS=4"
 
 		DPNI_OPTIONS        = DPNI related options.
 					Set the parameter using below command:
@@ -175,7 +175,7 @@ get_dpni_parameters() {
 	fi
 	if [[ -z "$MAX_TCS" ]]
 	then
-		MAX_TCS=1
+		MAX_TCS=8
 	fi
 	if [[ -z "$DPNI_OPTIONS" ]]
 	then
