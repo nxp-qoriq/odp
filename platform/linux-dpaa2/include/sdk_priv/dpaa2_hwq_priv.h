@@ -19,7 +19,7 @@ extern "C" {
 #include <dpaa2_vq.h>
 
 /* Maximum number of frame queues supported */
-#define MAX_FRAMEQ 64
+#define MAX_FRAMEQ 1024
 
 enum frameq_state_t {
 	FRAMEQ_STATE_INVALID, /* Frame queue is invalid */
