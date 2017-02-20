@@ -55,6 +55,7 @@ typedef struct {
 	int if_count;		/**< Number of interfaces to be used */
 	char **if_names;	/**< Array of pointers to interface names */
 	char *if_str;		/**< Storage for interface names */
+	int queue_type;		/**< Queue synchronization type*/
 } appl_args_t;
 /**
  * Grouping of both parsed CL args and thread specific args - alloc together
@@ -188,9 +189,10 @@ void ipsec_init_post(void)
  * Initialize ODP pktio and queues, query MAC address and update
  * forwarding database.
  *
- * @param intf     Interface name string
+ * @param intf		Interface name string
+ * @param queue_type	Type of queue to configure.
  */
-static void initialize_intf(char *intf)
+static void initialize_intf(char *intf, int queue_type)
 {
 	odp_pktio_t pktio;
 	odp_pktout_queue_t pktout;
@@ -220,7 +222,7 @@ static void initialize_intf(char *intf)
 		EXAMPLE_ABORT("Error: Unable to get pktio capability %s\n", intf);
 
 	pktin_param.queue_param.type = ODP_QUEUE_TYPE_SCHED;
-	pktin_param.queue_param.sched.sync = ODP_SCHED_SYNC_ATOMIC;
+	pktin_param.queue_param.sched.sync = queue_type;
 	pktin_param.queue_param.sched.prio = ODP_SCHED_PRIO_DEFAULT;
 	pktin_param.num_queues = capa.max_input_queues;
 
@@ -596,7 +598,7 @@ main(int argc, char *argv[])
 	odp_queue_param_init(&qparam);
 	qparam.type       = ODP_QUEUE_TYPE_SCHED;
 	qparam.sched.prio  = ODP_SCHED_PRIO_HIGHEST;
-	qparam.sched.sync  = ODP_SCHED_SYNC_ATOMIC;
+	qparam.sched.sync  = args->appl.queue_type;
 	qparam.sched.group = ODP_SCHED_GROUP_ALL;
 
 	for (i = 0; i < num_workers; i++) {
@@ -629,9 +631,12 @@ main(int argc, char *argv[])
 
 	/* Initialize interfaces (which resolves FWD DB entries */
 	for (i = 0; i < args->appl.if_count; i++) {
-		initialize_intf(args->appl.if_names[i]);
+		initialize_intf(args->appl.if_names[i], args->appl.queue_type);
 	}
 
+	printf("  Configured queues SYNC type: [%s]\n", (args->appl.queue_type == 0)?
+							"PARALLEL":(args->appl.queue_type == 1)?
+							"ATOMIC":"ORDERED");
 	memset(&thr_params, 0, sizeof(thr_params));
 	thr_params.start    = pktio_thread;
 	thr_params.arg      = NULL;
@@ -674,6 +679,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 		{"esp", required_argument, NULL, 'e'},		/* return 'e' */
 		{"tunnel", required_argument, NULL, 't'},       /* return 't' */
 		{"flows", no_argument, NULL, 'f'},		/* return 'f' */
+		{"queue type", required_argument, NULL, 'q'},	/* return 'q' */
 		{"help", no_argument, NULL, 'h'},		/* return 'h' */
 		{NULL, 0, NULL, 0}
 	};
@@ -681,9 +687,10 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 	printf("\nParsing command line options\n");
 
 	appl_args->flows = 1;
+	appl_args->queue_type = ODP_SCHED_SYNC_ATOMIC;
 
 	while (!rc) {
-		opt = getopt_long(argc, argv, "+c:i:h:r:p:a:e:t:s:f:",
+		opt = getopt_long(argc, argv, "+c:i:h:r:p:a:e:t:s:q:f:",
 				  longopts, &long_index);
 		if (opt < 0)
 			break;	/* No more options */
@@ -756,7 +763,14 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 		case 't':
 			rc = create_tun_db_entry(optarg, appl_args->flows);
 			break;
-
+		case 'q':
+			i = atoi(optarg);
+			if (i > ODP_SCHED_SYNC_ORDERED || i < ODP_SCHED_SYNC_PARALLEL) {
+				printf("Invalid queue type: setting default to atomic");
+				break;
+			}
+			appl_args->queue_type = i;
+			break;
 		case 'h':
 			usage(argv[0]);
 			exit(EXIT_SUCCESS);
@@ -850,6 +864,11 @@ static void usage(char *progname)
 	       "Optional OPTIONS\n"
 	       "  -f, --flows <number> routes count.\n"
 	       "  -c, --count <number> CPU count.\n"
+	       "  -q		specify the queue type\n"
+	       "		0:	ODP_SCHED_SYNC_PARALLEL\n"
+	       "		1:	ODP_SCHED_SYNC_ATOMIC\n"
+	       "		2:	ODP_SCHED_SYNC_ORDERED\n"
+	       "			default is ODP_SCHED_SYNC_ATOMIC\n"
 	       "  -h, --help           Display help and exit.\n"
 	       "\n", NO_PATH(progname), NO_PATH(progname)
 		);
