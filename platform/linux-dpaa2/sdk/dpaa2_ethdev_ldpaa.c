@@ -91,7 +91,7 @@ int dpaa2_eth_mtu_set(struct dpaa2_dev *dev,
 	}
 #endif
 	eth_priv->cfg.mtu = mtu;
-	DPAA2_NOTE(ETH, "MTU set as %d for the %s", mtu, dev->dev_string);
+	DPAA2_DBG(ETH, "MTU set as %d for the %s", mtu, dev->dev_string);
 	return DPAA2_SUCCESS;
 }
 

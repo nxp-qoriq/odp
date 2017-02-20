@@ -327,7 +327,7 @@ void dpaa2_put_frameq(void *h_dpaa2_hwq)
 	DPAA2_TRACE(FRAMEQ);
 
 	if (dpaa2_hwq->state == FRAMEQ_STATE_INVALID) {
-		DPAA2_ERR(FRAMEQ, "Frame Queue is in INVALID state");
+		DPAA2_DBG(FRAMEQ, "Frame Queue is in INVALID state\n");
 		return;
 	}
 

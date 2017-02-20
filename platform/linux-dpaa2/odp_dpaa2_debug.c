@@ -1181,8 +1181,9 @@ int odp_platform_debug_init(void)
 			perror("Platform Debug Thread creation failed!");
 			return -1;
 		}
+		ODP_PRINT("Platform Debug Thread is Intialized\n");
 	} else {
-		ODP_ERR("PLATFORM DEBUG THREAD not initialized\n");
+		ODP_DBG("PLATFORM DEBUG THREAD not initialized\n");
 		return -1;
 	}
 	return 0;

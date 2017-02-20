@@ -1733,7 +1733,7 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 				break;
 			}
 			if (odp_unlikely(received_sigint)) {
-				if (odp_term_local())
+				if (odp_term_local() < 0)
 					fprintf(stderr, "error: odp_term_local() failed.\n");
 				pthread_exit(NULL);
 			}

@@ -543,7 +543,7 @@ int32_t dpaa2_sec_probe(struct dpaa2_dev *dev, ODP_UNUSED const void *cfg)
 	dev->num_tx_vqueues = attr.num_tx_queues;
 	dev->num_rx_vqueues = attr.num_rx_queues;
 
-	DPAA2_NOTE(SEC, "DPSECI: number of tx vq = %d rx vq = %d",
+	DPAA2_DBG(SEC, "DPSECI: number of tx vq = %d rx vq = %d",
 			attr.num_tx_queues, attr.num_rx_queues);
 
 	dev_priv->drv_priv = sec_priv;

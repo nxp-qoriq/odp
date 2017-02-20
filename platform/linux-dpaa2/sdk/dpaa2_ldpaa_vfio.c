@@ -115,8 +115,13 @@ static void vfio_disconnect_container(struct vfio_group *group)
 		return;
 	}
 
-	if (ioctl(group->fd, VFIO_GROUP_UNSET_CONTAINER, &container->fd))
-		DPAA2_ERR(FW, "UNSET Container API Failed with ERRNO = %d\n", errno);
+	/*TODO: Below Command always failed with error code -16. For current
+		use cases, there is no need to unset the container. But in future,
+		if the application will trying to re-initialize the container resources
+		without killing itself, then there may be need for this command*/
+	if (ioctl(group->fd, VFIO_GROUP_UNSET_CONTAINER, &container->fd)) {
+		DPAA2_DBG(FW, "UNSET Container API Failed with ERRNO = %d\n", errno);
+	}
 
 	group->container = NULL;
 

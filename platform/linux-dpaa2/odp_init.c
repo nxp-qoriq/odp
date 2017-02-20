@@ -79,7 +79,7 @@ static void sigproc(int signum, siginfo_t *info ODP_UNUSED, void *ptr ODP_UNUSED
 	if (signum == SIGSEGV)
 		printf("\nSegmentation Fault");
 
-	printf("\nERR:SIGNAL(%d) is received, and the APP processing is"
+	ODP_DBG("\nERR:SIGNAL(%d) is received, and the APP processing is"
 			" going to stop\n", signum);
 
 
@@ -152,6 +152,7 @@ static void __attribute__((destructor(102))) odp_finish(void)
 	dpaa2_mbuf_finish();
 	/* Do cleanup and exit */
 	dpaa2_cleanup();
+	printf("DPAA2 framework resources deintialized\n");
 }
 
 struct dpaa2_dev *odp_get_dpaa2_eth_dev(const char *dev_name)
@@ -186,7 +187,7 @@ int32_t odp_dpaa2_scan_device_list(uint32_t dev_type)
 		if (dev_type != dev->dev_type)
 			continue;
 
-		DPAA2_NOTE(APP1, "%s being created", dev->dev_string);
+		DPAA2_DBG(APP1, "%s being created", dev->dev_string);
 		dev_found = 1;
 		switch (dev->dev_type) {
 		case DPAA2_NIC:
@@ -247,11 +248,11 @@ static int odp_dpaa2_init_global(const odp_platform_init_t *platform_params)
 	/* Till now DPAA2 framework is not initialized so that cannot use DPAA2
 	 * logging mechanism. DPAA2 logging will be usable after dpaa2_init.
 	 */
-	printf("Initializing DPAA2 framework with following parameters:\n");
-	printf("\tResource container :%s\n", cfg.vfio_container);
-	printf("\tData Memory size:0x%lx bytes\n",  cfg.data_mem_size);
-	printf("\tLog_level:%d\n", cfg.log_level);
-	printf("\tFlags:0x%0x\n", cfg.flags);
+	printf("\nDPAA2 framework intialization parameters:\n");
+	printf("-----------------------------------------\n");
+	printf("Resource container	:%s\n", cfg.vfio_container);
+	printf("Scheduler Interrupts	:%s\n", (cfg.flags & DPAA2_ENABLE_INTERRUPTS)?
+						"Enable":"Disable");
 
 	if (dpaa2_init(&cfg) < 0) {
 		ODP_ERR("dpaa2_init failed\n");
@@ -300,7 +301,7 @@ int odp_init_global(odp_instance_t *instance,
 
 	if (getenv("ODP_SCH_PULL_MODE")) {
 		dq_schedule_mode = ODPFSL_PULL;
-		printf("\n Using DPAA2 Scheduler in SW-PULL mode\n ");
+		ODP_DBG("\n Using Scheduler in SW-PULL mode\n ");
 	}
 
 	if (platform_params)
@@ -312,7 +313,7 @@ int odp_init_global(odp_instance_t *instance,
 	if (intr) {
 		if (dq_schedule_mode & ODPFSL_PUSH) {
 			dq_schedule_mode = ODPFSL_PUSH_INTR;
-			printf("\n Using DPAA2 Scheduler in SW-PUSH mode with interrupts\n ");
+			ODP_DBG("\nUsing Scheduler in SW-PUSH mode with INTERRUPTS\n\n");
 		}
 	}
 

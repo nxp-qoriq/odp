@@ -265,7 +265,7 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 					" Error Code = %d\n", retcode);
 		goto get_attr_failure;
 	}
-	printf("\nPort %s = Mac %02X.%02X.%02X.%02X.%02X.%02X\n", \
+	printf("\nPort %s = Mac %02X.%02X.%02X.%02X.%02X.%02X", \
 			dev->dev_string, mac_addr[0], mac_addr[1], mac_addr[2],
 			mac_addr[3], mac_addr[4], mac_addr[5]);
 	sprintf((char *)eth_priv->cfg.name, "fsl_dpaa2_eth");
@@ -281,6 +281,7 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 			DPAA2_ERR(ETH, "Fail to set MTU %d\n", retcode);
 			goto get_attr_failure;
 		}
+		printf(" MTU = %d\n", dpaa2_eth_mtu_get(dev));
 	}
 
 	/* Set the Max Rx frame length as 9000 Bytes to support

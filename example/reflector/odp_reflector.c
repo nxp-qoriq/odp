@@ -140,8 +140,6 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int queue_typ
 	odp_pktio_t pktio;
 	int ret;
 	odp_pktio_param_t pktio_param;
-	uint8_t src_mac[ODPH_ETHADDR_LEN];
-	char src_mac_str[MAX_STRING];
 	odp_pktin_queue_param_t pktin_param;
 	odp_pktio_capability_t capa;
 
@@ -176,19 +174,9 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int queue_typ
 	if (ret != 0)
 		EXAMPLE_ABORT("Error: unable to start %s\n", name);
 
-	/* Read the source MAC address for this interface */
-	ret = odp_pktio_mac_addr(pktio, src_mac, sizeof(src_mac));
-	if (ret < 0)
-		EXAMPLE_ABORT("Error: failed during MAC address get for %s\n",
-			    name);
-
 	printf("  created pktio:%02" PRIu64
-	       ", name:%s\n"
-	       "  \tdefault pktio%02" PRIu64 "\n"
-	       "          source mac address %s\n",
-	       odp_pktio_to_u64(pktio), name,
-	       odp_pktio_to_u64(pktio),
-	       mac_addr_str(src_mac_str, src_mac));
+	       ", name:%s\n",
+	       odp_pktio_to_u64(pktio), name);
 
 	return pktio;
 }

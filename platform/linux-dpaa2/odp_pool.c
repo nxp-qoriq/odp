@@ -400,23 +400,23 @@ void odp_pool_print(odp_pool_t pool_hdl)
 		return;
 
 	ODP_PRINT("\n\n");
-	ODP_PRINT("POOL PRINT:\n");
+	ODP_PRINT("Pool Print:\n");
 	ODP_PRINT("Pool id              = \t\t%d\n", pool->s.pool_id);
 	ODP_PRINT("Pool Name            = \t\t%s\n", pool->s.name);
-	ODP_PRINT("Pool type            = \t\t0x%X\n", pool->s.params.type);
-	ODP_PRINT("Pool bpid            = \t\t%d\n", pool->s.bpid);
-	ODP_PRINT("Pool flags           = \t\t0x%X\n", pool->s.flags.all);
 
 	if (pool->s.params.type == ODP_POOL_PACKET) {
+		ODP_PRINT("Pool type            = \t\t%s\n", "PACKET POOL");
 		ODP_PRINT("Number of packets                            = \t\t%d\n", pool->s.params.pkt.num);
 		ODP_PRINT("Minimum length for each packet               = \t\t%d\n", pool->s.params.pkt.len);
-		ODP_PRINT("Min pkt data bytes stored in 1st seg		= \t\t%d\n", pool->s.params.pkt.seg_len);
+		ODP_PRINT("Min pkt data bytes stored in 1st seg	      = \t\t%d\n", pool->s.params.pkt.seg_len);
 		ODP_PRINT("user area size                               = \t\t%d\n", pool->s.params.pkt.uarea_size);
 	} else if (pool->s.params.type == ODP_POOL_BUFFER) {
+		ODP_PRINT("Pool type            = \t\t%s\n", "BUFFER POOL");
 		ODP_PRINT("Number of buffers                    = \t\t%d\n", pool->s.params.buf.num);
 		ODP_PRINT("Max number of bytes for each buffer  = \t\t%d\n", pool->s.params.buf.size);
 		ODP_PRINT("Minimum buffer alignment in bytes    = \t\t%d\n", pool->s.params.buf.align);
 	} else {
+		ODP_PRINT("Pool type            = \t\t%s\n", "TIMEOUT POOL");
 		ODP_PRINT("Number of timeouts                   = \t\t%d\n", pool->s.params.tmo.num);
         }
 }

@@ -350,6 +350,7 @@ int32_t odp_sub_queue_to_group(odp_schedule_group_t grp)
 
 	if (!sched->sched_grp[grp].queues) {
 		ODP_DBG("No queue is affined to group\n");
+		odp_spinlock_unlock(&sched->grp_lock);
 		return -1;
 	}
 	sched->sched_grp[grp].queues -= 1;
@@ -465,7 +466,7 @@ static inline int32_t odp_qbman_loopback(dpaa2_mbuf_pt mbuf[] ODP_UNUSED, int nu
 		dqrr_entry = qbman_swp_dqrr_next(swp);
 		if (!dqrr_entry) {
 			if (odp_unlikely(received_sigint)) {
-				if (odp_term_local())
+				if (odp_term_local() < 0)
 					fprintf(stderr, "error: odp_term_local() failed.\n");
 				pthread_exit(NULL);
 			}
@@ -630,7 +631,7 @@ odp_event_t odp_schedule(odp_queue_t *out_queue, uint64_t wait)
 			break;
 		} else {
 			if (odp_unlikely(received_sigint)) {
-				if (odp_term_local())
+				if (odp_term_local() < 0)
 					fprintf(stderr, "error: odp_term_local() failed.\n");
 				pthread_exit(NULL);
 			}
@@ -672,7 +673,7 @@ RETRY:
 					   with errno EINTR. so here we are retrying epoll_wait in such
 					   case to avoid the problem.*/
 					if (errno == EINTR) {
-						ODP_PRINT("odp_schedule: epoll_wait fails\n");
+						ODP_DBG("odp_schedule: epoll_wait fails\n");
 						i++;
 						if (i > 10) {
 							ODP_PRINT("odp_schedule: epoll_wait fails even after 10 tries\n");
@@ -758,7 +759,7 @@ int odp_schedule_multi(odp_queue_t *out_queue, uint64_t wait,
 		}
 
 		if (odp_unlikely(received_sigint)) {
-			if (odp_term_local())
+			if (odp_term_local() < 0)
 				fprintf(stderr, "error: odp_term_local() failed.\n");
 			pthread_exit(NULL);
 		}

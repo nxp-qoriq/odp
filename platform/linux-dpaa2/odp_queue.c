@@ -127,12 +127,11 @@ int odp_queue_term_global(void)
 	for (i = 0; i < ODP_CONFIG_QUEUES; i++) {
 		queue = &queue_tbl->queue[i];
 		if (queue) {
-			LOCK(&queue->s.lock);
-			if (queue->s.status != QUEUE_STATUS_FREE) {
-				ODP_ERR("Not destroyed queue: %s\n", queue->s.name);
-				rc = -1;
+			if (queue->s.status != QUEUE_STATUS_FREE &&
+					queue->s.status != QUEUE_STATUS_DESTROYED) {
+/*FIXME: odp_queue_destroy() API should be called here for cleanup*/
+				ODP_DBG("Not destroyed queue: %s\n", queue->s.name);
 			}
-			UNLOCK(&queue->s.lock);
 		}
 	}
 

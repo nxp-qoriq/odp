@@ -198,7 +198,6 @@ static void initialize_intf(char *intf, int queue_type)
 	odp_pktout_queue_t pktout;
 	int ret;
 	uint8_t src_mac[ODPH_ETHADDR_LEN];
-	char src_mac_str[MAX_STRING];
 	odp_pktio_param_t pktio_param;
 	odp_pktio_capability_t capa;
 	odp_pktin_queue_param_t pktin_param;
@@ -250,8 +249,7 @@ static void initialize_intf(char *intf, int queue_type)
 			      intf);
 	}
 
-	printf("Created pktio:%02" PRIu64 "\n" "source mac address %s\n",
-	       odp_pktio_to_u64(pktio), mac_addr_str(src_mac_str, src_mac));
+	printf("Created pktio:%02" PRIu64 "\n", odp_pktio_to_u64(pktio));
 
 	/* Resolve any routes using this interface for output */
 	resolve_fwd_db(intf, pktout, src_mac);
@@ -683,8 +681,6 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 		{"help", no_argument, NULL, 'h'},		/* return 'h' */
 		{NULL, 0, NULL, 0}
 	};
-
-	printf("\nParsing command line options\n");
 
 	appl_args->flows = 1;
 	appl_args->queue_type = ODP_SCHED_SYNC_ATOMIC;

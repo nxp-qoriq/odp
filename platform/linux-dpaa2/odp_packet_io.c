@@ -106,6 +106,7 @@ int odp_pktio_init_global(void)
 int odp_pktio_term_global(void)
 {
 	pktio_entry_t *pktio_entry;
+	odp_pktio_t pktio;
 	struct dpaa2_dev *ndev;
 	int ret;
 	int id;
@@ -113,15 +114,18 @@ int odp_pktio_term_global(void)
 	if (!pktio_tbl)
 		return 0;
 	for (id = 1; id <= ODP_CONFIG_PKTIO_ENTRIES; ++id) {
+
 		pktio_entry = &pktio_tbl->entries[id - 1];
+		pktio = (odp_pktio_t) (uintptr_t) id;
 		ndev = pktio_entry->s.pkt_dpaa2.dev;
 		if (ndev) {
 			odp_queue_t queue;
-			odp_pktout_mode_t mode;
+			odp_pktout_mode_t outmode;
+			odp_pktin_mode_t inmode;
 
-			mode = pktio_entry->s.param.out_mode;
+			outmode = pktio_entry->s.param.out_mode;
 			lock_entry(pktio_entry);
-			if (mode == ODP_PKTOUT_MODE_QUEUE) {
+			if (outmode == ODP_PKTOUT_MODE_QUEUE) {
 				queue_entry_t *qentry;
 
 				while (pktio_entry->s.conf_tx_queues) {
@@ -133,8 +137,24 @@ int odp_pktio_term_global(void)
 			} else
 				pktio_entry->s.conf_tx_queues = 0;
 
+			inmode = pktio_entry->s.param.in_mode;
+
+			if ((inmode == ODP_PKTIN_MODE_SCHED) ||
+				(inmode == ODP_PKTIN_MODE_QUEUE)) {
+				while (pktio_entry->s.conf_rx_queues) {
+					ret = odp_pktio_inq_rem(pktio, pktio_entry->s.conf_rx_queues - 1);
+					if (ret) {
+						ODP_ERR("pktio %s: failed to remove already configured queues\n",
+							pktio_entry->s.name);
+						unlock_entry(pktio_entry);
+						return -1;
+					}
+				}
+			} else
+				pktio_entry->s.conf_rx_queues = 0;
+
 			unlock_entry(pktio_entry);
-			odp_pktio_close(odp_pktio_lookup(ndev->dev_string));
+			odp_pktio_close(pktio);
 		}
 	}
 
@@ -481,7 +501,7 @@ int odp_pktio_close(odp_pktio_t id)
 	dev_priv = ndev->priv;
 
 	if (!dev_priv->hw) {
-		ODP_PRINT("pktio already closed\n");
+		ODP_DBG("pktio already closed\n");
 		return 0;
 	}
 
@@ -565,7 +585,7 @@ int odp_pktin_recv(odp_pktin_queue_t queue, odp_packet_t pkt_table[], int len)
 {
 	/* If ctrl+C signal is received, just exit the thread */
 	if (odp_unlikely(received_sigint)) {
-		if (odp_term_local())
+		if (odp_term_local() < 0)
 			fprintf(stderr, "error: odp_term_local() failed.\n");
 		pthread_exit(NULL);
 	}
@@ -736,7 +756,7 @@ odp_buffer_hdr_t *pktin_dequeue(queue_entry_t *qentry)
 
 	/* If ctrl+C signal is received, just exit the thread */
 	if (odp_unlikely(received_sigint)) {
-		if (odp_term_local())
+		if (odp_term_local() < 0)
 			fprintf(stderr, "error: odp_term_local() failed.\n");
 		pthread_exit(NULL);
 	}
@@ -755,7 +775,7 @@ odp_buffer_hdr_t *sec_dequeue(queue_entry_t *qentry)
 
 	/* If ctrl+C signal is received, just exit the thread */
 	if (odp_unlikely(received_sigint)) {
-		if (odp_term_local())
+		if (odp_term_local() < 0)
 			fprintf(stderr, "error: odp_term_local() failed.\n");
 		pthread_exit(NULL);
 	}
@@ -773,7 +793,7 @@ int sec_dequeue_multi(queue_entry_t *qentry, odp_buffer_hdr_t *pkt_buf[], int nu
 
 	/* If ctrl+C signal is received, just exit the thread */
 	if (odp_unlikely(received_sigint)) {
-		if (odp_term_local())
+		if (odp_term_local() < 0)
 			fprintf(stderr, "error: odp_term_local() failed.\n");
 		pthread_exit(NULL);
 	}
@@ -804,7 +824,7 @@ int pktin_deq_multi(queue_entry_t *qentry, odp_buffer_hdr_t *buf_hdr[], int num)
 
 	/* If ctrl+C signal is received, just exit the thread */
 	if (odp_unlikely(received_sigint)) {
-		if (odp_term_local())
+		if (odp_term_local() < 0)
 			fprintf(stderr, "error: odp_term_local() failed.\n");
 		pthread_exit(NULL);
 	}
@@ -1720,7 +1740,7 @@ int odp_pktin_recv_tmo(odp_pktin_queue_t queue, odp_packet_t packets[],
 
 		/* If ctrl+C signal is received, just exit the thread */
 		if (odp_unlikely(received_sigint)) {
-			if (odp_term_local())
+			if (odp_term_local() < 0)
 				fprintf(stderr, "error: odp_term_local() failed.\n");
 			pthread_exit(NULL);
 		}
@@ -1756,7 +1776,7 @@ int odp_pktin_recv_mq_tmo(const odp_pktin_queue_t queues[], unsigned num_q,
 
 		/* If ctrl+C signal is received, just exit the thread */
 		if (odp_unlikely(received_sigint)) {
-			if (odp_term_local())
+			if (odp_term_local() < 0)
 				fprintf(stderr, "error: odp_term_local() failed.\n");
 			pthread_exit(NULL);
 		}

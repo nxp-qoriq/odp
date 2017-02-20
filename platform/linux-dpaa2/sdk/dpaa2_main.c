@@ -145,7 +145,7 @@ static int32_t dpaa2_rts_init(struct dpaa2_init_cfg *cfg)
 		DPAA2_ERR(FW, "FAIL - dpaa2_eal_memory_init\n");
 		return DPAA2_FAILURE;
 	}
-	printf("\tData Memory allocated:0x%lx bytes\n", internal_config.max_mem);
+	printf("Data Memory available	:%ld MB\n", internal_config.free_memory/(1024*1024));
 
 	/* the directories are locked during eal_hugepage_info_init */
 	eal_hugedirs_unlock();
