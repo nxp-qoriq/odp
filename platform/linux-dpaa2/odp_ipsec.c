@@ -999,7 +999,7 @@ int odp_ipsec_in_enq(const odp_ipsec_op_param_t *input)
 		do {
 			ret = qbman_swp_enqueue(swp, &eqdesc, &fd);
 			if (odp_unlikely(ret)) {
-				ODP_PRINT("VEQ command is not issued. QBMAN is busy\n");
+				ODP_DBG("VEQ command is not issued. QBMAN is busy\n");
 			} else
 				count++;
 		} while (ret == -EBUSY);
@@ -1103,7 +1103,7 @@ int odp_ipsec_out_enq(const odp_ipsec_op_param_t *input)
 		do {
 			ret = qbman_swp_enqueue(swp, &eqdesc, &fd);
 			if (odp_unlikely(ret)) {
-				ODP_PRINT("VEQ command is not issued. QBMAN is busy\n");
+				ODP_DBG("VEQ command is not issued. QBMAN is busy\n");
 			} else
 				count++;
 		} while (ret == -EBUSY);

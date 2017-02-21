@@ -1693,7 +1693,7 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 		do {
 			ret = qbman_swp_enqueue(swp, &eqdesc, &fd);
 			if (ret != 0) {
-				ODP_PRINT("VEQ command is not issued. QBMAN is busy\n");
+				ODP_DBG("VEQ command is not issued. QBMAN is busy\n");
 			}
 		} while (ret == -EBUSY);
 
@@ -1719,7 +1719,7 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 		do {
 			ret = qbman_swp_enqueue(swp, &eqdesc, &fd);
 			if (ret != 0) {
-				ODP_PRINT("VEQ command is not issued. QBMAN is busy\n");
+				ODP_DBG("VEQ command is not issued. QBMAN is busy\n");
 			}
 		} while (ret == -EBUSY);
 		do {
