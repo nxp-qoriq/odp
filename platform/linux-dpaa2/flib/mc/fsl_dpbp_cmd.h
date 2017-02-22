@@ -34,7 +34,7 @@
 
 /* DPBP Version */
 #define DPBP_VER_MAJOR				3
-#define DPBP_VER_MINOR				2
+#define DPBP_VER_MINOR				3
 
 /* Command IDs */
 #define DPBP_CMDID_CLOSE                        0x8001
