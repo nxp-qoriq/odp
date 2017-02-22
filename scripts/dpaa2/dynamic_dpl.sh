@@ -79,6 +79,10 @@ script help :----->
 
 	Below "ENVIRONMENT VARIABLES" are exported to get user defined
 	configuration"
+		OPR_ENABLE	   = To disable order restoration on dpseci/dpni
+					command: "export OPR_ENABLE=0"
+					By default order restoration is enabled.
+
 	/**DPNI**:-->
 		MAX_QUEUES         = max number of Rx/Tx Queues on DPNI.
 					Set the parameter using below command:
@@ -173,22 +177,26 @@ get_dpni_parameters() {
 	fi
 	if [[ -z "$MAX_TCS" ]]
 	then
-		MAX_TCS=8
+		MAX_TCS=1
 	fi
 	if [[ -z "$DPNI_OPTIONS" ]]
 	then
+		DPNI_OPTIONS="DPNI_OPT_HAS_OPR"
+		if [[ $OPR_ENABLE == "0" ]]
+		then
+			DPNI_OPTIONS=""
+		fi
 		board_type=$(uname -n | cut -c3-6)
 		if [[ $board_type == "1088" ]]
 		then
-			DPNI_OPTIONS=""
+			DPNI_OPTIONS=$DPNI_OPTIONS
 		elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" ]]
 		then
-			DPNI_OPTIONS="DPNI_OPT_HAS_KEY_MASKING"
+			DPNI_OPTIONS="$DPNI_OPTIONS,DPNI_OPT_HAS_KEY_MASKING"
 		else
 			echo "Invalid board type"
 			exit
 		fi
-		DPNI_OPTIONS="$DPNI_OPTIONS,DPNI_OPT_HAS_OPR"
 	fi
 	if [[ -z "$MAX_DIST_KEY_SIZE" ]]
 	then
@@ -261,6 +269,11 @@ get_dpseci_parameters() {
 	if [[ -z "$DPSECI_PRIORITIES" ]]
 	then
 		DPSECI_PRIORITIES="2,2,2,2,2,2,2,2"
+	fi
+	export DPSECI_OPTIONS="DPSECI_OPT_HAS_OPR"
+	if [[ $OPR_ENABLE == "0" ]]
+	then
+		DPSECI_OPTIONS=""
 	fi
 	echo "DPSECI parameters :-->" >> dynamic_dpl_logs
 	echo -e "\tDPSECI_COUNT = "$DPSECI_COUNT >> dynamic_dpl_logs
@@ -599,7 +612,7 @@ then
 
 	#/* DPSECI objects creation*/
 	for i in $(seq 1 ${DPSECI_COUNT}); do
-		DPSEC=$(restool -s dpseci create --num-queues=$DPSECI_QUEUES --priorities=$DPSECI_PRIORITIES --options="DPSECI_OPT_HAS_OPR" --container=$DPRC)
+		DPSEC=$(restool -s dpseci create --num-queues=$DPSECI_QUEUES --priorities=$DPSECI_PRIORITIES --options=$DPSECI_OPTIONS --container=$DPRC)
 		echo $DPSEC "Created" >> dynamic_dpl_logs
 		restool dprc sync
 		TEMP=$(restool dprc assign $DPRC --object=$DPSEC --child=$DPRC --plugged=1)

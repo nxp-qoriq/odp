@@ -230,9 +230,7 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 	}
 	q_config = &(eth_priv->q_config);
 	q_config->num_tcs = attr.num_tcs;
-	dev->num_tx_vqueues = attr.num_queues;
-	if (attr.num_tcs > 1)
-		dev->num_tx_vqueues = attr.num_tcs;
+	dev->num_tx_vqueues = attr.num_tcs;
 
 	dev->num_rx_vqueues = 0;
 
