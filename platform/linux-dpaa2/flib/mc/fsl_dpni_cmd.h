@@ -34,7 +34,7 @@
 
 /* DPNI Version */
 #define DPNI_VER_MAJOR				7
-#define DPNI_VER_MINOR				0
+#define DPNI_VER_MINOR				1
 
 /* Command IDs */
 #define DPNI_CMDID_OPEN                                0x8011
@@ -83,7 +83,7 @@
 #define DPNI_CMDID_REMOVE_VLAN_ID                      0x2321
 #define DPNI_CMDID_CLR_VLAN_FILTERS                    0x2331
 
-#define DPNI_CMDID_SET_RX_TC_DIST                      0x2351
+#define DPNI_CMDID_SET_RX_TC_DIST                      0x2352
 
 #define DPNI_CMDID_SET_RX_TC_POLICING                  0x23e1
 
@@ -479,6 +479,7 @@ do { \
 	MC_CMD_OP(cmd, 0, 24, 4,  enum dpni_dist_mode, cfg->dist_mode); \
 	MC_CMD_OP(cmd, 0, 28, 4,  enum dpni_fs_miss_action, \
 						  cfg->fs_cfg.miss_action); \
+	MC_CMD_OP(cmd, 0, 47,  1, char, cfg->fs_cfg.keep_hash_key); \
 	MC_CMD_OP(cmd, 0, 48, 16, uint16_t, cfg->fs_cfg.default_flow_id); \
 	MC_CMD_OP(cmd, 6, 0,  64, uint64_t, cfg->key_cfg_iova); \
 } while (0)
