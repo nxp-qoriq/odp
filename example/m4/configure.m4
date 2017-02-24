@@ -25,8 +25,7 @@ AC_CONFIG_FILES([example/classifier/Makefile
 		 example/lpm-ipfwd/lpmlib/Makefile
 		 example/lpm-ipfwd/app/Makefile
 		 example/lpm-ipfwd/app_config/Makefile
-		 example/switch/Makefile])
-AM_COND_IF([BUILD_DPAA2], [AC_CONFIG_FILES([example/kni_demo/Makefile
-		 example/cmdif_demo/Makefile
 		 example/ipsec_offload/Makefile
-		])], [AC_CONFIG_FILES([example/ipsec_proto/Makefile])])
+		 example/cmdif_demo/Makefile
+		 example/kni_demo/Makefile
+		 example/switch/Makefile])
