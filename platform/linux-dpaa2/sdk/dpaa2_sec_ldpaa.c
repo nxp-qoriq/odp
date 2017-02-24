@@ -57,11 +57,12 @@ TAILQ_HEAD(sec_map_list, sec_dev_list);
 struct sec_map_list dev_map_list;
 struct sec_dev_list *sec_dev_map, *last_used_dev = NULL;
 
-void *dpaa2_sec_contig_fd_to_mbuf(const struct qbman_fd *fd);
-void *dpaa2_sec_sg_fd_to_mbuf(const struct qbman_fd *fd);
-void *dpaa2_sec_contig_simple_fd_to_mbuf(const struct qbman_fd *fd);
+void *dpaa2_sec_simple_contig_fd_to_mbuf(const struct qbman_fd *fd);
+void *dpaa2_sec_simple_sg_fd_to_mbuf(const struct qbman_fd *fd);
+void *dpaa2_sec_compound_contig_fd_to_mbuf(const struct qbman_fd *fd);
+void *dpaa2_sec_compound_sg_fd_to_mbuf(const struct qbman_fd *fd);
 
-void *dpaa2_sec_contig_simple_fd_to_mbuf(const struct qbman_fd *fd)
+void *dpaa2_sec_simple_contig_fd_to_mbuf(const struct qbman_fd *fd)
 {
 	ipsec_sa_entry_t *sa;
 	dpaa2_mbuf_pt mbuf;
@@ -85,7 +86,44 @@ void *dpaa2_sec_contig_simple_fd_to_mbuf(const struct qbman_fd *fd)
 	return mbuf;
 }
 
-void *dpaa2_sec_contig_fd_to_mbuf(const struct qbman_fd *fd)
+void *dpaa2_sec_simple_sg_fd_to_mbuf(const struct qbman_fd *fd)
+{
+	struct dpaa2_mbuf *first_seg;
+	struct dpaa2_sg_entry *sgt, *sge;
+	dma_addr_t sg_addr, fd_addr;
+	int i = 0;
+	uint32_t sg_length;
+	ipsec_sa_entry_t *sa;
+
+	fd_addr = (uint64_t)DPAA2_GET_FD_ADDR(fd);
+
+	/*Get Scatter gather table address*/
+	sgt = (struct dpaa2_sg_entry *)(fd_addr + DPAA2_GET_FD_OFFSET(fd));
+
+	sge = &sgt[i++];
+	sg_addr = (uint64_t)dpaa2_sg_get_addr(sge);
+	sg_length = dpaa2_sg_get_len(sge);
+
+	/*First Scatter gather entry*/
+	first_seg = DPAA2_INLINE_MBUF_FROM_BUF(sg_addr,
+			bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
+
+	sa = (ipsec_sa_entry_t *)first_seg->drv_priv_cnxt;
+
+	if (sa->dir == ODP_IPSEC_DIR_OUTBOUND)
+		first_seg->data += SEC_FLC_DHR_OUTBOUND;
+	else
+		first_seg->data += SEC_FLC_DHR_INBOUND;
+
+	first_seg->frame_len = sg_length;
+	first_seg->tot_frame_len = DPAA2_GET_FD_LEN(fd);;
+	first_seg->drv_priv_resv[1] = fd->simple.frc;
+	first_seg->flags |= DPAA2BUF_SEC_CNTX_VALID;
+	first_seg->vq = (void *)DPAA2_GET_FD_FLC(fd);
+	return (void *)first_seg;
+}
+
+void *dpaa2_sec_compound_contig_fd_to_mbuf(const struct qbman_fd *fd)
 {
 	/* FIXME Check if you can pass the original XXX_req in original
 	   buffer or FD? If so, retrieving it back will be efficient. */
@@ -152,7 +190,7 @@ void *dpaa2_sec_contig_fd_to_mbuf(const struct qbman_fd *fd)
 	return mbuf;
 }
 
-void *dpaa2_sec_sg_fd_to_mbuf(const struct qbman_fd *fd)
+void *dpaa2_sec_compound_sg_fd_to_mbuf(const struct qbman_fd *fd)
 {
 	dpaa2_mbuf_pt mbuf, cur_seg;
 	struct qbman_fle *fle, *sge;
@@ -221,8 +259,12 @@ void *dpaa2_sec_cb_dqrr_fd_to_mbuf(
 		const struct qbman_fd *fd,
 		const struct qbman_result *dqrr ODP_UNUSED)
 {
-	if (!qbman_fd_get_format(fd))
-		return dpaa2_sec_contig_simple_fd_to_mbuf(fd);
+	uint8_t format;
+	format = qbman_fd_get_format(fd);
+	if (format == qbman_fd_single)
+		return dpaa2_sec_simple_contig_fd_to_mbuf(fd);
+	else if (format == qbman_fd_sg)
+		return dpaa2_sec_simple_sg_fd_to_mbuf(fd);
 	else {
 		struct qbman_fle *fle;
 		fle = (struct qbman_fle *)DPAA2_GET_FD_ADDR(fd);
@@ -232,9 +274,9 @@ void *dpaa2_sec_cb_dqrr_fd_to_mbuf(
 			sge = (struct qbman_fle *)DPAA2_GET_FLE_ADDR(fle);
 			if (((void *)fle + DPAA2_MBUF_HW_ANNOTATION +
 					DPAA2_FD_PTA_SIZE) == (void *)sge)
-					return dpaa2_sec_sg_fd_to_mbuf(fd);
+					return dpaa2_sec_compound_sg_fd_to_mbuf(fd);
 		}
-		return dpaa2_sec_contig_fd_to_mbuf(fd);
+		return dpaa2_sec_compound_contig_fd_to_mbuf(fd);
 	}
 }
 
