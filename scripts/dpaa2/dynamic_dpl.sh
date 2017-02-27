@@ -229,7 +229,7 @@ get_dpcon_parameters() {
 		fi
 
 	else
-		DPCON_COUNT=5
+		DPCON_COUNT=11
 	fi
 	if [[ -z "$DPCON_PRIORITIES" ]]
 	then
@@ -247,7 +247,7 @@ get_dpcon_parameters() {
 get_dpbp_parameters() {
 	if [[ -z "$DPBP_COUNT" ]]
 	then
-		DPBP_COUNT=4
+		DPBP_COUNT=10
 	fi
 	echo "DPBP parameters :-->" >> dynamic_dpl_logs
 	echo -e "\tDPBP_COUNT = "$DPBP_COUNT >> dynamic_dpl_logs

@@ -1,4 +1,5 @@
 /* Copyright (C) 2015 Freescale Semiconductor,Inc
+ * Copyright (c) 2017, NXP Semiconductor
  * All rights reserved.
  *
  * SPDX-License-Identifier:     BSD-3-Clause
@@ -34,6 +35,12 @@
  */
 #define SHM_PKT_POOL_SIZE      (2048 * SHM_PKT_POOL_BUF_SIZE)
 
+/** @def SHM_ORDERED_PKT_POOL_BUFFERS
+ * @brief Size of the shared memory block
+ * TODO: Due to HW ORL limitation of 512, limiting buffers to 512
+ */
+#define SHM_ORDERED_PKT_POOL_BUFFERS      512
+
 /* ODP application data memory size include packet buffers */
 #define ODPAPP_DATA_MEM_SIZE  ((uint64_t)256 * 1024 * 1024) /*256 MB*/
 
@@ -52,6 +59,8 @@
 
 /* Shuould not be used by User */
 #define APPL_MODE_BENCHMARK		3
+
+#define ALL_GROUPS			0xFF
 
 
 /** @def PRINT_APPL_MODE(x)
@@ -73,7 +82,7 @@ typedef struct {
 	int if_count;		/**< Number of interfaces to be used */
 	char **if_names;	/**< Array of pointers to interface names */
 	int mode;		/**< Packet IO mode */
-	int buf_size;		/**< Size of each buffer in packet pool*/
+	int buf_size;		/**< Size of each buffer in packet pool, not valid for ordered queues*/
 	char *if_str;		/**< Storage for interface names */
 	int queue_type;		/**< Scheduler Queue synchronization type*/
 } appl_args_t;
@@ -82,8 +91,8 @@ typedef struct {
  * Thread specific arguments
  */
 typedef struct {
-	char *pktio_dev;	/**< Interface name to use */
 	int mode;		/**< Thread mode */
+	int grp_idx;		/**< scheduler group index */
 } thread_args_t;
 
 /**
@@ -101,6 +110,9 @@ static args_t *args;
 
 /** Global buffer pool */
 static odp_pool_t pool;
+
+/** Global pointor to scheduler groups */
+odp_schedule_group_t *sched_grp;
 
 /* helper funcs */
 static void swap_spkt_addrs(odp_packet_t pkt);
@@ -135,7 +147,7 @@ char *mac_addr_str(char *b, uint8_t *mac)
  * @return The handle of the created pktio object.
  * @retval ODP_PKTIO_INVALID if the create fails.
  */
-static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int queue_type)
+static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int queue_type, odp_schedule_group_t grp)
 {
 	odp_pktio_t pktio;
 	int ret;
@@ -153,7 +165,7 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int queue_typ
 
 	odp_pktin_queue_param_init(&pktin_param);
 	pktin_param.queue_param.sched.sync = queue_type;
-	pktin_param.queue_param.sched.group = ODP_SCHED_GROUP_ALL;
+	pktin_param.queue_param.sched.group = grp;
 	pktin_param.queue_param.sched.prio = ODP_SCHED_PRIO_DEFAULT;
 	pktin_param.queue_param.type = ODP_QUEUE_TYPE_SCHED;
 	ret = odp_pktio_capability(pktio, &capa);
@@ -173,10 +185,6 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int queue_typ
 	ret = odp_pktio_start(pktio);
 	if (ret != 0)
 		EXAMPLE_ABORT("Error: unable to start %s\n", name);
-
-	printf("  created pktio:%02" PRIu64
-	       ", name:%s\n",
-	       odp_pktio_to_u64(pktio), name);
 
 	return pktio;
 }
@@ -210,12 +218,16 @@ static void swap_spkt_addrs(odp_packet_t pkt)
  */
 static void *pktio_alloc_thread(void *arg)
 {
-	int thr;
-	odp_pktio_t pktio;
+	int thr, i, ret;
 	thread_args_t *thr_args;
 	odp_packet_t pkt, pkt2;
 	odp_pktout_queue_t pktout;
 	odp_event_t ev;
+	odp_thrmask_t thread_mask;
+
+	thr = odp_thread_id();
+	odp_thrmask_zero(&thread_mask);
+	odp_thrmask_set(&thread_mask, thr);
 
 #ifdef PERF_MONITOR
 	uint64_t pkt_cnt = 0;
@@ -223,18 +235,26 @@ static void *pktio_alloc_thread(void *arg)
 
 	arm_enable_cycle_counter();
 #endif
-	thr = odp_thread_id();
 	thr_args = arg;
 
-	pktio = odp_pktio_lookup(thr_args->pktio_dev);
-	if (pktio == ODP_PKTIO_INVALID) {
-		EXAMPLE_ERR("  [%02i] Error: lookup of pktio %s failed\n",
-			    thr, thr_args->pktio_dev);
-		return NULL;
-	}
+	if (thr_args->grp_idx != ALL_GROUPS ) {
+		odp_schedule_group_info_t info;
 
-	printf("  [%02i] looked up pktio:%02" PRIu64 "\n",
-				thr, odp_pktio_to_u64(pktio));
+		ret = odp_schedule_group_join(sched_grp[thr_args->grp_idx], &thread_mask);
+		if (ret)
+			EXAMPLE_ABORT("failed to join sched group to thread %d\n", thr);
+
+		odp_schedule_group_info(sched_grp[thr_args->grp_idx], &info);
+		printf("  Thread[%02i], CPU[%02i] looked up scheduler group (%s)\n", thr, odp_cpu_id(), info.name);
+	} else {
+		for (i = 0; i < args->appl.if_count; i++) {
+			ret = odp_schedule_group_join(sched_grp[i], &thread_mask);
+			if (ret)
+				EXAMPLE_ABORT("failed to join sched group to thread %d\n", thr);
+		}
+		printf("  Thread[%02i], CPU[%02i] looked up scheduler groups (sched_grp_0 ... sched_grp_%d)\n",
+				thr, odp_cpu_id(), i);
+	}
 
 	/* Loop packets */
 	for (;;) {
@@ -285,6 +305,7 @@ static void *pktio_alloc_thread(void *arg)
 /* unreachable */
 	return NULL;
 }
+
 /**
  * Loopback worker thread using ODP queues
  *
@@ -292,31 +313,41 @@ static void *pktio_alloc_thread(void *arg)
  */
 static void *pktio_thread(void *arg)
 {
-	int thr;
-	odp_pktio_t pktio;
+	int thr, ret, i;
 	odp_pktout_queue_t pktout;
 	thread_args_t *thr_args;
 	odp_packet_t pkt;
 	odp_event_t ev;
+	odp_thrmask_t thread_mask;
 
+	thr = odp_thread_id();
+	odp_thrmask_zero(&thread_mask);
+	odp_thrmask_set(&thread_mask, thr);
+	thr_args = arg;
+
+	if (thr_args->grp_idx != ALL_GROUPS ) {
+		odp_schedule_group_info_t info;
+
+		ret = odp_schedule_group_join(sched_grp[thr_args->grp_idx], &thread_mask);
+		if (ret)
+			EXAMPLE_ABORT("failed to join sched group to thread %d\n", thr);
+
+		odp_schedule_group_info(sched_grp[thr_args->grp_idx], &info);
+		printf("  Thread[%02i], CPU[%02i] looked up scheduler group (%s)\n", thr, odp_cpu_id(), info.name);
+	} else {
+		for (i = 0; i < args->appl.if_count; i++) {
+			ret = odp_schedule_group_join(sched_grp[i], &thread_mask);
+			if (ret)
+				EXAMPLE_ABORT("failed to join sched group to thread %d\n", thr);
+		}
+		printf("  Thread[%02i], CPU[%02i] looked up scheduler groups (sched_grp_0 ... sched_grp_%d)\n",
+				thr, odp_cpu_id(), i);
+	}
 #ifdef PERF_MONITOR
 	uint64_t pkt_cnt = 0, read1 = 0, read2 = 0, diff = 0;
 
 	arm_enable_cycle_counter();
 #endif
-
-	thr = odp_thread_id();
-	thr_args = arg;
-
-	pktio = odp_pktio_lookup(thr_args->pktio_dev);
-	if (pktio == ODP_PKTIO_INVALID) {
-		EXAMPLE_ERR("  [%02i] Error: lookup of pktio %s failed\n",
-			    thr, thr_args->pktio_dev);
-		return NULL;
-	}
-
-	printf("  [%02i] looked up pktio:%02" PRIu64 "\n",
-				thr, odp_pktio_to_u64(pktio));
 
 	/* Loop packets */
 	for (;;) {
@@ -384,7 +415,7 @@ int main(int argc, char *argv[])
 	odph_linux_pthread_t thread_tbl[MAX_WORKERS];
 	int num_workers;
 	int i;
-	int cpu;
+	int cpu, workers_per_if, workers_to_all_if;
 	odp_cpumask_t cpumask;
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
 	odp_pool_param_t params;
@@ -393,6 +424,7 @@ int main(int argc, char *argv[])
 	odp_pktio_t pktio;
 	odp_instance_t instance;
 	odph_linux_thr_params_t thr_params;
+	odp_pool_t *eth_pool;
 
 	args = calloc(1, sizeof(args_t));
 	if (args == NULL) {
@@ -404,6 +436,14 @@ int main(int argc, char *argv[])
 	parse_args(argc, argv, &args->appl);
 
 	/* Init ODP before calling anything else */
+
+	eth_pool = malloc(sizeof(odp_pool_t) * args->appl.if_count);
+	if (!eth_pool)
+		EXAMPLE_ABORT("Error: pool mem alloc failed\n");
+
+	sched_grp = malloc(sizeof(odp_schedule_group_t) * args->appl.if_count);
+	if (!sched_grp)
+		EXAMPLE_ABORT("Error: scheduler group mem alloc failed\n");
 
 	switch (args->appl.mode) {
 	case  APPL_MODE_PKT_SCHED_PULL:
@@ -449,40 +489,67 @@ int main(int argc, char *argv[])
 
 	printf("num worker threads: %i\n", num_workers);
 	printf("first CPU:          %i\n", odp_cpumask_first(&cpumask));
-	printf("cpu mask:           %s\n", cpumaskstr);
+	printf("cpu mask:           %s\n\n", cpumaskstr);
 
 	/* Create packet pool */
 	odp_pool_param_init(&params);
 	params.pkt.seg_len = args->appl.buf_size;
 	params.pkt.len     = args->appl.buf_size;
-	params.pkt.num     = SHM_PKT_POOL_SIZE / args->appl.buf_size;
+	if (args->appl.queue_type == ODP_SCHED_SYNC_ORDERED)
+		params.pkt.num     = SHM_ORDERED_PKT_POOL_BUFFERS / args->appl.if_count;
+	else
+		params.pkt.num     = SHM_PKT_POOL_SIZE / args->appl.buf_size;
+
 	params.type        = ODP_POOL_PACKET;
 
-	pool = odp_pool_create("packet_pool", &params);
+	pool = odp_pool_create("default_packet_pool", &params);
 
 	if (pool == ODP_POOL_INVALID) {
 		EXAMPLE_ABORT("Error: packet pool create failed.\n");
 	}
-	odp_pool_print(pool);
 
+	odp_thrmask_t zeromask;
+	odp_thrmask_zero(&zeromask);
 	/* Create a pktio instance for each interface */
-	for (i = 0; i < args->appl.if_count; ++i)
-		create_pktio(args->appl.if_names[i], pool, args->appl.queue_type);
+	for (i = 0; i < args->appl.if_count; ++i) {
+		char pool_name[ODP_POOL_NAME_LEN];
+		odp_pool_info_t info;
+		char grp_name[32];
 
-	printf("  Configured queues SYNC type: [%s]\n", (args->appl.queue_type == 0)?
+		snprintf(pool_name, sizeof(pool_name), "pkt_pool_%s", args->appl.if_names[i]);
+		snprintf(grp_name, sizeof(grp_name), "sched_grp_%d", i);
+		sched_grp[i] = odp_schedule_group_create(grp_name, &zeromask);
+		if (sched_grp[i] == ODP_SCHED_GROUP_INVALID)
+			EXAMPLE_ABORT("Error: scheduler group create failed.\n");
+		eth_pool[i] = odp_pool_create(pool_name, &params);
+		if (eth_pool[i] == ODP_POOL_INVALID)
+			EXAMPLE_ABORT("Error: packet pool create failed.\n");
+
+		create_pktio(args->appl.if_names[i], eth_pool[i], args->appl.queue_type, sched_grp[i]);
+		odp_pool_info(eth_pool[i], &info);
+		printf(" Attached pool\t\t\t= pkt_pool_%s, buffers = %d\n",
+				args->appl.if_names[i], info.params.buf.num);
+		printf(" Affined scheduler grp\t= %s\n", grp_name);
+	}
+
+	printf("  \nConfigured queues SYNC type: [%s]\n", (args->appl.queue_type == 0)?
 							"PARALLEL":(args->appl.queue_type == 1)?
 							"ATOMIC":"ORDERED");
 	/* Create and init worker threads */
 	memset(thread_tbl, 0, sizeof(thread_tbl));
 
+	workers_per_if = num_workers / args->appl.if_count;
+	workers_to_all_if = num_workers % args->appl.if_count;
+
 	cpu = odp_cpumask_first(&cpumask);
 	for (i = 0; i < num_workers; ++i) {
 		odp_cpumask_t thd_mask;
-		int if_idx;
 
-		if_idx = i % args->appl.if_count;
+		if ((i + workers_to_all_if) < num_workers)
+			args->thread[i].grp_idx = i / workers_per_if;
+		else
+			args->thread[i].grp_idx = ALL_GROUPS;
 
-		args->thread[i].pktio_dev = args->appl.if_names[if_idx];
 		args->thread[i].mode = args->appl.mode;
 
 		/*
@@ -497,9 +564,9 @@ int main(int argc, char *argv[])
 			pktio_alloc_thread : pktio_thread;
 		thr_params.arg   = &args->thread[i];
 
-
 		odp_cpumask_zero(&thd_mask);
 		odp_cpumask_set(&thd_mask, cpu);
+
 		odph_linux_pthread_create(&thread_tbl[i], &thd_mask,
 					  &thr_params);
 		cpu = odp_cpumask_next(&cpumask, cpu);
@@ -517,6 +584,15 @@ int main(int argc, char *argv[])
 		odp_pktio_stats(pktio, &stats);
 		stats_prints(pktio, &stats);
 	}
+
+	for (i = 0; i < args->appl.if_count; ++i) {
+		odp_pool_destroy(eth_pool[i]);
+	}
+
+	odp_pool_destroy(pool);
+
+	free(eth_pool);
+	free(sched_grp);
 	free(args->appl.if_names);
 	free(args->appl.if_str);
 	free(args);
@@ -741,7 +817,7 @@ static void print_info(char *progname, appl_args_t *appl_args)
 		PRINT_APPL_MODE(APPL_MODE_BENCHMARK);
 		break;
 	}
-	printf("\n\n");
+	printf("\n");
 	fflush(NULL);
 }
 
