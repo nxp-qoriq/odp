@@ -1309,6 +1309,10 @@ static void *dpaa2_eth_sg_fd_to_mbuf(
 		p_annotation = fd_addr;
 
 	first_seg->hw_annot = p_annotation;
+	/* Prefetch annotation and data */
+	odp_prefetch(first_seg->hw_annot);
+	odp_prefetch(first_seg->data);
+
 	frc = DPAA2_GET_FD_FRC(fd);
 	if (frc & DPAA2_FD_FRC_FASV)
 		first_seg->timestamp = odp_be_to_cpu_64
@@ -1391,6 +1395,10 @@ static void *dpaa2_eth_contig_fd_to_mbuf(
 		p_annotation += DPAA2_FD_PTA_SIZE;
 
 	mbuf->hw_annot = (uint64_t)p_annotation;
+	/* Prefetch annotation and data */
+	odp_prefetch(mbuf->hw_annot);
+	odp_prefetch(mbuf->data);
+
 	frc = DPAA2_GET_FD_FRC(fd);
 	if (frc & DPAA2_FD_FRC_FASV)
 		mbuf->timestamp = odp_be_to_cpu_64
