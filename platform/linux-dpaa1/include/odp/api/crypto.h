@@ -27,10 +27,6 @@ extern "C" {
 #include <odp/api/spec/crypto.h>
 #include <odp/api/ipsec.h>
 
-#include <odp/api/plat/crypto_ipsec_types.h>
-
-#include <odp/api/spec/crypto_ipsec.h>
-
 #ifdef __cplusplus
 }
 #endif
