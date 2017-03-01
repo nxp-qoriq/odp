@@ -38,6 +38,9 @@ typedef int odp_bool_t;
 #define FALSE 0
 #endif
 
+#define DPAA1_SUCCESS 0
+#define DPAA1_FAILURE -1
+
 /**
  * @}
  */

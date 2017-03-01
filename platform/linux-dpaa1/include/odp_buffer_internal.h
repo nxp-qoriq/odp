@@ -116,6 +116,8 @@ typedef struct odp_buffer_hdr_t {
 	int8_t                   type;       /* buffer type */
 	odp_event_type_t         event_type; /* for reuse as event */
 	uint32_t                 size;       /* max data size */
+	void			*drv_priv_cnxt; /*!< Private context 1 for Driver usage */
+	uint32_t 		drv_priv_resv; /*!< Private context reserverd for Driver usage usage */
 	odp_atomic_u32_t         ref_count;  /* reference count */
 	uint32_t                 segcount;   /* segment count */
 	uint32_t                 segsize;    /* segment size */
