@@ -1022,12 +1022,15 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 				for ordered queue. This shoud be fixed after
 				the resolution of issues MC-2171 and MC-2172*/
 			pktio_entry = get_pktio_entry((odp_pktio_t)dev->pktio);
-			if (!pktio_entry)
+			if (!pktio_entry) {
 				ODP_ERR("pktio entry not found\n");
+				return DPAA2_FAILURE;
+			}
 			pool = odp_pool_to_entry(pktio_entry->s.pkt_dpaa2.pool);
-			if (!pool)
+			if (!pool) {
 				ODP_ERR("pool not found\n");
-
+				return DPAA2_FAILURE;
+			}
 			swp = thread_io_info.dpio_dev->sw_portal;
 			POOL_LOCK(&pool->s.lock);
 			prev_bufs = pool->s.params.pkt.num;

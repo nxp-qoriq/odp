@@ -46,7 +46,7 @@ void dpaa2_register_driver(struct dpaa2_driver *drv)
 		return;
 	}
 	/* Store the driver pointer */
-	if (drv->dev_type > DPAA2_MAX_DEV) {
+	if (drv->dev_type >= DPAA2_MAX_DEV) {
 		DPAA2_ERR(FW, "Device not supported.\n");
 		return;
 	}
@@ -63,7 +63,7 @@ void dpaa2_register_driver(struct dpaa2_driver *drv)
 
 void dpaa2_unregister_driver(struct dpaa2_driver *drv)
 {
-	if (drv->dev_type > DPAA2_MAX_DEV) {
+	if (drv->dev_type >= DPAA2_MAX_DEV) {
 		DPAA2_ERR(FW, "Device not supported.\n");
 		return;
 	}

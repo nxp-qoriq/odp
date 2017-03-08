@@ -142,7 +142,7 @@ static inline uint32_t dpaa2_handle_to_index(void *int_hdl)
 
 static inline uint32_t bpid_to_index(uint16_t bpid)
 {
-	int i = ODP_BUFFER_MAX_POOLS;
+	int i;
 	for (i = 0; i < ODP_BUFFER_MAX_POOLS; i++)
 		if (((pool_entry_t *)pool_entry_ptr[i])->s.bpid == bpid)
 			break;

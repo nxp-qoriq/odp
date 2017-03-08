@@ -115,6 +115,11 @@ static int32_t odp_offload_rules(odp_pktio_t pktio)
 
 	/*Get pktio entry where rules are to be applied*/
 	entry = get_pktio_entry(pktio);
+	if (!entry) {
+		ODP_ERR("Invalid odp_pktio_t handle");
+		return -1;
+	}
+
 	dev = entry->s.pkt_dpaa2.dev;
 	dev_priv = dev->priv;
 	dpni = dev_priv->hw;
@@ -1927,7 +1932,7 @@ int odp_setup_dist(pktio_entry_t *pktio_entry)
 	key_cfg = pktio_entry->s.priv;
 	param = (uint8_t *)pktio_entry->s.cls.tc_cfg.key_cfg_iova;
 	memset(param, 0, DIST_PARAM_IOVA_SIZE);
-	memset(key_cfg, 0, DIST_PARAM_IOVA_SIZE);
+	memset(key_cfg, 0, sizeof(struct dpkg_profile_cfg));
 
 	odp_setup_extract_key(key_cfg);
 	/* no need for mc portal lock*/

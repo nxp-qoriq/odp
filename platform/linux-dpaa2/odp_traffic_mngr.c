@@ -71,7 +71,7 @@ static tm_node_obj_t *tm_node_alloc(void)
 	/* Find an open slot in the odp_tm_nodes array. */
 	for (tm_node_idx = 0; tm_node_idx < ODP_TM_MAX_NUM_TM_NODES; tm_node_idx++) {
 		if (!odp_tm_nodes[tm_node_idx]) {
-			tm_node = malloc(sizeof(tm_system_t));
+			tm_node = malloc(sizeof(tm_node_obj_t));
 			memset(tm_node, 0, sizeof(tm_node_obj_t));
 			tm_node->tm_idx = tm_node_idx;
 			odp_tm_nodes[tm_node_idx] = tm_node;
@@ -746,8 +746,6 @@ int odp_tm_queue_sched_config(odp_tm_node_t tm_node,
 	}
 
 	sched_params = &odp_sched_profiles[sched_profile].sched_params;
-	if (!sched_params)
-		return -1;
 
 	/*Get platform device*/
 	tm_system = odp_tm_systems[tm_node_obj->tm_system_idx];

@@ -126,12 +126,13 @@ void dpaa2_eth_promiscuous_enable(ODP_UNUSED struct dpaa2_dev *dev)
 {
 	int ret;
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
-	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
+
 	if (dev_priv == NULL) {
 		DPAA2_ERR(ETH, "dev_priv is NULL");
 		return;
 	}
 
+	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	if (dpni == NULL) {
 		DPAA2_ERR(ETH, "dpni is NULL");
@@ -149,12 +150,13 @@ void dpaa2_eth_promiscuous_disable(struct dpaa2_dev *dev)
 {
 	int ret;
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
-	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
+
 	if (dev_priv == NULL) {
 		DPAA2_ERR(ETH, "dev_priv is NULL");
 		return;
 	}
 
+	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	if (dpni == NULL) {
 		DPAA2_ERR(ETH, "dpni is NULL");
@@ -183,12 +185,12 @@ void dpaa2_eth_multicast_enable(struct dpaa2_dev *dev)
 {
 	int ret;
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
-	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
 	if (dev_priv == NULL) {
 		DPAA2_ERR(ETH, "dev_priv is NULL");
 		return;
 	}
 
+	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	if (dpni == NULL) {
 		DPAA2_ERR(ETH, "dpni is NULL");
@@ -207,12 +209,13 @@ void dpaa2_eth_multicast_disable(struct dpaa2_dev *dev)
 {
 	int ret;
 	struct dpaa2_dev_priv *dev_priv = dev->priv;
-	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
+
 	if (dev_priv == NULL) {
 		DPAA2_ERR(ETH, "dev_priv is NULL");
 		return;
 	}
 
+	struct dpaa2_eth_priv *epriv = (struct dpaa2_eth_priv *)(dev_priv->drv_priv);
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)(dev_priv->hw);
 	if (dpni == NULL) {
 		DPAA2_ERR(ETH, "dpni is NULL");

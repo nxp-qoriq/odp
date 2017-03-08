@@ -123,7 +123,7 @@ dpaa2_eal_log_init(struct dpaa2_init_cfg *cfg, const char *id, int facility)
 		dpaa2_logs.file_logging = 1;
 		/* Validate input parameters */
 		uint64_t total_file_size;
-		total_file_size = (cfg->log_file_size) * (cfg->log_files);
+		total_file_size = (uint64_t)(cfg->log_file_size) * (cfg->log_files);
 		if (total_file_size > DPAA2_MAX_LOG_FILES_SIZE) {
 			printf("\n Log file can have maximum size 1MB\n");
 			cfg->log_file_size = DPAA2_DEF_LOG_FILE_SIZE;
