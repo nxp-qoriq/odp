@@ -123,6 +123,10 @@ int odp_pktio_term_global(void)
 			odp_pktout_mode_t outmode;
 			odp_pktin_mode_t inmode;
 
+			ret = dpaa2_eth_stop(ndev);
+			if (ret)
+				ODP_ERR("Failed to stop pktio\n");
+
 			outmode = pktio_entry->s.param.out_mode;
 			lock_entry(pktio_entry);
 			if (outmode == ODP_PKTOUT_MODE_QUEUE) {
@@ -680,9 +684,11 @@ int odp_pktio_inq_rem(odp_pktio_t id, uint8_t vq_id)
 		struct dpaa2_vq *vq = ndev->rx_vq[vq_id];
 
 		if (vq->sync == ODP_SCHED_SYNC_ORDERED) {
+			struct opr_cfg cfg;
+
 			/*XXX API may return error in case setting the opr on TC rather than on a queue*/
 			ret = dpni_set_opr(dpni, CMD_PRI_LOW, dev_priv->token,
-						vq->tc_index, vq->flow_id, OPR_OPT_RETIRE, NULL);
+						vq->tc_index, vq->flow_id, OPR_OPT_RETIRE, &cfg);
 			if (ret) {
 				DPAA2_ERR(ETH, "Error in queue retire: ErrorCode = %d\n",
 										ret);
