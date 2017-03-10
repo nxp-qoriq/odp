@@ -1027,9 +1027,10 @@ dpaa2_eal_hugepage_init(struct dpaa2_init_cfg *cfg)
 			new_memseg = 1;
 
 		if (new_memseg) {
-			j += 1;
+
 			if (j == DPAA2_MAX_MEMSEG)
 				break;
+			j += 1;
 
 			mcfg->memseg[j].phys_addr = hugepage[i].physaddr;
 			mcfg->memseg[j].addr = hugepage[i].final_va;

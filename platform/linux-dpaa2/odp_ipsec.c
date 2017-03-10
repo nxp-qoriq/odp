@@ -487,7 +487,7 @@ odp_ipsec_sa_t odp_ipsec_sa_create(odp_ipsec_sa_param_t *param)
 		ODP_ERR("Frag mode not supported\n");
 		return ODP_IPSEC_SA_INVALID;
 	}
-
+	memset(&vq_cfg, 0, sizeof(struct dpaa2_vq_param));
 	qentry = queue_to_qentry(param->dest_queue);
 	queue_lock(qentry);
 

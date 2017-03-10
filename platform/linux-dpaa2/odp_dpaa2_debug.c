@@ -1118,7 +1118,7 @@ static void *open_socket(void *arg ODP_UNUSED)
 	if (port_no < 1024) {
 		ODP_ERR("ERROR: Cannot use priviledged ports,"
 				"Please use port number greater than 1023\n");
-		return NULL;
+		goto close_ret;
 	}
 
 	server_addr.sin_port = htons(port_no);
@@ -1127,7 +1127,7 @@ static void *open_socket(void *arg ODP_UNUSED)
 	if ((bind(udp_socket, (struct sockaddr *)&server_addr,
 		  sizeof(server_addr))) == -1) {
 		perror("Platform Debug Server Socket bind FAILED");
-		return NULL;
+		goto close_ret;
 	}
 
 	client_addr_size = sizeof(client_addr);
@@ -1149,7 +1149,7 @@ static void *open_socket(void *arg ODP_UNUSED)
 		msg = (void *)&buffer;
 		event_handler(msg);
 	}
-
+close_ret:
 	close(udp_socket);
 	return NULL;
 }

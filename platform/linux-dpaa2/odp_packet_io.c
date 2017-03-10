@@ -551,7 +551,7 @@ odp_pktio_t odp_pktio_lookup(const char *name)
 
 	for (i = 1; i <= ODP_CONFIG_PKTIO_ENTRIES; ++i) {
 		entry = get_pktio_entry(_odp_cast_scalar(odp_pktio_t, i));
-		if (is_free(entry))
+		if (entry && is_free(entry))
 			continue;
 
 		lock_entry(entry);
@@ -656,10 +656,10 @@ int odp_pktio_inq_rem(odp_pktio_t id, uint8_t vq_id)
 	odp_queue_t queue;
 	int ret;
 
-	ndev = pktio_entry->s.pkt_dpaa2.dev;
-
 	if (pktio_entry == NULL)
 		return -1;
+
+	ndev = pktio_entry->s.pkt_dpaa2.dev;
 
 	queue = (odp_queue_t)dpaa2_dev_get_vq_handle(ndev->rx_vq[vq_id]);
 
@@ -1066,7 +1066,7 @@ int odp_pktio_stats(odp_pktio_t pktio,
 		/* Ingress drop frame count due to confiured rules*/
 		stats->in_discards = value.page_2.ingress_filtered_frames;
 		/* Ingress drop frame count due to error*/
-		stats->in_discards = value.page_2.ingress_discarded_frames;
+		stats->in_discards += value.page_2.ingress_discarded_frames;
 		/* Egress drop frame count due to error*/
 		stats->out_errors = value.page_2.egress_discarded_frames;
 		stats->out_discards = 0;

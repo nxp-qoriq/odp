@@ -145,6 +145,7 @@ static int32_t dpaa2_dev_init_all(struct dpaa2_init_cfg *cfg)
 				mcp_obj = dpaa2_malloc(NULL, sizeof(dir->d_name));
 				if (!mcp_obj) {
 					DPAA2_ERR(FW, "\t Unable to allocate memory\n");
+					closedir(d);
 					return DPAA2_FAILURE;
 				}
 				strcpy(mcp_obj, dir->d_name);

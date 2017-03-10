@@ -118,7 +118,7 @@ dpaa2_memdump(FILE *f, const char *title, const void *buf, unsigned int len)
 	}
 	if (out > 0)
 		fprintf(f, "%s", line);
-		fprintf(f, "\n");
+	fprintf(f, "\n");
 
 	fflush(f);
 }

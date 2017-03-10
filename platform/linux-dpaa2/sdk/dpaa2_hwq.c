@@ -132,7 +132,7 @@ int dpaa2_hwq_probe(struct dpaa2_dev *dev,
 	}
 
 	/* Set up the Rx Queue */
-	memset(&rx_queue_cfg, 0, sizeof(struct dpci_dest_cfg));
+	memset(&rx_queue_cfg, 0, sizeof(struct dpci_rx_queue_cfg));
 	ret = dpci_set_rx_queue(dpci, CMD_PRI_LOW,
 				dev_priv->token, 0, &rx_queue_cfg);
 	if (ret) {
