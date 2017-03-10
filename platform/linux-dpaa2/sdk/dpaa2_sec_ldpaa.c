@@ -435,7 +435,20 @@ int32_t dpaa2_sec_setup_rx_vq(struct dpaa2_dev *dev,
 		}
 		if (vq_cfg->sync & ODP_SCHED_SYNC_ORDERED) {
 			struct opr_cfg cfg;
+			int is_enable;
 
+			retcode = dpseci_is_enabled(dpseci, CMD_PRI_LOW, dev_priv->token, &is_enable);
+			if (retcode) {
+				DPAA2_ERR(SEC, "Failed to get SEC device status err =%d\n", retcode);
+				return DPAA2_FAILURE;
+			}
+			if (is_enable) {
+				retcode = dpseci_disable(dpseci, CMD_PRI_LOW, dev_priv->token);
+				if (retcode) {
+					DPAA2_ERR(SEC, "Failed to disable the SEC device err = %d\n", retcode);
+					return DPAA2_FAILURE;
+				}
+			}
 			cfg.oprrws = 5;	/*Restoration window size = 1024 frames*/
 			cfg.oa = 0;	/*Auto advance NESN window disabled*/
 			cfg.olws = 2;	/*Late arrival window size = 1024 frames*/
@@ -447,6 +460,13 @@ int32_t dpaa2_sec_setup_rx_vq(struct dpaa2_dev *dev,
 				DPAA2_ERR(ETH, "Error in setting the order restoration for sec: ErrorCode = %d\n",
 									retcode);
 				return DPAA2_FAILURE;
+			}
+			if (is_enable) {
+				retcode = dpseci_enable(dpseci, CMD_PRI_LOW, dev_priv->token);
+				if (retcode) {
+					DPAA2_ERR(SEC, "Failed to disable the SEC device err =%d\n", retcode);
+					return DPAA2_FAILURE;
+				}
 			}
 
 		}
