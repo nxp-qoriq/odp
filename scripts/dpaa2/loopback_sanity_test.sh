@@ -124,6 +124,7 @@ Mandatory arguments:
 					REFLECTOR    => odp_reflector
 					KNI	     => odp_kni_demo
 					L3FWD	     => odp_l3fwd
+					TM	     => odp_tm
 					GENERATOR    => odp_generator
 					CLASSIFIER   => odp_classifier
 					IPSEC	     => odp_ipsec
@@ -148,7 +149,7 @@ Process of testing:
 		---- ping with destination 192.168.111.1, packets will go through NI, so only FDPNI0 is valid
 		     for testing. Results are based on %age packets received.
 
-	* odp_l3fwd
+	* odp_l3fwd/odp_tm
 		---- with iperf, only FDPNI0 and FDPNI1 should be used for testing. Results are based on
 		     %ge packets loss while iperf testing.
 
@@ -1013,7 +1014,7 @@ fi
 test_no=`expr $test_no + 1`
 }
 
-#/* Function to run the odp_l3fwd test cases*/
+#/* Function to run the odp_l3fwd/odp_tm test cases*/
 
 run_l3fwd() {
 echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) "
@@ -1022,6 +1023,7 @@ eval $PRINT_MSG
 $READ
 if [[ "$input" == "y" ]]
 then
+	export APPL_MEM_SIZE=64
 	echo -e " #$test_no)\t$1\t\tcommand ($2) " >> sanity_log
 	echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) " >> sanity_tested_apps
 	append_newline 1
@@ -1041,11 +1043,17 @@ then
 	echo
 	rm log
 	append_newline 3
-	killall odp_l3fwd
+	pid=`ps | pgrep odp_l3fwd`
+	if [[ -z "$pid" ]]
+	then
+		pid=`ps | pgrep odp_tm`
+	fi
+	kill -2 $pid
 	sleep 5
 	killall iperf
 	append_newline 5
 	sleep 5
+	export APPL_MEM_SIZE=32
 	echo
 	echo >> sanity_tested_apps
 else
@@ -1072,7 +1080,7 @@ case $1 in
 	TIMER )
 		run_timer $1 "$2"
 		;;
-	L3FWD )
+	L3FWD | TM )
 		run_l3fwd $1 "$2"
 		;;
 	GENERATOR )
@@ -1094,6 +1102,7 @@ esac
 
 #function to run odp example applications
 run_odp() {
+
 	#/* ODP_PKTIO MODE 0
 	# */
 	run_command PKTIO "./odp_pktio -c 8 -m 0 -i $FDPNI0"
@@ -1221,6 +1230,18 @@ run_odp() {
 	#/* ODP_GENERATOR
 	# */
 	run_command GENERATOR "./odp_generator -I $FDPNI0 --srcmac 00:00:00:00:05:01  --dstmac 00:00:00:00:08:01 --srcip 192.168.111.1 --dstip 192.168.111.2 -n 10 -m u"
+
+	#/* ODP_TM
+	# */
+	run_command TM "./odp_tm -i $FDPNI0,$FDPNI2 -c 8  -d 192.168.222.0/24:$FDPNI2:00.00.00.00.08.02 -r 192.168.111.0/24:$FDPNI0:00.00.00.00.08.01 -s 1 -r 500 -b 32"
+
+	#/* ODP_TM
+	# */
+	run_command TM "./odp_tm -i $FDPNI0,$FDPNI2 -c 8  -d 192.168.222.0/24:$FDPNI2:00.00.00.00.08.02 -r 192.168.111.0/24:$FDPNI0:00.00.00.00.08.01 -m 1 -w q1:10,q2:20,q3:30,q4:40,q5:50,q6:60,q7:70,q8:80 -s 1 -r 500 -b 32"
+
+	#/* ODP_TM
+	# */
+	run_command TM "./odp_tm -i $FDPNI0,$FDPNI2 -c 8  -d 192.168.222.0/24:$FDPNI2:00.00.00.00.08.02 -r 192.168.111.0/24:$FDPNI0:00.00.00.00.08.01 -m 1 -w q1:10,q2:10,q3:10,q4:10,q5:10,q6:10,q7:10,q8:10 -s 1 -r 500 -b 32"
 }
 
 run_cunit_command() {
