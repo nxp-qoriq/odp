@@ -440,6 +440,9 @@ static void configure_tm(odp_pktio_t pktio, appl_args_t *appl_args, int map_inde
 						  appl_args->map[map_index].tm_node_queue[prio],
 				tm_queue_sched);
 	}
+	appl_args->prio = num_queues;
+	if (appl_args->mode == APPL_SCHED_MODE_WEIGHTED)
+		appl_args->weight.num_queues = num_queues;
 	return;
 }
 
