@@ -15,11 +15,7 @@
 #define SHM_COMPL_POOL_SIZE	(128 * 1024)
 #define SHM_COMPL_POOL_BUF_SIZE	128
 
-odp_suiteinfo_t crypto_suites[] = {
-	{ODP_CRYPTO_ASYNC_INP, crypto_suite_async_init, NULL, crypto_suite},
-	{ODP_CRYPTO_SYNC_INP, crypto_suite_sync_init, NULL, crypto_suite},
-	ODP_SUITE_INFO_NULL,
-};
+odp_suiteinfo_t crypto_suites[3];
 
 int crypto_init(odp_instance_t *inst)
 {
@@ -103,7 +99,8 @@ int crypto_term(odp_instance_t inst)
 
 int crypto_main(int argc, char *argv[])
 {
-	int ret;
+	int ret, i = 0;
+	odp_crypto_capability_t capa;
 
 	/* parse common options: */
 	if (odp_cunit_parse_options(argc, argv))
@@ -112,6 +109,16 @@ int crypto_main(int argc, char *argv[])
 	odp_cunit_register_global_init(crypto_init);
 	odp_cunit_register_global_term(crypto_term);
 
+	ret = odp_crypto_capability(&capa);
+	if (ret)
+		return ret;
+	if (capa.op_mode_async)
+		crypto_suites[i++] = (odp_suiteinfo_t) {ODP_CRYPTO_ASYNC_INP, crypto_suite_async_init, NULL, crypto_suite};
+
+	if (capa.op_mode_sync)
+		crypto_suites[i++] = (odp_suiteinfo_t) {ODP_CRYPTO_SYNC_INP, crypto_suite_sync_init, NULL, crypto_suite};
+
+	crypto_suites[i++] = (odp_suiteinfo_t) ODP_SUITE_INFO_NULL;
 	ret = odp_cunit_register(crypto_suites);
 
 	if (ret == 0)

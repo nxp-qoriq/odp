@@ -342,6 +342,22 @@ typedef struct odp_crypto_op_result {
  * Crypto capabilities
  */
 typedef struct odp_crypto_capability_t {
+	/** Synchronous crypto operation mode support
+	 *
+	 *  0: Synchronous mode is not supported
+	 *  1: Synchronous mode is supported
+	 *  2: Synchronous mode is supported and preferred
+	 */
+	uint8_t op_mode_sync;
+
+	/** Asynchronous crypto operation mode support
+	 *
+	 *  0: Asynchronous mode is not supported
+	 *  1: Asynchronous mode is supported
+	 *  2: Asynchronous mode is supported and preferred
+	 */
+	uint8_t op_mode_async;
+
 	/** Maximum number of crypto sessions */
 	uint32_t max_sessions;
 
