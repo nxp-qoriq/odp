@@ -464,6 +464,7 @@ void *pktio_thread(void *arg EXAMPLE_UNUSED)
 			odp_ipsec_packet_result_t res;
 			odph_ethhdr_t	*eth;
 			odp_packet_t out_pkt;
+			uint32_t l3_off, ethhdr_size;
 
 			result.pkt = &out_pkt;
 			result.res = &res;
@@ -490,10 +491,23 @@ void *pktio_thread(void *arg EXAMPLE_UNUSED)
 			out_port = (odp_out_entry_t *)odp_packet_user_ptr(out_pkt);
 			out_queue = (odp_pktout_queue_t)out_port->pktout;
 
-			eth = (odph_ethhdr_t *)((void *)ip - sizeof(odph_ethhdr_t));
+			ethhdr_size = sizeof(odph_ethhdr_t);
+			eth = (odph_ethhdr_t *)((uint8_t *)ip - ethhdr_size);
 			eth->dst = out_port->next_hop_addr;
 			eth->src = out_port->addr;
 			eth->type = odp_cpu_to_be_16(0x800);
+
+			l3_off = odp_packet_l3_offset(out_pkt);
+
+			if (l3_off == ethhdr_size) {
+				/* Do Nothing */
+			} else if (l3_off < ethhdr_size) {
+				odp_packet_push_head(out_pkt, ethhdr_size - l3_off);
+				odp_packet_l3_offset_set(out_pkt, ethhdr_size);
+			} else {
+				odp_packet_pull_head(out_pkt, l3_off - ethhdr_size);
+				odp_packet_l3_offset_set(out_pkt, ethhdr_size);
+			}
 
 			if (odp_unlikely(odp_pktout_send(out_queue, &out_pkt, 1) < 0))
 				odp_packet_free(out_pkt);
