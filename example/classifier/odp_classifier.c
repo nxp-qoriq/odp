@@ -142,6 +142,7 @@ static int shutdown; /**< Shutdown threads if !0 */
 /* helper funcs */
 static int drop_err_pkts(odp_packet_t pkt_tbl[], unsigned len);
 static void swap_pkt_addrs(odp_packet_t pkt_tbl[], unsigned len);
+static void init_args_stats(appl_args_t *appl_args);
 static void parse_args(int argc, char *argv[], appl_args_t *appl_args);
 static void print_info(char *progname, appl_args_t *appl_args);
 static void usage(char *progname);
@@ -497,7 +498,7 @@ static void configure_error_cos(odp_pktio_t pktio, appl_args_t *args)
 	stats[ERROR_RULE_BASE_INDEX].cos = error_cos;
 	/* add error  queue to global stats */
 	stats[ERROR_RULE_BASE_INDEX].queue = error_queue;
-	stats[DEFAULT_RULE_BASE_INDEX].pool = error_pool;
+	stats[ERROR_RULE_BASE_INDEX].pool = error_pool;
 	snprintf(stats[ERROR_RULE_BASE_INDEX].cos_name,
 		 sizeof(stats[ERROR_RULE_BASE_INDEX].cos_name),
 		 "%s", cosname);
@@ -796,6 +797,9 @@ int main(int argc, char *argv[])
 		EXAMPLE_ERR("Error: args mem alloc failed.\n");
 		exit(EXIT_FAILURE);
 	}
+
+	/* Init args stats handle */
+	init_args_stats(args);
 
 	/* Parse and store the application arguments */
 	parse_args(argc, argv, args);
@@ -1165,6 +1169,21 @@ static int parse_pmr_policy(appl_args_t *appl_args, char *argv[], char *optarg)
 	appl_args->policy_count++;
 	free(pmr_str);
 	return 0;
+}
+
+/**
+ * Initialize appl args statistics
+ */
+static void init_args_stats(appl_args_t *appl_args)
+{
+	int i;
+
+	for (i = 0; i < MAX_RULE_COUNT; i++) {
+		appl_args->stats[i].pool = ODP_POOL_INVALID;
+		appl_args->stats[i].queue = ODP_QUEUE_INVALID;
+		appl_args->stats[i].cos = ODP_COS_INVALID;
+		appl_args->stats[i].pmr = ODP_PMR_INVAL;
+	}
 }
 
 /**
