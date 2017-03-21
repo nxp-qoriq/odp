@@ -186,7 +186,20 @@ get_dpni_parameters() {
 		then
 			DPNI_OPTIONS=""
 		fi
-		board_type=$(uname -n | cut -c3-6)
+		unset board_type
+		if [ -e /sys/firmware/devicetree/base/compatible ]
+		then
+			board_type=`grep -o '1088\|2088\|2080\|2085' /sys/firmware/devicetree/base/compatible | head -1`
+		elif [ -e /sys/firmware/devicetree/base/model ]
+		then
+			board_type=`grep -o '1088\|2088\|2080\|2085' /sys/firmware/devicetree/base/model | head -1`
+		fi
+		if [ -z "$board_type" ]
+		then
+			echo "Unable to find the board type!"
+			echo "Please enter the board type! (Accepted board type keywords: 1088/2088/2085/2080)"
+			read board_type
+		fi
 		if [[ $board_type == "1088" ]]
 		then
 			DPNI_OPTIONS=$DPNI_OPTIONS
@@ -194,8 +207,8 @@ get_dpni_parameters() {
 		then
 			DPNI_OPTIONS="$DPNI_OPTIONS,DPNI_OPT_HAS_KEY_MASKING"
 		else
-			echo "Invalid board type"
-			exit
+			echo "Invalid board type: $board_type"
+			return 1;
 		fi
 	fi
 	if [[ -z "$MAX_DIST_KEY_SIZE" ]]
@@ -399,6 +412,14 @@ then
 
 	#/* Getting parameters*/
 	get_dpni_parameters
+	RET=$?
+	if [[ $RET == 1 ]]
+	then
+		restool dprc destroy $DPRC >> dynamic_dpl_logs
+		echo
+		[[ "${BASH_SOURCE[0]}" != $0 ]] && return || exit
+	fi
+
 	get_dpcon_parameters
 	RET=$?
 	if [[ $RET == 1 ]]
