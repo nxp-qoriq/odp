@@ -48,17 +48,6 @@
 #include <fsl_dpkg.h>
 #include <fsl_mc_sys.h>
 
-#ifdef ODP_324
-/* DQRR_RESET bug workaround */
-#define QMAN_REV_4100   0x04010000
-#define dccivac(p) { asm volatile("dc civac, %0" : : "r"(p) : "memory"); }
-#define QBMAN_CENA_SWP_DQRR(n) (0x200 + ((uint32_t)(n) << 6))
-static inline void prefetch_for_load(void *p)
-{
-	asm volatile("prfm pldl1keep, [%0, #64]" : : "r" (p));
-}
-#endif
-
 /* Limits to number of scheduled queues */
 #define SCHED_POOL_SIZE (256*1024)
 
@@ -990,10 +979,6 @@ static inline int32_t odp_set_push_mode(odp_schedule_group_t group, struct dpaa2
 		struct conc_attr attr;
 		struct dpaa2_dpio_dev *dpio_dev;
 		struct qbman_swp *swp;
-#ifdef ODP_324
-		int32_t i, dqrr_size;
-		struct dpio_attr io_attr;
-#endif
 
 		if (dpio)
 			dpio_dev = dpio;
@@ -1014,22 +999,6 @@ static inline int32_t odp_set_push_mode(odp_schedule_group_t group, struct dpaa2
 		}
 		/*Configure QBMAN for addition of static dequeue command*/
 		qbman_swp_push_set(swp, ch_index, true);
-#ifdef ODP_324
-		if (dpio_get_attributes(dpio_dev->dpio, CMD_PRI_LOW,
-			dpio_dev->token, &io_attr)) {
-			DPAA2_ERR(FW, "DPIO Get attribute failed\n");
-		}
-
-		if ((io_attr.qbman_version & 0xFFFF0000) < QMAN_REV_4100)
-			dqrr_size = 4;
-		else
-			dqrr_size = 8;
-
-		for(i = 0; i < dqrr_size; i++) {
-			dccivac((void *)dpio_dev->qbman_portal_ce_paddr + QBMAN_CENA_SWP_DQRR(i));
-			prefetch_for_load((void *)dpio_dev->qbman_portal_ce_paddr + QBMAN_CENA_SWP_DQRR(i));
-		}
-#endif
 		/* Save mapping for future use */
 		sched->sched_grp[group].ch_index = ch_index;
 		dpio_dev->ch_idx[dpio_dev->ch_count++] = ch_index;
