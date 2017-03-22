@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 NXP. All rights reserved.
+ * Copyright 2017 NXP
  */
 /* Copyright (c) 2017, Linaro Limited
  * All rights reserved.

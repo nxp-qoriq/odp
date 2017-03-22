@@ -1,6 +1,6 @@
 /* Copyright (c) 2017, Linaro Limited
- * Copyright (C) 2017 NXP
  * All rights reserved.
+ * Copyright 2017 NXP
  *
  * SPDX-License-Identifier:     BSD-3-Clause
  */

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 NXP Semiconductor, Inc.
+/* Copyright 2017 NXP
  * Copyright (c) 2015, Linaro Limited
  * All rights reserved.
  *

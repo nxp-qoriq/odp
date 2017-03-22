@@ -1,6 +1,6 @@
-/* Copyright (c) 2017 NXP
+/* Copyright (c) 2015 Freescale Semiconductor, Inc. All rights reserved.
  *
- * Copyright (c) 2015 Freescale Semiconductor, Inc. All rights reserved.
+ * Copyright 2017 NXP
  */
 /* Copyright (c) 2013, Linaro Limited
  * All rights reserved.

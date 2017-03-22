@@ -1,5 +1,4 @@
-/* Copyright (c) 2017, NXP Semconditors
- * All rights reserved.
+/* Copyright 2017 NXP
  *
  * SPDX-License-Identifier:     BSD-3-Clause
  */
