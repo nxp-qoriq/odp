@@ -472,10 +472,12 @@ odp_tm_node_t odp_tm_node_create(odp_tm_t             odp_tm,
 			&(odp_shaper_profiles[params->shaper_profile].shaper_params);
 
 		memset(&tx_shaper, 0, sizeof(struct dpni_tx_shaping_cfg));
+		/*User provided rate (bits per second) is converted to Mbps*/
 		tx_shaper.rate_limit =
 				shaper_profile_obj->peak_rate / (1024 * 1024);
+		/*User provided burst_size (bits) is converted to Bytes*/
 		tx_shaper.max_burst_size =
-				shaper_profile_obj->peak_burst / (8 * 1024);
+				shaper_profile_obj->peak_burst / 8;
 		retcode = dpni_set_tx_shaping(dpni, CMD_PRI_LOW,
 						dev_priv->token, &tx_shaper);
 		if (retcode < 0) {

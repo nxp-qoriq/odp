@@ -106,7 +106,7 @@ extern "C" {
  * any shaper's peak or commit rate can be set to.  It is in units of bits per
  * second so that it and the ODP_TM_MIN_SHAPER_BW can both fit in 32 bits.
  */
-#define ODP_TM_MAX_SHAPER_BW  (10000UL * 1024UL * 1024UL)
+#define ODP_TM_MAX_SHAPER_BW  (10UL * 1024UL * 1024UL * 1024UL)
 
 /** The ODP_TM_MIN_SHAPER_BURST constant is the smallest amount of burst size
  * that can a shaper's burst can be set to.  It is in units of bits
@@ -114,7 +114,7 @@ extern "C" {
  */
 #define ODP_TM_MIN_SHAPER_BURST  (1 * 1024 * 8)
 
-/** The ODP_TM_MAX_SHAPER_BURST constant is the smallest amount of burst size
+/** The ODP_TM_MAX_SHAPER_BURST constant is the largest amount of burst size
  * that can a shaper's burst can be set to.  It is in units of bits
  * so that it and the ODP_TM_MIN_SHAPER_BURST can both fit in 32 bits.
  */
