@@ -46,8 +46,9 @@
 #include <odp_ipsec_fwd_db.h>
 #include <odp_ipsec_loop_db.h>
 #include <odp_ipsec_cache.h>
+#ifdef USE_OPEN_SSL
 #include <odp_ipsec_stream.h>
-
+#endif
 #define MAX_WORKERS     32   /**< maximum number of worker threads */
 
 /**
@@ -1222,7 +1223,9 @@ main(int argc, char *argv[])
 	odph_odpthread_t thread_tbl[MAX_WORKERS];
 	int num_workers;
 	int i;
+#ifdef USE_OPEN_SSL
 	int stream_count;
+#endif
 	odp_shm_t shm;
 	odp_cpumask_t cpumask;
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
@@ -1268,8 +1271,9 @@ main(int argc, char *argv[])
 	ipsec_init_pre();
 	init_fwd_db();
 	init_loopback_db();
+#ifdef USE_OPEN_SSL
 	init_stream_db();
-
+#endif
 	/* Parse and store the application arguments */
 	parse_args(argc, argv, &args->appl);
 
@@ -1336,10 +1340,11 @@ main(int argc, char *argv[])
 			initialize_intf(args->appl.if_names[i]);
 	}
 
+#ifdef USE_OPEN_SSL
 	/* If we have test streams build them before starting workers */
 	resolve_stream_db();
 	stream_count = create_stream_db_inputs();
-
+#endif
 	/*
 	 * Create and init worker threads
 	 */
@@ -1354,6 +1359,7 @@ main(int argc, char *argv[])
 	 * If there are streams attempt to verify them else
 	 * wait indefinitely
 	 */
+#ifdef USE_OPEN_SSL
 	if (stream_count) {
 		odp_bool_t done;
 		do {
@@ -1361,7 +1367,9 @@ main(int argc, char *argv[])
 			sleep(1);
 		} while (!done);
 		printf("All received\n");
-	} else {
+	} else
+#endif
+	{
 		odph_odpthreads_join(thread_tbl);
 	}
 
@@ -1488,11 +1496,11 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 		case 't':
 			rc = create_tun_db_entry(optarg);
 			break;
-
+#ifdef USE_OPEN_SSL
 		case 's':
 			rc = create_stream_db_entry(optarg);
 			break;
-
+#endif
 		case 'h':
 			usage(argv[0]);
 			exit(EXIT_SUCCESS);

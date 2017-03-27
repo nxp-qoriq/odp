@@ -17,7 +17,6 @@ AC_LINK_IFELSE(
     exit -1)
 
 m4_include([platform/linux-dpaa2/m4/odp_pthread.m4])
-m4_include([platform/linux-dpaa2/m4/odp_openssl.m4])
 
 AC_CONFIG_FILES([platform/linux-dpaa2/Makefile
 		 platform/linux-dpaa2/flib/Makefile

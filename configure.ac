@@ -110,7 +110,10 @@ AC_SUBST([with_platform])
 AC_SUBST([platform_with_platform], ["platform/${with_platform}"])
 AC_SUBST([platform_with_platform_test], ["platform/${with_platform}/test"])
 AM_CONDITIONAL([BUILD_DPAA2], [test x${with_platform} = x"linux-dpaa2" ])
-
+#########################################################################
+# Flag to allow option for SSL usage. Currently this flag is not supported.
+#########################################################################
+AM_CONDITIONAL([USE_OPEN_SSL], [test "x${SSL_ENABLED}" = "x1"])
 ##########################################################################
 # Run platform specific checks and settings
 ##########################################################################

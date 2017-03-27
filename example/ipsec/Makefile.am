@@ -26,6 +26,7 @@ dist_bin_SCRIPTS = \
 		   $(srcdir)/odp_ipsec_run_router \
 		   $(srcdir)/odp_ipsec_run_simple
 
+if USE_OPEN_SSL
 dist_odp_ipsec_SOURCES = odp_ipsec.c \
 			 odp_ipsec_sa_db.c \
 			 odp_ipsec_sp_db.c \
@@ -33,3 +34,11 @@ dist_odp_ipsec_SOURCES = odp_ipsec.c \
 			 odp_ipsec_loop_db.c \
 			 odp_ipsec_cache.c \
 			 odp_ipsec_stream.c
+else
+dist_odp_ipsec_SOURCES = odp_ipsec.c \
+			 odp_ipsec_sa_db.c \
+			 odp_ipsec_sp_db.c \
+			 odp_ipsec_fwd_db.c \
+			 odp_ipsec_loop_db.c \
+			 odp_ipsec_cache.c
+endif
