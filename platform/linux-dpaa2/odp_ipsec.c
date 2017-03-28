@@ -111,11 +111,13 @@ static inline void sa_delete_in_bucket(ipsec_sa_entry_t *sa, void *bucket)
 
 	if (!head) {
 		ODP_DBG("SA entry not found\n");
+		SUNLOCK(&bkt->lock);
 		return;
 	}
 
-	if (head->spi == sa->spi) {
+	if (head->next == NULL && head->spi == sa->spi) {
 		bkt->next = NULL;
+		SUNLOCK(&bkt->lock);
 		return;
 	}
 
@@ -125,6 +127,7 @@ static inline void sa_delete_in_bucket(ipsec_sa_entry_t *sa, void *bucket)
 		if (temp->spi == sa->spi) {
 			prev->next = temp->next;
 			temp->next = NULL;
+			break;
 		}
 		prev = temp;
 	}
@@ -256,7 +259,6 @@ int odp_ipsec_config(const odp_ipsec_config_t *config)
 		return DPAA2_FAILURE;
 	}
 
-	odp_spinlock_init(&lock);
 
 	memset(ipsec_sa_tbl, 0, sizeof(ipsec_sa_table_t));
 
@@ -267,6 +269,8 @@ int odp_ipsec_config(const odp_ipsec_config_t *config)
 	insa_hash_table = odp_shm_addr(hash_shm);
 	if (!insa_hash_table) {
 		ODP_ERR("Error: shared mem alloc failed.\n");
+		odp_shm_free(shm);
+		return DPAA2_FAILURE;
 	}
 
 	/*Inialize Locks*/
@@ -276,6 +280,8 @@ int odp_ipsec_config(const odp_ipsec_config_t *config)
 	}
 
 	memset(insa_hash_table, 0, bucket_count * sizeof(sa_bucket_t));
+
+	odp_spinlock_init(&lock);
 
 	return DPAA2_SUCCESS;
 }
@@ -537,12 +543,9 @@ odp_ipsec_sa_t odp_ipsec_sa_create(odp_ipsec_sa_param_t *param)
 		if (sa->status != SA_STATUS_FREE)
 			continue;
 		odp_spinlock_lock(&lock);
-		if (sa->status == SA_STATUS_FREE) {
-			sa->status = SA_STATUS_INUSE;
-			odp_spinlock_unlock(&lock);
-			break;
-		}
+		sa->status = SA_STATUS_INUSE;
 		odp_spinlock_unlock(&lock);
+		break;
 	}
 
 	if (ODP_CONFIG_IPSEC_SA == i) {
@@ -684,14 +687,14 @@ int odp_ipsec_sa_destroy(odp_ipsec_sa_t sa)
 	uint64_t hash;
 	ipsec_vq_t *ipsec_vq = NULL;
 
-	if (sa_entry->lookup_mode == ODP_IPSEC_LOOKUP_IN_UNIQUE_SA) {
-		hash = calculate_hash(sa_entry->spi);
-		sa_delete_in_bucket(sa_entry, &insa_hash_table[hash & (bucket_count - 1)]);
-	}
-
 	if (!sa_entry || sa == ODP_IPSEC_SA_INVALID) {
 		ODP_ERR("Not a valid sa");
 		return DPAA2_FAILURE;
+	}
+
+	if (sa_entry->lookup_mode == ODP_IPSEC_LOOKUP_IN_UNIQUE_SA) {
+		hash = calculate_hash(sa_entry->spi);
+		sa_delete_in_bucket(sa_entry, &insa_hash_table[hash & (bucket_count - 1)]);
 	}
 
 	dpaa2_data_free(sa_entry->context);
@@ -841,11 +844,11 @@ int odp_ipsec_in_enq(const odp_ipsec_op_param_t *input)
 	num_sa = input->num_sa;
 
 	if (num_sa == 1) {
-		inc = 0;
-		/* 1 SA for each pkt */
-	} else if (num_sa == num_pkt) {
-		inc = 1;
 		/* single SA for all pkt */
+		inc = 0;
+	} else if (num_sa == num_pkt) {
+		/* 1 SA for each pkt */
+		inc = 1;
 	} else if (num_sa == 0) {
 		lookup = 1;
 	} else {
@@ -954,11 +957,11 @@ int odp_ipsec_out_enq(const odp_ipsec_op_param_t *input)
 	num_sa = input->num_sa;
 
 	if (num_sa == 1) {
-		inc = 0;
-		/* 1 SA for each pkt */
-	} else if (num_sa == num_pkt) {
-		inc = 1;
 		/* single SA for all pkt */
+		inc = 0;
+	} else if (num_sa == num_pkt) {
+		/* 1 SA for each pkt */
+		inc = 1;
 	} else {
 		/* Invalid num of SA */
 		ODP_ERR("Invalid num of SA\n");
