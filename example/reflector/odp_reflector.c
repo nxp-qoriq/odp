@@ -62,6 +62,10 @@
 
 #define ALL_GROUPS			0xFF
 
+/** @def MAX_PKTIOS
+ * @brief Maximum allowed pktios for application
+ */
+#define MAX_PKTIOS      8
 
 /** @def PRINT_APPL_MODE(x)
  * @brief Macro to print the current status of how the application handles
@@ -103,6 +107,8 @@ typedef struct {
 	appl_args_t appl;
 	/** Thread specific arguments */
 	thread_args_t thread[MAX_WORKERS];
+	/** Lookup table for destination pktios */
+	odp_pktio_t dest_pktios[MAX_PKTIOS];
 } args_t;
 
 /** Global pointer to args */
@@ -115,12 +121,34 @@ static odp_pool_t pool;
 odp_schedule_group_t *sched_grp;
 
 /* helper funcs */
-static void swap_spkt_addrs(odp_packet_t pkt);
 static odp_packet_t copy_pkt_addrs(odp_packet_t spkt);
-
 static void parse_args(int argc, char *argv[], appl_args_t *appl_args);
 static void print_info(char *progname, appl_args_t *appl_args);
 static void usage(char *progname);
+#if 0
+static void swap_spkt_addrs(odp_packet_t pkt)
+{
+	odph_ethhdr_t *eth = (odph_ethhdr_t *)odp_packet_l2_ptr(pkt, NULL);
+
+	if (!eth)
+		return;
+	odph_ethaddr_t tmp_addr = eth->dst;
+
+	eth->dst = eth->src;
+	eth->src = tmp_addr;
+
+	if (odp_packet_has_ipv4(pkt)) {
+		odph_ipv4hdr_t *ip = (odph_ipv4hdr_t *)
+			odp_packet_l3_ptr(pkt, NULL);
+
+		odp_u32be_t ip_tmp_addr = ip->src_addr;
+
+		ip->src_addr = ip->dst_addr;
+		ip->dst_addr = ip_tmp_addr;
+	}
+}
+#endif
+
 /**
  * Generate text string representing MAC address
  *
@@ -189,28 +217,6 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int queue_typ
 	return pktio;
 }
 
-static void swap_spkt_addrs(odp_packet_t pkt)
-{
-	odph_ethhdr_t *eth = (odph_ethhdr_t *)odp_packet_l2_ptr(pkt, NULL);
-
-	if (!eth)
-		return;
-	odph_ethaddr_t tmp_addr = eth->dst;
-
-	eth->dst = eth->src;
-	eth->src = tmp_addr;
-
-	if (odp_packet_has_ipv4(pkt)) {
-		odph_ipv4hdr_t *ip = (odph_ipv4hdr_t *)
-			odp_packet_l3_ptr(pkt, NULL);
-
-		odp_u32be_t ip_tmp_addr = ip->src_addr;
-
-		ip->src_addr = ip->dst_addr;
-		ip->dst_addr = ip_tmp_addr;
-	}
-}
-
 /**
  * Loopback worker thread using ODP queues
  *
@@ -274,7 +280,7 @@ static void *pktio_alloc_thread(void *arg)
 		/* Enqueue the packet for output */
 		pktio_tmp = odp_packet_input(pkt);
 
-		if (odp_pktout_queue(pktio_tmp, &pktout, 1) != 1) {
+		if (odp_pktout_queue(args->dest_pktios[odp_pktio_index(pktio_tmp)], &pktout, 1) != 1) {
 			EXAMPLE_ERR("  [%02i] Error: no pktout queue\n", thr);
 			return NULL;
 		}
@@ -357,14 +363,14 @@ static void *pktio_thread(void *arg)
 #endif
 		ev = odp_schedule(NULL, ODP_SCHED_WAIT);
 		pkt = odp_packet_from_event(ev);
-
+#if 0
 		/* Swap Eth MACs and possibly IP-addrs before sending back */
 		swap_spkt_addrs(pkt);
-
+#endif
 		/* Enqueue the packet for output */
 		pktio_tmp = odp_packet_input(pkt);
 
-		if (odp_pktout_queue(pktio_tmp, &pktout, 1) != 1) {
+		if (odp_pktout_queue(args->dest_pktios[odp_pktio_index(pktio_tmp)], &pktout, 1) != 1) {
 			EXAMPLE_ERR("  [%02i] Error: no pktout queue\n", thr);
 			return NULL;
 		}
@@ -425,6 +431,10 @@ int main(int argc, char *argv[])
 	odp_instance_t instance;
 	odph_linux_thr_params_t thr_params;
 	odp_pool_t *eth_pool;
+	odp_thrmask_t zeromask;
+
+	/* Create temporary pktios to populate dest_pktio table */
+	odp_pktio_t pktio_tmp, pktio_prev, pktio_first;
 
 	args = calloc(1, sizeof(args_t));
 	if (args == NULL) {
@@ -508,8 +518,10 @@ int main(int argc, char *argv[])
 		EXAMPLE_ABORT("Error: packet pool create failed.\n");
 	}
 
-	odp_thrmask_t zeromask;
 	odp_thrmask_zero(&zeromask);
+	pktio_tmp = ODP_PKTIO_INVALID;
+	pktio_prev = ODP_PKTIO_INVALID;
+	pktio_first = ODP_PKTIO_INVALID;
 	/* Create a pktio instance for each interface */
 	for (i = 0; i < args->appl.if_count; ++i) {
 		char pool_name[ODP_POOL_NAME_LEN];
@@ -524,13 +536,21 @@ int main(int argc, char *argv[])
 		eth_pool[i] = odp_pool_create(pool_name, &params);
 		if (eth_pool[i] == ODP_POOL_INVALID)
 			EXAMPLE_ABORT("Error: packet pool create failed.\n");
-
-		create_pktio(args->appl.if_names[i], eth_pool[i], args->appl.queue_type, sched_grp[i]);
+		if (i == 0) {
+			pktio_first = create_pktio(args->appl.if_names[i], eth_pool[i], args->appl.queue_type, sched_grp[i]);
+			pktio_prev = pktio_first;
+		} else {
+			pktio_tmp = create_pktio(args->appl.if_names[i], eth_pool[i], args->appl.queue_type, sched_grp[i]);
+			args->dest_pktios[odp_pktio_index(pktio_prev)] = pktio_tmp;
+			pktio_prev = pktio_tmp;
+		}
 		odp_pool_info(eth_pool[i], &info);
 		printf(" Attached pool\t\t\t= pkt_pool_%s, buffers = %d\n",
 				args->appl.if_names[i], info.params.buf.num);
 		printf(" Affined scheduler grp\t= %s\n", grp_name);
 	}
+	/* Last pktio will reflect packets to first pktio */
+	args->dest_pktios[odp_pktio_index(pktio_prev)] = pktio_first;
 
 	printf("  \nConfigured queues SYNC type: [%s]\n", (args->appl.queue_type == 0)?
 							"PARALLEL":(args->appl.queue_type == 1)?
