@@ -52,6 +52,7 @@ Assumptions:
 	* dynamic_dpl.sh, kernel-ni.sh and loopback_sanity_test.sh all these three scripts
 	  are present in the 'usr/odp/scripts' directory.
 	* All ODP example binaries are present in the '/usr/odp/bin' directory.
+	* All ODP Performance binaries are present in the '/usr/odp/test/performance' directory.
 	* All ODP Cunit binaries are present in the '/usr/odp/test/validation' directory.
 	* odpfsl_kni.ko is present in any of the child directory of '/lib/' for odp_kni_demo testing.
 	* There are sufficient resources available to create two ODP conatiners and 3 kernel interfaces.
@@ -124,6 +125,7 @@ Mandatory arguments:
 					REFLECTOR    => odp_reflector
 					KNI	     => odp_kni_demo
 					L3FWD	     => odp_l3fwd
+					L2FWD	     => odp_l2fwd
 					TM	     => odp_tm
 					GENERATOR    => odp_generator
 					CLASSIFIER   => odp_classifier
@@ -149,7 +151,7 @@ Process of testing:
 		---- ping with destination 192.168.111.1, packets will go through NI, so only FDPNI0 is valid
 		     for testing. Results are based on %age packets received.
 
-	* odp_l3fwd/odp_tm
+	* odp_l3fwd/odp_tm/odp_l2fwd
 		---- with iperf, only FDPNI0 and FDPNI1 should be used for testing. Results are based on
 		     %ge packets loss while iperf testing.
 
@@ -1066,6 +1068,58 @@ fi
 test_no=`expr $test_no + 1`
 }
 
+#/* Function to run the odp_l2fwd test cases*/
+
+run_l2fwd() {
+echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) "
+echo
+eval $PRINT_MSG
+$READ
+if [[ "$input" == "y" && -x /usr/odp/test/performance/odp_l2fwd ]]
+then
+	echo -e " #$test_no)\t$1\t\tcommand ($2) " >> sanity_log
+	echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) " >> sanity_tested_apps
+	append_newline 1
+	echo
+	eval "$2 >> sanity_log 2>&1 &"
+	echo
+	append_newline 3
+	sleep 20
+	ip netns exec sanity_ns iperf -s -u -p 12345 &
+	sleep 1
+	iperf -c 192.168.222.2 -u -p 12345 -t 30 > log
+	sleep 1
+	cat log >> sanity_log
+	cat log
+	RESULT=`grep -o "\w*\.\w*%\|\w*%" log`
+	print_result "$RESULT"
+	echo
+	rm log
+	append_newline 3
+	pid=`ps | pgrep odp_l2fwd`
+	if [[ -n "$pid" ]]
+	then
+		kill -9 $pid
+	fi
+	sleep 5
+	killall iperf
+	append_newline 5
+	sleep 5
+	echo
+	echo >> sanity_tested_apps
+else
+	if [[ "$input" == "y" && ! -x /usr/odp/test/performance/odp_l2fwd ]]
+		then
+		echo -e "\tCan not test L2FWD, executable not found." | tee -a sanity_log
+	fi
+	echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) " >> sanity_untested_apps
+	echo -e "\tNot Tested" | tee -a sanity_untested_apps
+	not_tested=`expr $not_tested + 1`
+	echo
+	echo >> sanity_untested_apps
+fi
+test_no=`expr $test_no + 1`
+}
 
 #/* Common function to run all test cases*/
 
@@ -1082,6 +1136,9 @@ case $1 in
 		;;
 	L3FWD | TM )
 		run_l3fwd $1 "$2"
+		;;
+	L2FWD )
+		run_l2fwd $1 "$2"
 		;;
 	GENERATOR )
 		run_generator $1 "$2"
@@ -1242,6 +1299,14 @@ run_odp() {
 	#/* ODP_TM
 	# */
 	run_command TM "./odp_tm -i $FDPNI0,$FDPNI2 -c 8  -d 192.168.222.0/24:$FDPNI2:00.00.00.00.08.02 -d 192.168.111.0/24:$FDPNI0:00.00.00.00.08.01 -m 1 -w q1:10,q2:10,q3:10,q4:10,q5:10,q6:10,q7:10,q8:10 -s 1 -r 500 -b 32"
+
+	#/* ODP_L2FWD (ODP_PKTIN_MODE_QUEUE) (PKTOUT_MODE_QUEUE)
+	# */
+	run_command L2FWD "/usr/odp/test/performance/odp_l2fwd -i $FDPNI0,$FDPNI2 -d 1 -r 00:00:00:00:08:01,00:00:00:00:08:02 -m 4 -o 1"
+
+	#/* ODP_L2FWD (PKTIN_MODE_SCHED + SCHED_SYNC_ATOMIC) (PKTOUT_MODE_DIRECT)
+	# */
+	run_command L2FWD "/usr/odp/test/performance/odp_l2fwd -i $FDPNI0,$FDPNI2 -d 1 -r 00:00:00:00:08:01,00:00:00:00:08:02 -m 2 -o 0"
 }
 
 run_cunit_command() {
