@@ -1906,7 +1906,8 @@ int odp_crypto_capability(odp_crypto_capability_t *capa)
 
 	/* Initialize crypto capability structure */
 	memset(capa, 0, sizeof(odp_crypto_capability_t));
-
+	capa->op_mode_sync = 0;
+	capa->op_mode_async = 2;
 	capa->ciphers.bit.null = 1;
 	capa->ciphers.bit.des = 1;
 	capa->ciphers.bit.trides_cbc  = 1;
