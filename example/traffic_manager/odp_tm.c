@@ -61,6 +61,16 @@
  */
 #define DEFAULT_WEIGHT          128
 
+/** @def DEFAULT_SHAPER_RATE
+ * @brief Default shaping rate applied on shaping profile
+ */
+#define DEFAULT_SHAPER_RATE          10000
+
+/** @def DEFAULT_SHAPER_BURST_SIZE
+ * @brief Default burst size applied on shaping profile
+ */
+#define DEFAULT_SHAPER_BURST_SIZE          32
+
 /** @def APPL_SCHED_MODE_STRICT_PRIO
  * @brief tm_queues will be configuerd in Strict Priority Scheduling
  */
@@ -279,6 +289,11 @@ static void usage(char *progname)
 		"Optional OPTIONS\n"
 		"  -c, --count <number> CPU count.\n"
 		"  -d, --Destination SubNet:Intf:NextHopMAC\n"
+		"	SubNet: IPaddress with mask bits\n"
+		"	\ti.e. aa:bb:cc:dd/maskbits\n"
+		"	Intf: Interface name i.e. dpni.0\n"
+		"	NextHopMAC: Destination Mac Address for next hop.\n"
+		"	\tBytes are dot(.) separated i.e. 00.00.00.00.08.01\n"
 		"  -m, --mode\n"
 		"	0: Scheduling profile as Strict Priority\n"
 		"	1: Scheduling profile as Weighted scheduling.\n"
@@ -288,21 +303,29 @@ static void usage(char *progname)
 		"	1: To enable.\n"
 		"	Default shaper is disabled\n"
 		"  -r,  --rate <number> Shaping rate in Mbps. Valid only if\n"
-		"			shaping enabled\n"
+		"			shaping is enabled\n"
 		"			Values must be in range (1, 10000)\n"
+		"			If shaping is enabled and rate is not\n"
+		"			given then shaper will be configured\n"
+		"			with full bandwidth i.e. 10000\n"
 		"  -b, --burst-size <number> maximum burst size in KB.Valid\n"
-		"			only if shaping enabled\n"
+		"			only if shaping is enabled\n"
 		"			Values must be in range (1, 64)\n"
+		"			If shaping is enabled and burst size\n"
+		"			is not given then shaper will be\n"
+		"			configured with 32KB\n"
 		"  -n, --num-prio <number> Number of priority queues\n"
 		"			configured on egress side. Only valid\n"
 		"			if scheduling profile is strict prio\n"
-		"			Default all supported priorityh queues\n"
+		"			Default all supported priority queues\n"
 		"			will be configured.\n"
 		"  -w, --weight <queue_name>:<weight> Weight value\n"
 		"			corresponding to each queue. multiple\n"
 		"			queues configuration will be\n"
 		"			comma-separated and no spaces.\n"
 		"			Values must be in range (1, 255).\n"
+		"			If mode = 1 and no weights are given\n"
+		"			then scheduling will be round robin\n"
 		"			E.g. odp_tm -w queue1:10,queue2:20\n"
 		"  -h, --help           Display help and exit.\n"
 		"\n", NO_PATH(progname), NO_PATH(progname)
@@ -803,6 +826,7 @@ static void tm_init_default_app_args(appl_args_t *appl_args)
 	int i;
 
 	appl_args->cpu_count = MAX_WORKERS;
+	/* Scheduling parameters*/
 	appl_args->mode = APPL_SCHED_MODE_STRICT_PRIO;
 	appl_args->prio = MAX_TM_SYSTEM_PRIO;
 	appl_args->free_entries = ODP_MAX_FLOW_COUNT; /*Free location count in
@@ -810,6 +834,11 @@ static void tm_init_default_app_args(appl_args_t *appl_args)
 
 	for (i = 0; i < MAX_TM_SYSTEM_PRIO; i++)
 		appl_args->weight.value[i] = DEFAULT_WEIGHT;
+
+	/* Shaper parameters */
+	appl_args->shaper.shaping = false;
+	appl_args->shaper.rate = DEFAULT_SHAPER_RATE;
+	appl_args->shaper.burst_size = DEFAULT_SHAPER_BURST_SIZE;
 }
 
 /**
