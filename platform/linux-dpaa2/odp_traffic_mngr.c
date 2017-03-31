@@ -281,25 +281,29 @@ odp_tm_shaper_t odp_tm_shaper_create(const char *name,
 	if (params->peak_bps < ODP_TM_MIN_SHAPER_BW ||
 		params->peak_bps > ODP_TM_MAX_SHAPER_BW) {
 		ODP_ERR("Peak rate is out of range (%d-%d)\n",
-				ODP_TM_MIN_SHAPER_BW, ODP_TM_MAX_SHAPER_BW);
+				ODP_TM_MIN_SHAPER_BW / (1024 * 1024),
+				ODP_TM_MAX_SHAPER_BW / (1024 * 1024));
 		return ODP_TM_INVALID;
 	}
 	if (params->commit_bps < ODP_TM_MIN_SHAPER_BW ||
 		params->commit_bps > ODP_TM_MAX_SHAPER_BW) {
 		ODP_ERR("Commit rate is out of range (%d-%d)\n",
-				ODP_TM_MIN_SHAPER_BW, ODP_TM_MAX_SHAPER_BW);
+				ODP_TM_MIN_SHAPER_BW / (1024 * 1024),
+				ODP_TM_MAX_SHAPER_BW / (1024 * 1024));
 		return ODP_TM_INVALID;
 	}
 	if (params->peak_burst < ODP_TM_MIN_SHAPER_BURST ||
 		params->peak_burst > ODP_TM_MAX_SHAPER_BURST) {
-		ODP_ERR("Peak rate is out of range (%d-%d)\n",
-				ODP_TM_MIN_SHAPER_BURST, ODP_TM_MAX_SHAPER_BURST);
+		ODP_ERR("Peak burst size is out of range (%d-%d)\n",
+			ODP_TM_MIN_SHAPER_BURST / (1024 * 8),
+			ODP_TM_MAX_SHAPER_BURST / (1024 * 8));
 		return ODP_TM_INVALID;
 	}
 	if (params->commit_burst < ODP_TM_MIN_SHAPER_BURST ||
 		params->commit_burst > ODP_TM_MAX_SHAPER_BURST) {
-		ODP_ERR("Commit rate is out of range (%d-%d)\n",
-				ODP_TM_MIN_SHAPER_BURST, ODP_TM_MAX_SHAPER_BURST);
+		ODP_ERR("Commit burst size is out of range (%d-%d)\n",
+			ODP_TM_MIN_SHAPER_BURST / (1024 * 8),
+			ODP_TM_MAX_SHAPER_BURST / (1024 * 8));
 		return ODP_TM_INVALID;
 	}
 	if (params->dual_rate) {
