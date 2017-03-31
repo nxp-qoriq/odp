@@ -137,8 +137,8 @@ Mandatory arguments:
 	argument3	command2	Only mandatory for 'odp_ipsec' test cases.
 
 Optional arguments:
-	There are some optional arguments that can only be used for 'odp_ipsec' and 'odp_ipsec_offload'
-	applications.
+	-j 		MODE 		To enable jumbo packet in PKTIO and IPSEC_OFFLOAD
+	Other optional arguments that can only be used for 'odp_ipsec' and 'odp_ipsec_offload' applications.
 	-p		MODE		To enable the ODP_IPSEC_USE_POLL_QUEUES
 	-s		MODE		To enable the HASH and SCHED_PUSH
 	-i='x'		INFO		User information, helpful for test reports,
@@ -177,6 +177,10 @@ Process of testing:
 	* odp_ipsec_offload
 		---- with ping from NI to NI3 interface. For interops testing only command1 is required having DPNIs
 		     FDPNI0 and FDPNI2.
+Note:
+	* Jumbo packet size to be validated is 7500 bytes, and MTU set for Jumbo packet validation is 9000 bytes.
+	* Jumbo packet validation is only supported for non-INTEROPS ipsec_offload() applications.
+	* Jumbo packet flag can only be sent to pktio test case as the third arguement.
 
 Example:
 	run_command PKTIO \"./odp_pktio -c 8 -m 0 -i \$FDPNI0\"
@@ -297,47 +301,73 @@ print_result() {
 
 #/* Function to run the odp_pktio and odp_reflector test cases*/
 run_pktio() {
-echo -e " #$test_no)\tTest case:$1    \t\tCommand:($2) "
-echo
-eval $PRINT_MSG
-$READ
-if [[ "$input" == "y" ]]
-then
-	echo -e " #$test_no)\t$1\t\tcommand ($2) " >> sanity_log
-	echo -e " #$test_no)\tTest case:$1    \t\tCommand:($2) " >> sanity_tested_apps
-	append_newline 1
-	echo
-	eval "$2 >> sanity_log 2>&1 &"
-	echo
-	sleep 5
-	append_newline 3
-	echo " Starting the ping test ..."
-	ping 192.168.111.1 -c $ping_packets | tee log
-	RESULT=`grep -o "\w*\.\w*%\|\w*%" log`
-	echo
-	cat log >> sanity_log
-	print_result "$RESULT"
-	pid=`ps | pgrep odp_pktio`
-	if [[ -z "$pid" ]]
+	echo -e " #$test_no)\tTest case:$1    \t\tCommand:($2) "
+	if [[ $3 == "-j" ]]
 	then
-		pid=`ps | pgrep odp_reflector`
+		echo -e "\tJumbo packet test "
 	fi
-	kill -2 $pid
-	sleep 2
-	append_newline 5
-	rm log
 	echo
-	echo
-	echo
-	echo >> sanity_tested_apps
-else
-	echo -e " #$test_no)\tTest case:$1    \t\tCommand:($2) " >> sanity_untested_apps
-	echo -e "\tNot Tested" | tee -a sanity_untested_apps
-	not_tested=`expr $not_tested + 1`
-	echo
-	echo >> sanity_untested_apps
-fi
-test_no=`expr $test_no + 1`
+	eval $PRINT_MSG
+	$READ
+	if [[ "$input" == "y" ]]
+	then
+		if [[ $3 == "-j" ]]
+		then
+			echo -e " #$test_no)\t$1\t\tcommand ($2)\tJumbo Packet test" >> sanity_log
+			echo -e " #$test_no)\tTest case:$1    \t\tCommand:($2) \tJumbo Packet test" >> sanity_tested_apps
+			append_newline 1
+			echo
+			eval "$2 >> sanity_log 2>&1 &"
+			echo
+			sleep 5
+			append_newline 3
+			echo " Starting the jumbo packet ping test ..."
+			ifconfig $NI mtu 9000 up
+			ping 192.168.111.1 -c $ping_packets -s 7500 | tee log
+			ifconfig $NI mtu 1500 up
+		else
+			echo -e " #$test_no)\t$1\t\tcommand ($2) " >> sanity_log
+			echo -e " #$test_no)\tTest case:$1    \t\tCommand:($2) " >> sanity_tested_apps
+			append_newline 1
+			echo
+			eval "$2 >> sanity_log 2>&1 &"
+			echo
+			sleep 5
+			append_newline 3
+			echo " Starting the ping test ..."
+			ping 192.168.111.1 -c $ping_packets | tee log
+		fi
+		RESULT=`grep -o "\w*\.\w*%\|\w*%" log`
+		echo
+		cat log >> sanity_log
+		print_result "$RESULT"
+		pid=`ps | pgrep odp_pktio`
+		if [[ -z "$pid" ]]
+		then
+			pid=`ps | pgrep odp_reflector`
+		fi
+		kill -2 $pid
+		sleep 2
+		append_newline 5
+		rm log
+		echo
+		echo
+		echo
+		echo >> sanity_tested_apps
+	else
+		if [[ $3 == "-j" ]]
+		then
+			echo -e " #$test_no)\tTest case:$1    \t\tCommand:($2)\tJumbo Packet test " >> sanity_untested_apps
+		else
+			echo -e " #$test_no)\tTest case:$1    \t\tCommand:($2) " >> sanity_untested_apps
+		fi
+		echo -e "\tNot Tested" | tee -a sanity_untested_apps
+		not_tested=`expr $not_tested + 1`
+		echo
+		echo >> sanity_untested_apps
+
+	fi
+	test_no=`expr $test_no + 1`
 }
 
 #/* Function to test odp_timer_test*/
@@ -486,6 +516,7 @@ unset_ipsec_macros() {
 	unset MODULE
 	unset COMMAND1
 	unset COMMAND2
+	unset JUMBO
 }
 
 #/* Function to run the odp_ipsec test cases*/
@@ -667,6 +698,9 @@ do
 		arg="$i"
 	fi
 	case $arg in
+		-j )
+			JUMBO=1
+			;;
 		-s )
 			MODE="ODP_SCH_PUSH_MODE"
 		        ;;
@@ -725,8 +759,18 @@ then
 		ip netns exec sanity_ipsec_ns tcpdump -nt -i $NI3 &
 		sleep 20
 		append_newline 3
-		echo " Starting the ping test ..."
-		ping 192.168.222.2 -c $ping_packets | tee log
+		if [[ -z $JUMBO ]]
+		then
+			echo " Starting the ping test ..."
+			ping 192.168.222.2 -c $ping_packets | tee log
+		else
+			echo " Starting the jumbo packet ping test ..." | tee -a sanity_log
+			ifconfig $NI mtu 9000 up
+			ip netns exec sanity_ipsec_ns ifconfig $NI3 mtu 9000 up
+			ping 192.168.222.2 -c $ping_packets -s 7500 | tee log
+			ip netns exec sanity_ipsec_ns ifconfig $NI3 mtu 1500 up
+			ifconfig $NI mtu 1500 up
+		fi
 		RESULT=`grep -o "\w*\.\w*%\|\w*%" log`
 		echo
 		cat log >> sanity_log
@@ -1126,7 +1170,7 @@ test_no=`expr $test_no + 1`
 run_command() {
 case $1 in
 	PKTIO | REFLECTOR )
-		run_pktio $1 "$2"
+		run_pktio $1 "$2" $3
 		;;
 	KNI )
 		run_kni $1 "$2"
@@ -1163,6 +1207,10 @@ run_odp() {
 	#/* ODP_PKTIO MODE 0
 	# */
 	run_command PKTIO "./odp_pktio -c 8 -m 0 -i $FDPNI0"
+
+	#/* ODP_PKTIO MODE 0 JUMBO PACKET
+	# */
+	run_command PKTIO "./odp_pktio -c 8 -m 0 -i $FDPNI0" -j
 
 	#/* ODP_PKTIO MODE 1
 	# */
@@ -1263,6 +1311,10 @@ run_odp() {
 	#/* ODP_IPSEC_OFFLOAD ( SCHED_PUSH ) (TUNNEL)
 	# */
 	run_command IPSEC_OFFLOAD "./odp_ipsec_offload -i $FDPNI0,$FDPNI1 -r 192.168.111.2/32:$FDPNI0:00.00.00.00.08.01 -r 192.168.222.2/32:$FDPNI1:00.00.00.00.06.01 -p 192.168.111.0/24:192.168.222.0/24:out:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:in:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8" "./odp_ipsec_offload -i $SDPNI0,$SDPNI1 -r 192.168.222.2/32:$SDPNI1:00.00.00.00.08.03 -r 192.168.111.2/32:$SDPNI0:00.00.00.00.05.02 -p 192.168.111.0/24:192.168.222.0/24:in:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:out:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8" -s
+
+	#/* ODP_IPSEC_OFFLOAD ( SCHED_PUSH ) (TUNNEL) (JUMBO_PKT)
+	# */
+	run_command IPSEC_OFFLOAD "./odp_ipsec_offload -i $FDPNI0,$FDPNI1 -r 192.168.111.2/32:$FDPNI0:00.00.00.00.08.01 -r 192.168.222.2/32:$FDPNI1:00.00.00.00.06.01 -p 192.168.111.0/24:192.168.222.0/24:out:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:in:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8" "./odp_ipsec_offload -i $SDPNI0,$SDPNI1 -r 192.168.222.2/32:$SDPNI1:00.00.00.00.08.03 -r 192.168.111.2/32:$SDPNI0:00.00.00.00.05.02 -p 192.168.111.0/24:192.168.222.0/24:in:both -e 192.168.111.2:192.168.222.2:aes:1:0102030405060708090a0b0c0d0e0f10 -a 192.168.111.2:192.168.222.2:sha1:1:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.111.2:192.168.222.2:192.168.160.1:192.168.160.2 -p 192.168.222.0/24:192.168.111.0/24:out:both -e 192.168.222.2:192.168.111.2:aes:2:0102030405060708090a0b0c0d0e0f10 -a 192.168.222.2:192.168.111.2:sha1:2:2122232425262728292a2b2c2d2e2f3031323334 -t 192.168.222.2:192.168.111.2:192.168.160.2:192.168.160.1 -c 8" -s -j -i="JUMBO PKT"
 
 	#/* ODP_IPSEC_OFFLOAD ( SCHED_PUSH ) (TUNNEL) (ORDERED QUEUES)
 	# */
