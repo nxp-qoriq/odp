@@ -16,11 +16,12 @@ kernel with Linaro gcc-linaro-aarch64-linux-gnu-4.8-2014.04_linux
 # set KERNEL_PATH=<linux source path> for kni compilation
 
 # To compile ODP with linux-dpaa2 platform
-$ git clone ssh://git@sw-stash.freescale.net/dpaa2/odp-dpaa2.git
+$ git clone ssh://git@sw-stash.freescale.net/gitam/odp.git
 $ cd <odp-dir>
-$ git checkout -b dpaa2 remotes/origin/dpaa2
+$ git checkout -b fsl_odp_v16.07_qoriq remotes/origin/fsl_odp_v16.07_qoriq
 $ ./bootstrap
-$ ./configure CC=${CROSS_COMPILE}gcc --host=aarch64-linux-gnu --with-platform=linux-dpaa2 --with-openssl-path=<OpenSSL library path> --enable-cunit-support --with-cunit-path=<Cunit Library path> --enable-debug-print="yes" --enable-ipsec-debug="yes"
+$ ./configure CC=${CROSS_COMPILE}gcc --host=aarch64-linux-gnu --with-platform=linux-dpaa2 --with-openssl-path=<OpenSSL library path> --enable-cunit-support --with-cunit-path=<Cunit Library path> --enable-debug-print="yes" --enable-ipsec-debug="yes" --enable-build-type=<build_type>
+# Where <build_type> can be one of the "ls1088/ls2088/ls2085/ls2080".
 $ make
 
 Note: "with-cunit-path", "enable-ipsec-debug" and "enable-debug-print" are optional parameters. Cunit configuration is required only if validation suite is to be tested and debug print configuration is required only if debug messages need to be print. By default
@@ -40,9 +41,4 @@ odp_generator -i dpni.6 --srcmac 00:00:00:00:00:06  --dstmac 00:1B:21:B7:82:45 -
 	-m 0   - burst mode
 	-c 2   - number of cpus
 
-Note: Following environment variables can be used at run time:
-1. HASH_DST: To enable/disable Destination IP based flow distribution. Default is "enable".
-2. ODP_SCH_PULL_MODE to control Pull/Push mode for ODP scheduler.
-	set ODP_SCH_PULL_MODE=1 to set ODP scheduler in PULL mode.
-   By default ODP scheduler will work in PUSH mode.
-3. APPL_MEM_SIZE user specified memory requirent for application in MB.
+Note: Please refer to "<odp-path>/scripts/dpaa2/dpaa2_config.sh" file for environment variables that can be used at run time.
