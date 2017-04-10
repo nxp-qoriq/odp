@@ -1502,7 +1502,7 @@ int odp_pktio_capability(odp_pktio_t pktio, odp_pktio_capability_t *capa)
 	memset(capa, 0, sizeof(odp_pktio_capability_t));
 	capa->max_input_queues = ndev->num_rx_vqueues;
 	capa->max_output_queues = ndev->num_tx_vqueues;
-	capa->set_op.op.promisc_mode = odp_pktio_promisc_mode(pktio);
+	capa->set_op.op.promisc_mode = 1;
 
 	if (entry->s.type == ODP_PKTIO_TYPE_LOOPBACK)
 		capa->loop_supported = TRUE;
