@@ -22,6 +22,8 @@
 #if defined(BUILD_LS2085) || defined(BUILD_LS2080) || \
 	defined(BUILD_LS2088) || defined(BUILD_LS1088)
 #define NUM_HOST_CPUS 8
+#elif defined(BUILD_LX2160)
+#define NUM_HOST_CPUS 16
 #endif
 
 #define NUM_DPIO_REGIONS	2
@@ -177,7 +179,8 @@ int32_t dpaa2_io_portal_probe(ODP_UNUSED struct dpaa2_dev *dev,
 	dpio_dev->qbman_portal_ce_paddr = (uint64_t)mmap(NULL, reg_info.size,
 				PROT_WRITE | PROT_READ, MAP_SHARED,
 				dpio_dev->vfio_fd, reg_info.offset);
-#if defined(BUILD_LS2085) || defined(BUILD_LS2080) || defined(BUILD_LS1088)
+
+#if defined(BUILD_LS2085) || defined(BUILD_LS2080)
 	/* Create Mapping for QBMan Cache Enabled area. This is a fix for
 	   SMMU fault for DQRR statshing transaction. */
 	if (vfio_dmamap_mem_region(dpio_dev->qbman_portal_ce_paddr,
@@ -355,7 +358,7 @@ void dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id)
 	char string[STRING_LEN], command[COMMAND_LEN];
 	FILE *file;
 
-	snprintf(string, STRING_LEN, "vfio-fsl-mc-dpio.%d", dpio_id);
+	snprintf(string, STRING_LEN, "dpio.%d", dpio_id);
 	file = fopen("/proc/interrupts", "r");
 	if (!file) {
 		DPAA2_WARN(FW, "Failed to open /proc/interrupts file\n");

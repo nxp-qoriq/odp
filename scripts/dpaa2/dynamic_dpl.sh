@@ -191,22 +191,22 @@ get_dpni_parameters() {
 			unset board_type
 			if [ -e /sys/firmware/devicetree/base/compatible ]
 			then
-				board_type=`grep -o '1088\|2088\|2080\|2085' /sys/firmware/devicetree/base/compatible | head -1`
+				board_type=`grep -o '1088\|2088\|2080\|2085\|2160' /sys/firmware/devicetree/base/compatible | head -1`
 			elif [ -e /sys/firmware/devicetree/base/model ]
 			then
-				board_type=`grep -o '1088\|2088\|2080\|2085' /sys/firmware/devicetree/base/model | head -1`
+				board_type=`grep -o '1088\|2088\|2080\|2085\|2160' /sys/firmware/devicetree/base/model | head -1`
 			fi
 			if [ -z "$board_type" ]
 			then
 				echo "Unable to find the board type!"
-				echo "Please enter the board type! (Accepted board type keywords: 1088/2088/2085/2080)"
+				echo "Please enter the board type! (Accepted board type keywords: 1088/2088/2085/2080/2160)"
 				read board_type
 			fi
 		fi
 		if [[ $board_type == "1088" ]]
 		then
 			DPNI_OPTIONS=$DPNI_OPTIONS
-		elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" ]]
+		elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" || $board_type == "2160" ]]
 		then
 			DPNI_OPTIONS="$DPNI_OPTIONS,DPNI_OPT_HAS_KEY_MASKING"
 		else

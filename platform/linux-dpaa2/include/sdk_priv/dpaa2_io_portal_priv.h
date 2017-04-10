@@ -46,7 +46,7 @@ extern "C" {
 #define LDPAA_IO_P_NAME		"ldpaa-dpio"
 
 /* Number of maximum frames storage in private dqrr storage */
-#define NUM_MAX_RECV_FRAMES	16
+#define NUM_MAX_RECV_FRAMES	32
 
 /* Maximum number of channels*/
 #define MAX_SCHED_GRPS		11
@@ -99,6 +99,21 @@ do { \
 	else \
 		sdest = DPAA2_CORE_CLUSTER_FOURTH; \
 } while (0)
+
+#elif defined(BUILD_LX2160)
+#define DPAA2_CORE_CLUSTER_BASE		0x00
+/* For LX2160 platform There are eight clusters with following mapping:
+ * Cluster 1 (ID = x00) : CPU0, CPU1;
+ * Cluster 2 (ID = x01) : CPU2, CPU3;
+ * Cluster 3 (ID = x02) : CPU4, CPU5;
+ * Cluster 4 (ID = x03) : CPU6, CPU7;
+ * Cluster 5 (ID = x04) : CPU8, CPU9;
+ * Cluster 6 (ID = x05) : CPU10, CPU11;
+ * Cluster 7 (ID = x06) : CPU12, CPU13;
+ * Cluster 8 (ID = x07) : CPU14, CPU15;
+ */
+#define DPAA2_CORE_CLUSTER_GET(sdest, cpu_id) \
+	sdest = DPAA2_CORE_CLUSTER_BASE + (cpu_id / 2);
 
 #else
 #warning "SDEST is not configured. Unsupported platform."

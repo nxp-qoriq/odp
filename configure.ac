@@ -241,6 +241,7 @@ AC_ARG_ENABLE([build_type],
   ls2085) build_type=LS2085 ;;
   ls2088) build_type=LS2088 ;;
   ls1088) build_type=LS1088 ;;
+  lx2160) build_type=LX2160 ;;
   *)  build_type=LS2085;;
 esac],[build_type=LS2085])
 fi
@@ -248,6 +249,7 @@ AM_CONDITIONAL([BUILD_LS2080], [test x$build_type = xLS2080 ])
 AM_CONDITIONAL([BUILD_LS2085], [test x$build_type = xLS2085 ])
 AM_CONDITIONAL([BUILD_LS2088], [test x$build_type = xLS2088 ])
 AM_CONDITIONAL([BUILD_LS1088], [test x$build_type = xLS1088 ])
+AM_CONDITIONAL([BUILD_LX2160], [test x$build_type = xLX2160 ])
 
 ##########################################################################
 # Default warning setup

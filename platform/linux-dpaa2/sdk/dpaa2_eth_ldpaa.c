@@ -213,14 +213,12 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 						dev->dev_string, retcode);
 		goto dev_open_failure;
 	}
-#if defined(BUILD_LS2088) || defined(BUILD_LS1088)
 	/* Reset the DPNI before use. It's a workaround to
 	   enable Stashing via MC configuration */
 	retcode = dpni_reset(dpni_dev, CMD_PRI_LOW, dev_priv->token);
 	if (retcode)
 		DPAA2_ERR(ETH, "Error in Resetting the DPNI"
 				" : ErrorCode = %d\n", retcode);
-#endif
 	/*Get the resource information i.e. numner of RX/TX Queues, TC etc*/
 	retcode = dpni_get_attributes(dpni_dev, CMD_PRI_LOW, dev_priv->token, &attr);
 	if (retcode) {
@@ -1077,7 +1075,7 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 		eth_rx_vq->sync = vq_cfg->sync;
 	}
 
-#if defined(BUILD_LS2088) || defined(BUILD_LS1088)
+#if !defined(BUILD_LS2080) && !defined(BUILD_LS2085)
 	options |= DPNI_QUEUE_OPT_FLC;
 	cfg.flc.stash_control = true;
 	cfg.flc.value &= 0xFFFFFFFFFFFFFFC0;

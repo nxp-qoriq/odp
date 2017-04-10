@@ -23,7 +23,7 @@
 /** @def MAX_WORKERS
  * @brief Maximum number of worker threads
  */
-#define MAX_WORKERS            8
+#define MAX_WORKERS            16
 
 /** @def SHM_PKT_POOL_BUF_SIZE
  * @brief Buffer size of the packet pool buffer
@@ -484,7 +484,7 @@ int main(int argc, char *argv[])
 	print_info(NO_PATH(argv[0]), &args->appl);
 
 	/* Default to system CPU count unless user specified */
-	num_workers = MAX_WORKERS;
+	num_workers = odp_cpu_count();
 	if (args->appl.cpu_count)
 		num_workers = args->appl.cpu_count;
 

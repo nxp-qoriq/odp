@@ -58,7 +58,7 @@
 /** @def MAX_PKT_BURST
  * @brief Maximum number of packet bursts
  */
-#define MAX_PKT_BURST          16
+#define MAX_PKT_BURST          32
 
 /** @def APPL_MODE_PKT_BURST
  * @brief The application will handle pakcets in bursts

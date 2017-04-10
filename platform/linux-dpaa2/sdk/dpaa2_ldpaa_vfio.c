@@ -148,6 +148,7 @@ static void vfio_unmap_irq_region(struct vfio_group *group)
 		DPAA2_ERR(FW, "Error in vfio_dma_unmap (errno = %d)", errno);
 }
 
+#if !defined(BUILD_LX2160)
 static int vfio_map_irq_region(struct vfio_group *group)
 {
 	int ret;
@@ -176,6 +177,7 @@ static int vfio_map_irq_region(struct vfio_group *group)
 	DPAA2_ERR(FW, "vfio_map_irq_region fails (errno = %d)", errno);
 	return -errno;
 }
+#endif
 
 int32_t vfio_dmamap_mem_region(uint64_t vaddr,
 				uint64_t iova,
@@ -241,11 +243,13 @@ static int32_t setup_dmamap(void)
 		DPAA2_INFO(FW, "-----> dma_map.vaddr = 0x%llX\n", dma_map.vaddr);
 	}
 
+#if !defined(BUILD_LX2160)
 	/* TODO - This is a W.A. as VFIO currently does not add the mapping of
 	    the interrupt region to SMMU. This should be removed once the
 	    support is added in the Kernel.
 	 */
 	vfio_map_irq_region(group);
+#endif
 
 	return DPAA2_SUCCESS;
 }
