@@ -214,6 +214,12 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int queue_typ
 	if (ret != 0)
 		EXAMPLE_ABORT("Error: unable to start %s\n", name);
 
+	if (capa.set_op.op.promisc_mode == 1) {
+		ret = odp_pktio_promisc_mode_set(pktio, 1);
+		if (ret != 0)
+			EXAMPLE_ABORT("Error: Unable to set up promiscuous mode for %s\n", name);
+	}
+
 	return pktio;
 }
 
