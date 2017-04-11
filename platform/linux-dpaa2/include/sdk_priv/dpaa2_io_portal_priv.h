@@ -45,6 +45,10 @@ extern "C" {
 #define LDPAA_IO_P_MIN_NUM	DPIO_VER_MINOR
 #define LDPAA_IO_P_NAME		"ldpaa-dpio"
 
+
+/*Maximum number of slots available in TX ring*/
+#define MAX_TX_RING_SLOTS       8
+
 /* Number of maximum frames storage in private dqrr storage */
 #define NUM_MAX_RECV_FRAMES	32
 
