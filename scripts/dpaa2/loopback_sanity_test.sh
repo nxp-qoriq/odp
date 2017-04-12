@@ -265,18 +265,21 @@ get_resources() {
 	./kernel-ni.sh $FDPNI0 | tee linux_iflog
 	NI=`grep -o "interface: ni\w*" linux_iflog | sed -e 's/interface: //g'`
 	if [[ -z $NI ]]
+	then
 		NI=`grep -o "interface: eth\w*" linux_iflog | sed -e 's/interface: //g'`
 	fi
 
 	./kernel-ni.sh $FDPNI2 | tee linux_iflog
 	NI2=`grep -o "interface: ni\w*" linux_iflog | sed -e 's/interface: //g'`
-	if [[ -z $NI ]]
+	if [[ -z $NI2 ]]
+	then
 		NI2=`grep -o "interface: eth\w*" linux_iflog | sed -e 's/interface: //g'`
 	fi
 
 	./kernel-ni.sh $SDPNI1 | tee linux_iflog
 	NI3=`grep -o "interface: ni\w*" linux_iflog | sed -e 's/interface: //g'`
-	if [[ -z $NI ]]
+	if [[ -z $NI3 ]]
+	then
 		NI3=`grep -o "interface: eth\w*" linux_iflog | sed -e 's/interface: //g'`
 	fi
 
