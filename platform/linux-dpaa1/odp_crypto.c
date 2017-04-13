@@ -450,7 +450,7 @@ static int create_ses_shdesc(crypto_ses_entry_t *ses)
 	shared_desc = (typeof(shared_desc)) &prehdr_desc->descbuf;
 
 	pool_entry = odp_pool_to_entry(ses->s.output_pool);
-	ses->s.prehdr_desc->prehdr.lo.field.pool_id = pool_entry->s.pool_id;
+	ses->s.prehdr_desc->prehdr.lo.field.pool_id = pool_entry->s.bpid;
 
 	ret = odp_pool_info(ses->s.output_pool, &pool_info);
 	if (ret) {

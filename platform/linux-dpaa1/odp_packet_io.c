@@ -434,9 +434,16 @@ dqrr_cb_poll_pktin(struct qman_fq *fq,
 	odp_packet_hdr_t *pkthdr;
 	odp_packet_t pkt;
 	size_t off;
+	uint32_t i;
 
 	fd = &dqrr->fd;
-	pool = get_pool_entry(fd->bpid);
+	i = bpid_to_index(fd->bpid);
+	if (i == ODP_BUFFER_MAX_POOLS) {
+		ODP_ERR("Invalid BPID\n");
+		/* Buffer need to be freed here */
+		return qman_cb_dqrr_consume;
+	}
+	pool = get_pool_entry(i);
 
 	fd_addr = __dma_mem_ptov(qm_fd_addr(fd));
 	off = fd->offset;
@@ -458,7 +465,7 @@ dqrr_cb_poll_pktin(struct qman_fq *fq,
 #ifndef ODP_MULTI_POOL_SG_SUPPORT
 		buf_hdr = odp_buf_hdr_from_addr(fd_addr, pool);
 #else
-		pool_sg = get_pool_entry(sgt->bpid);
+		pool_sg = get_pool_entry(i);
 		buf_hdr = odp_buf_hdr_from_addr(fd_addr, pool_sg);
 
 		pool_handle = pool_index_to_handle(sgt->bpid);
@@ -518,9 +525,16 @@ dqrr_cb_im(struct qman_fq *fq,
 	odp_packet_t pkt;
 	void *fd_addr;
 	size_t off;
+	uint32_t i;
 
 	fd = &dqrr->fd;
-	pool = get_pool_entry(fd->bpid);
+	i = bpid_to_index(fd->bpid);
+	if (i == ODP_BUFFER_MAX_POOLS) {
+		ODP_ERR("Invalid BPID\n");
+		/* Buffer need to be freed here */
+		return qman_cb_dqrr_consume;
+	}
+	pool = get_pool_entry(i);
 
 	/* get packet header from frame start address */
 	fd_addr = __dma_mem_ptov(qm_fd_addr(fd));
@@ -710,17 +724,17 @@ odp_pktio_t odp_pktio_open(const char *name, odp_pool_t pool,
 	unsigned bpool_num;
 	pool_t = get_pool_entry(pool_handle_to_index(pktio_entry->s.pool));
 	if (pktio_tbl->port_info[i].bp_num < MAX_PORT_BPOOLS &&
-		!fman_if_find_bpid(__if, pool_t->s.pool_id)) {
+		!fman_if_find_bpid(__if, pool_t->s.bpid)) {
 		bpool_num = pktio_tbl->port_info[i].bp_num;
 		bpool = &pktio_tbl->port_info[i].bpool[bpool_num];
-		bpool->bpid = pool_t->s.pool_id;
+		bpool->bpid = pool_t->s.bpid;
 
 		bpool->count = pool_t->s.params.pkt.num;
 		bpool->size = pool_t->s.params.pkt.len;
 		list_add_tail(&bpool->node, &__if->bpool_list);
 
 		fman_if_set_bp(__if, pktio_tbl->port_info[i].bp_num,
-				pool_t->s.pool_id, pool_t->s.params.pkt.len);
+				pool_t->s.bpid, pool_t->s.params.pkt.len);
 		pktio_tbl->port_info[i].bp_num++;
 	}
 

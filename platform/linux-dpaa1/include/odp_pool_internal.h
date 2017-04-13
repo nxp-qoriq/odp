@@ -33,6 +33,8 @@ extern "C" {
 #include <usdpaa/fsl_usd.h>
 #include <usdpaa/fsl_bman.h>
 
+#define ODP_POOL_ID 9 /* BPID as mentioned in dts */
+
 /**
  * Buffer initialization routine prototype
  *
@@ -140,6 +142,7 @@ struct pool_entry_s {
 	uint32_t                low_wm;
 	uint32_t                headroom;
 	uint32_t                tailroom;
+	uint16_t		bpid;
 
 	struct bman_pool	*bman_pool;
 	struct bman_pool_params  bman_params;
@@ -352,6 +355,16 @@ static inline uint32_t odp_buffer_pool_headroom(odp_pool_t pool)
 static inline uint32_t odp_buffer_pool_tailroom(odp_pool_t pool)
 {
 	return odp_pool_to_entry(pool)->s.tailroom;
+}
+
+static inline uint32_t bpid_to_index(uint16_t bpid)
+{
+	int i = ODP_BUFFER_MAX_POOLS;
+
+	for (i = 0; i < ODP_BUFFER_MAX_POOLS; i++)
+		if (((pool_entry_t *)pool_entry_ptr[i])->s.bpid == bpid)
+			break;
+	return i;
 }
 
 odp_pool_t odp_pool_create_bman(pool_entry_t *pool);
