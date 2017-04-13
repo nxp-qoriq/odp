@@ -83,6 +83,8 @@ script help :----->
 					command: "export OPR_ENABLE=0"
 					By default order restoration is enabled.
 
+		PFDR_IN_DDR_ENABLE = To Enable PFDR memory in DDR instead of PEB
+					Command: "export PFDR_IN_DDR_ENABLE=1"
 	/**DPNI**:-->
 		MAX_QUEUES         = max number of Rx/Tx Queues on DPNI.
 					Set the parameter using below command:
@@ -186,6 +188,12 @@ get_dpni_parameters() {
 		then
 			DPNI_OPTIONS=""
 		fi
+		DPNI_ALLOC_PFDR_IN_PEB="0x80000000"
+		if [[ $PFDR_IN_DDR_ENABLE == "1" ]]
+		then
+			DPNI_ALLOC_PFDR_IN_PEB=""
+		fi
+		DPNI_OPTIONS=$DPNI_OPTIONS,$DPNI_ALLOC_PFDR_IN_PEB
 		if [[ -z "$board_type" ]]
 		then
 			unset board_type
