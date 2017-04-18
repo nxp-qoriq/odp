@@ -42,7 +42,7 @@ odp_pool_create_bman(pool_entry_t *pool)
 	size_t hdr_offset, sg_priv_offset;
 
 	struct bman_pool_params params = {
-		.bpid = pool->s.pool_id,
+		.bpid = pool->s.bpid,
 	};
 
 	ODP_ASSERT(pool->s.params.type == ODP_POOL_PACKET);
@@ -52,7 +52,7 @@ odp_pool_create_bman(pool_entry_t *pool)
 		return ODP_POOL_INVALID;
 	pool->s.bman_params = params;
 
-	ret = bman_reserve_bpid(pool->s.pool_id);
+	ret = bman_reserve_bpid(pool->s.bpid);
 	if (ret)
 		return ODP_POOL_INVALID;
 
@@ -68,7 +68,7 @@ odp_pool_create_bman(pool_entry_t *pool)
 
 	if (num_bufs)
 		ODP_DBG("Warn: drained %u bufs from BPID %d\n",
-			num_bufs, pool->s.pool_id);
+			num_bufs, pool->s.bpid);
 	/* reserve the offset for packet hdr structure */
 	sg_priv_offset = ODP_CACHE_LINE_SIZE_ROUNDUP(sizeof(struct sg_priv));
 	hdr_offset = ODP_CACHE_LINE_SIZE_ROUNDUP(sizeof(odp_packet_hdr_t));
@@ -117,7 +117,7 @@ odp_pool_create_bman(pool_entry_t *pool)
 			tmp->segsize = pool->s.seg_size;
 			tmp->handle.handle = odp_buffer_encode_handle(tmp);
 
-			tmp->bpid = pool->s.pool_id;
+			tmp->bpid = pool->s.bpid;
 			tmp->phy_addr = __dma_mem_vtop(bm_addr);
 			tmp->addr[0] = bm_addr;
 		}
@@ -130,7 +130,7 @@ odp_pool_create_bman(pool_entry_t *pool)
 		num_bufs += rel;
 	}
 	pool->s.buf_offset = hdr_offset + sg_priv_offset;
-	ODP_DBG("Released %u bufs to BPID %d\n", num_bufs, pool->s.pool_id);
+	ODP_DBG("Released %u bufs to BPID %d\n", num_bufs, pool->s.bpid);
 	return pool->s.pool_hdl;
 }
 

@@ -1101,9 +1101,16 @@ static enum qman_cb_dqrr_result dqrr_cb_cos(struct qman_fq *fq,
 	odp_packet_hdr_t *pkthdr;
 	odp_packet_t pkt;
 	size_t off;
+	uint32_t i;
 
 	fd = &dqrr->fd;
-	pool  = get_pool_entry(fd->bpid);
+	i = bpid_to_index(fd->bpid);
+	if (i == ODP_BUFFER_MAX_POOLS) {
+		ODP_ERR("Invalid BPID\n");
+		/* Buffer need to be freed here */
+		return qman_cb_dqrr_consume;
+	}
+	pool  = get_pool_entry(i);
 	queue_entry_t *qentry = QENTRY_FROM_FQ(fq);
 
 	assert(dqrr->stat & QM_DQRR_STAT_FD_VALID);

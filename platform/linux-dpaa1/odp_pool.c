@@ -290,6 +290,8 @@ odp_pool_t odp_pool_create(const char *name, odp_pool_param_t *params)
 		size_t block_size, pad_size, mdata_size, udata_size;
 
 		pool->s.flags.all = 0;
+		/* Hardcoding bpid should be from dts */
+		pool->s.bpid = ODP_POOL_ID;
 
 		if (name == NULL) {
 			pool->s.name[0] = 0;
@@ -494,7 +496,7 @@ int odp_pool_destroy(odp_pool_t pool_hdl)
 
 	if (pool->s.params.type == ODP_POOL_PACKET) {
 		bman_free_pool(pool->s.bman_pool);
-		bman_release_bpid(pool->s.pool_id);
+		bman_release_bpid(pool->s.bpid);
 		bman[pool->s.pool_id] = false;
 	}
 	/* Call fails if pool is not allocated or predefined*/

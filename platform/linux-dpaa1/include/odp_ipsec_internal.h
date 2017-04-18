@@ -19,7 +19,6 @@ extern "C" {
 #define ODP_IPSEC_AR_WS_64 0xc0
 #define ODP_IPSEC_AR_WS_128 0x80
 #define ESP_PADLEN_OFFSET 2
-#define ODP_POOL_ID 0
 #define ODP_POOL_BUF_SIZE 2048
 #define MAX_IV_LEN 16
 #define ODP_IPSEC_OP_MODE_ASYNC_PREF 2

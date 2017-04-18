@@ -300,9 +300,16 @@ static enum qman_cb_dqrr_result dqrr_cb(struct qman_fq *fq,
 		size_t off;
 		struct qm_sg_entry *sgt;
 		void *fd_addr;
+		uint32_t i;
 
 		off = fd->offset;
-		pool  = get_pool_entry(fd->bpid);
+		i = bpid_to_index(fd->bpid);
+		if (i == ODP_BUFFER_MAX_POOLS) {
+			ODP_ERR("Invalid BPID\n");
+			/* Buffer need to be freed here */
+			return qman_cb_dqrr_consume;
+		}
+		pool  = get_pool_entry(i);
 		if (fd->format == qm_fd_sg) {
 			unsigned	sgcnt;
 
