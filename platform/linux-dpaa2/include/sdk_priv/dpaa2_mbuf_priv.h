@@ -59,6 +59,7 @@ extern "C" {
 #define DPAA2_SET_FD_COMPOUND_FMT(fd)	\
 	fd->simple.bpid_offset |= (uint32_t)1 << 28;
 #define DPAA2_SET_FLC_EWS(flc)  flc->word1_bits23_16 |= 0x1
+#define DPAA2_SET_FLC_RSC(flc)  (flc->word1_bits31_24 |= 0x1)
 #define DPAA2_SET_FLC_REUSE_BS(flc) flc->mode_bits |= 0x8000
 #define DPAA2_SET_FLC_REUSE_FF(flc) flc->mode_bits |= 0x2000
 
