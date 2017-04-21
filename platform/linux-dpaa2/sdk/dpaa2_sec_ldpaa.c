@@ -57,12 +57,16 @@ TAILQ_HEAD(sec_map_list, sec_dev_list);
 struct sec_map_list dev_map_list;
 struct sec_dev_list *sec_dev_map, *last_used_dev = NULL;
 
-void *dpaa2_sec_simple_contig_fd_to_mbuf(const struct qbman_fd *fd);
-void *dpaa2_sec_simple_sg_fd_to_mbuf(const struct qbman_fd *fd);
-void *dpaa2_sec_compound_contig_fd_to_mbuf(const struct qbman_fd *fd);
-void *dpaa2_sec_compound_sg_fd_to_mbuf(const struct qbman_fd *fd);
-
-void *dpaa2_sec_simple_contig_fd_to_mbuf(const struct qbman_fd *fd)
+void *dpaa2_sec_simple_contig_fd_to_mbuf(const struct qbman_fd *fd,
+					const struct qbman_result *dqrr);
+void *dpaa2_sec_simple_sg_fd_to_mbuf(const struct qbman_fd *fd,
+					const struct qbman_result *dqrr);
+void *dpaa2_sec_compound_contig_fd_to_mbuf(const struct qbman_fd *fd,
+					const struct qbman_result *dqrr);
+void *dpaa2_sec_compound_sg_fd_to_mbuf(const struct qbman_fd *fd,
+					const struct qbman_result *dqrr);
+void *dpaa2_sec_simple_contig_fd_to_mbuf(const struct qbman_fd *fd,
+					const struct qbman_result *dqrr)
 {
 	ipsec_sa_entry_t *sa;
 	dpaa2_mbuf_pt mbuf;
@@ -82,11 +86,13 @@ void *dpaa2_sec_simple_contig_fd_to_mbuf(const struct qbman_fd *fd)
 	mbuf->tot_frame_len = mbuf->frame_len;
 	mbuf->drv_priv_resv[1] = fd->simple.frc;
 	mbuf->flags |= DPAA2BUF_SEC_CNTX_VALID;
-	mbuf->vq = (void *)DPAA2_GET_FD_FLC(fd);
+	mbuf->vq = (void *)qbman_result_DQ_fqd_ctx(dqrr);
+
 	return mbuf;
 }
 
-void *dpaa2_sec_simple_sg_fd_to_mbuf(const struct qbman_fd *fd)
+void *dpaa2_sec_simple_sg_fd_to_mbuf(const struct qbman_fd *fd,
+				const struct qbman_result *dqrr)
 {
 	struct dpaa2_mbuf *first_seg;
 	struct dpaa2_sg_entry *sgt, *sge;
@@ -119,11 +125,12 @@ void *dpaa2_sec_simple_sg_fd_to_mbuf(const struct qbman_fd *fd)
 	first_seg->tot_frame_len = DPAA2_GET_FD_LEN(fd);;
 	first_seg->drv_priv_resv[1] = fd->simple.frc;
 	first_seg->flags |= DPAA2BUF_SEC_CNTX_VALID;
-	first_seg->vq = (void *)DPAA2_GET_FD_FLC(fd);
+	first_seg->vq = (void *)qbman_result_DQ_fqd_ctx(dqrr);
 	return (void *)first_seg;
 }
 
-void *dpaa2_sec_compound_contig_fd_to_mbuf(const struct qbman_fd *fd)
+void *dpaa2_sec_compound_contig_fd_to_mbuf(const struct qbman_fd *fd,
+					const struct qbman_result *dqrr)
 {
 	/* FIXME Check if you can pass the original XXX_req in original
 	   buffer or FD? If so, retrieving it back will be efficient. */
@@ -183,14 +190,15 @@ void *dpaa2_sec_compound_contig_fd_to_mbuf(const struct qbman_fd *fd)
 
 	if (mbuf->priv_meta_off < 2*sizeof(struct qbman_fle))
 		dpaa2_data_free(fle);
-	/*TODO Stash bits are not taken care currently*/
-	mbuf->vq = (void *)DPAA2_GET_FD_FLC(fd);
+
+	mbuf->vq = (void *)qbman_result_DQ_fqd_ctx(dqrr);
 
 	/*todo - based on vq type, store the DQRR in mbuf*/
 	return mbuf;
 }
 
-void *dpaa2_sec_compound_sg_fd_to_mbuf(const struct qbman_fd *fd)
+void *dpaa2_sec_compound_sg_fd_to_mbuf(const struct qbman_fd *fd,
+				const struct qbman_result *dqrr)
 {
 	dpaa2_mbuf_pt mbuf, cur_seg;
 	struct qbman_fle *fle, *sge;
@@ -247,8 +255,7 @@ void *dpaa2_sec_compound_sg_fd_to_mbuf(const struct qbman_fd *fd)
 
 	mbuf->flags |= DPAA2BUF_SEC_CNTX_VALID;
 
-	/*TODO Stash bits are not taken care currently*/
-	mbuf->vq = (void *)DPAA2_GET_FD_FLC(fd);
+	mbuf->vq = (void *)qbman_result_DQ_fqd_ctx(dqrr);
 
 	/*todo - based on vq type, store the DQRR in mbuf*/
 	return mbuf;
@@ -257,14 +264,14 @@ void *dpaa2_sec_compound_sg_fd_to_mbuf(const struct qbman_fd *fd)
 void *dpaa2_sec_cb_dqrr_fd_to_mbuf(
 		struct qbman_swp *qm ODP_UNUSED,
 		const struct qbman_fd *fd,
-		const struct qbman_result *dqrr ODP_UNUSED)
+		const struct qbman_result *dqrr)
 {
 	uint8_t format;
 	format = qbman_fd_get_format(fd);
 	if (format == qbman_fd_single)
-		return dpaa2_sec_simple_contig_fd_to_mbuf(fd);
+		return dpaa2_sec_simple_contig_fd_to_mbuf(fd, dqrr);
 	else if (format == qbman_fd_sg)
-		return dpaa2_sec_simple_sg_fd_to_mbuf(fd);
+		return dpaa2_sec_simple_sg_fd_to_mbuf(fd, dqrr);
 	else {
 		struct qbman_fle *fle;
 		fle = (struct qbman_fle *)DPAA2_GET_FD_ADDR(fd);
@@ -274,9 +281,10 @@ void *dpaa2_sec_cb_dqrr_fd_to_mbuf(
 			sge = (struct qbman_fle *)DPAA2_GET_FLE_ADDR(fle);
 			if (((void *)fle + DPAA2_MBUF_HW_ANNOTATION +
 					DPAA2_FD_PTA_SIZE) == (void *)sge)
-					return dpaa2_sec_compound_sg_fd_to_mbuf(fd);
+					return dpaa2_sec_compound_sg_fd_to_mbuf
+								(fd, dqrr);
 		}
-		return dpaa2_sec_compound_contig_fd_to_mbuf(fd);
+		return dpaa2_sec_compound_contig_fd_to_mbuf(fd, dqrr);
 	}
 }
 
