@@ -62,7 +62,9 @@ void queue_test_capa(void)
 	CU_ASSERT(odp_queue_capability(&capa) == 0);
 
 	CU_ASSERT(capa.max_queues != 0);
-	CU_ASSERT(capa.max_ordered_locks != 0);
+	/*XXX Cunit Assert removed for max_ordered_locks, as we
+	  are not supporting ordered queue locks for ls2 platform
+	  and this count should be optional in ODP*/
 	CU_ASSERT(capa.max_sched_groups != 0);
 	CU_ASSERT(capa.sched_prios != 0);
 
@@ -238,11 +240,15 @@ void queue_test_info(void)
 	const char *const nq_order = "test_q_order";
 	odp_queue_info_t info;
 	odp_queue_param_t param;
+	odp_queue_capability_t capa;
 	char q_plain_ctx[] = "test_q_plain context data";
 	char q_order_ctx[] = "test_q_order context data";
 	unsigned lock_count;
 	char *ctx;
 	int ret;
+
+	memset(&capa, 0, sizeof(odp_queue_capability_t));
+	CU_ASSERT(odp_queue_capability(&capa) == 0);
 
 	/* Create a plain queue and set context */
 	q_plain = odp_queue_create(nq_plain, NULL);
@@ -256,7 +262,7 @@ void queue_test_info(void)
 	param.sched.prio = ODP_SCHED_PRIO_NORMAL;
 	param.sched.sync = ODP_SCHED_SYNC_ORDERED;
 	param.sched.group = ODP_SCHED_GROUP_ALL;
-	param.sched.lock_count = 1;
+	param.sched.lock_count = capa.max_ordered_locks;
 	param.context = q_order_ctx;
 	q_order = odp_queue_create(nq_order, &param);
 	CU_ASSERT(ODP_QUEUE_INVALID != q_order);
