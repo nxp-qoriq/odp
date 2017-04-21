@@ -147,8 +147,12 @@ Optional arguments:
 					'odp_ipsec_offload' application.
 
 Process of testing:
-	* odp_pktio, odp_reflector and odp_kni_demo:
+	* odp_pktio and odp_kni_demo:
 		---- ping with destination 192.168.111.1, packets will go through NI, so only FDPNI0 is valid
+		     for testing. Results are based on %age packets received.
+
+	* odp_reflector:
+		---- ping with destination 192.168.111.3, packets will go through NI to NI2, so only FDPNI0, FDPNI2 are valid
 		     for testing. Results are based on %age packets received.
 
 	* odp_l3fwd/odp_tm/odp_l2fwd
@@ -311,7 +315,7 @@ print_result() {
 	fi
 }
 
-#/* Function to run the odp_pktio and odp_reflector test cases*/
+#/* Function to run the odp_pktio test cases*/
 run_pktio() {
 	echo -e " #$test_no)\tTest case:$1    \t\tCommand:($2) "
 	if [[ $3 == "-j" ]]
@@ -354,10 +358,6 @@ run_pktio() {
 		cat log >> sanity_log
 		print_result "$RESULT"
 		pid=`ps | pgrep odp_pktio`
-		if [[ -z "$pid" ]]
-		then
-			pid=`ps | pgrep odp_reflector`
-		fi
 		kill -2 $pid
 		sleep 2
 		append_newline 5
@@ -1072,6 +1072,51 @@ fi
 test_no=`expr $test_no + 1`
 }
 
+#/* Function to run the reflector test cases*/
+
+run_reflector() {
+echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) "
+echo
+eval $PRINT_MSG
+$READ
+if [[ "$input" == "y" ]]
+then
+	echo -e " #$test_no)\t$1\t\tcommand ($2) " >> sanity_log
+	echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) " >> sanity_tested_apps
+	append_newline 1
+	echo
+	eval "$2 >> sanity_log 2>&1 &"
+	echo
+	append_newline 3
+	sleep 5
+	ip netns exec sanity_ns ifconfig $NI2 192.168.111.3
+	ping 192.168.111.3 -c 10 | tee log
+	RESULT=`grep -o "\w*\.\w*%\|\w*%" log`
+	cat log >> sanity_log
+	print_result "$RESULT"
+	echo
+	rm log
+	append_newline 3
+	pid=`ps | pgrep odp_reflector`
+	kill -9 $pid
+	sleep 5
+	unconfigure_ethif
+	sleep 2
+	configure_ethif
+	append_newline 5
+	sleep 5
+	echo
+	echo >> sanity_tested_apps
+else
+	echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) " >> sanity_untested_apps
+	echo -e "\tNot Tested" | tee -a sanity_untested_apps
+	not_tested=`expr $not_tested + 1`
+	echo
+	echo >> sanity_untested_apps
+fi
+test_no=`expr $test_no + 1`
+}
+
 #/* Function to run the odp_l3fwd/odp_tm test cases*/
 
 run_l3fwd() {
@@ -1181,7 +1226,10 @@ test_no=`expr $test_no + 1`
 
 run_command() {
 case $1 in
-	PKTIO | REFLECTOR )
+	REFLECTOR )
+		run_reflector $1 "$2"
+		;;
+	PKTIO )
 		run_pktio $1 "$2" $3
 		;;
 	KNI )
@@ -1232,21 +1280,22 @@ run_odp() {
 	# */
 	run_command PKTIO "./odp_pktio -c 8 -m 2 -i $FDPNI0"
 
+
 	#/* ODP_REFLECTOR MODE 0
 	# */
-	run_command REFLECTOR "./odp_reflector -i $FDPNI0 -m 0 -c 8"
+	run_command REFLECTOR "./odp_reflector -i $FDPNI0,$FDPNI2 -m 0"
 
 	#/* ODP_REFLECTOR MODE 0 (ORDERED QUEUES)
 	# */
-	run_command REFLECTOR "./odp_reflector -i $FDPNI0 -m 0 -c 8 -q 2"
+	run_command REFLECTOR "./odp_reflector -i $FDPNI0,$FDPNI2 -m 0 -q 2"
 
 	#/* ODP_REFLECTOR MODE 1
 	# */
-	run_command REFLECTOR "./odp_reflector -i $FDPNI0 -m 1 -c 8"
+	run_command REFLECTOR "./odp_reflector -i $FDPNI0,$FDPNI2 -m 1"
 
 	#/* ODP_REFLECTOR MODE 1 (ORDERED QUEUES)
 	# */
-	run_command REFLECTOR "./odp_reflector -i $FDPNI0 -m 1 -c 8 -q 2"
+	run_command REFLECTOR "./odp_reflector -i $FDPNI0,$FDPNI2 -m 1 -q 2"
 
 	#/* ODP_KNI_DEMO
 	# */
