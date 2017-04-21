@@ -221,7 +221,8 @@ static odp_packet_t pack_udp_pkt(odp_pool_t pool)
 	odp_packet_l4_offset_set(pkt, ODPH_ETHHDR_LEN + ODPH_IPV4HDR_LEN);
 	udp = (odph_udphdr_t *)(buf + ODPH_ETHHDR_LEN + ODPH_IPV4HDR_LEN);
 	udp->src_port = 0;
-	udp->dst_port = 0;
+	/*XXX destination port is changed from 0 to 1024 due to an issue ODP-981.*/
+	udp->dst_port = 1024;
 	udp->length = odp_cpu_to_be_16(args->appl.payload + ODPH_UDPHDR_LEN);
 	udp->chksum = 0;
 	udp->chksum = odph_ipv4_udp_chksum(pkt);
