@@ -349,6 +349,12 @@ int odp_pktio_init_global(void)
 		}
 	}
 
+	/* Initialize fman for hash distribution */
+	if (pktio_fm_init()) {
+		ODP_ERR("Pktio FM init: Failed\n");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -746,7 +752,7 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 			const odp_pktin_queue_param_t *param)
 {
 	int ret = 0, rc;
-	unsigned num_queues, i;
+	unsigned int num_queues, i;
 	uint16_t channel;
 	odp_pktin_mode_t mode;
 	pktio_entry_t *entry;
@@ -770,11 +776,6 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 
 	num_queues = param->num_queues;
 
-	if (num_queues == 0) {
-		ODP_ERR("pktio: zero input queues\n");
-		return -1;
-	}
-
 	rc = odp_pktio_capability(pktio, &capa);
 	if (rc) {
 		ODP_DBG("pktio %s: unable to read capabilities\n",
@@ -784,6 +785,25 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 
 	if (num_queues > capa.max_input_queues) {
 		ODP_DBG("pktio %s: too many input queues\n", entry->s.name);
+		return -1;
+	}
+
+	if (param->classifier_enable && param->hash_enable) {
+		ODP_ERR("pktio %s: Both classifier and hashing cannot be"
+				" enabled simultaneously\n", entry->s.name);
+		return -1;
+	}
+
+	if (num_queues == 0 && !(param->classifier_enable)) {
+		ODP_ERR("pktio %s: zero input queues\n", entry->s.name);
+		return -1;
+	}
+
+	if (num_queues > 1 && !(param->hash_enable) &&
+		 !(param->classifier_enable)) {
+		ODP_ERR("pktio %s:  More than one input queues require either"
+			"flow hashing or classifier enabled.\n",
+			entry->s.name);
 		return -1;
 	}
 
@@ -915,6 +935,11 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 
 	if (ret != 0)
 		ODP_ABORT("Error: default input-Q setup for \n");
+
+	if (pktio_fm_config(pktio, param)) {
+		ODP_ERR("Pktio FM configuration: Failed\n");
+		return -1;
+	}
 	return ret;
 }
 
@@ -1048,6 +1073,9 @@ int odp_pktio_close(odp_pktio_t id)
 
 	ODP_DBG("odp_pktio_finish\n");
 
+	if (pktio_fm_deconfig(id))
+		ODP_ERR("pktio_fm_deconfig: Failed\n");
+
 	pktio_entry = get_pktio_entry(id);
 	if (!pktio_entry)
 		return -1;
@@ -1120,6 +1148,12 @@ int odp_pktio_term_global(void)
 
 	pktio_entry_t *pktio_entry;
 	int id;
+
+	/* De-initialize fman */
+	if (pktio_fm_term()) {
+		ODP_ERR("Pktio FM term: Failed\n");
+		return -1;
+	}
 
 	qman_release_pool_range(pchannel_vdq, 1);
 	for (id = 1; id <= ODP_CONFIG_PKTIO_ENTRIES; ++id) {
@@ -1541,7 +1575,7 @@ void odp_pktin_queue_param_init(odp_pktin_queue_param_t *param)
 {
 	memset(param, 0, sizeof(odp_pktin_queue_param_t));
 	param->op_mode = ODP_PKTIO_OP_MT;
-	param->num_queues = QUEUE_MULTI_MAX;
+	param->num_queues = 1;
 	/* no need to choose queue type since pktin mode defines it */
 	odp_queue_param_init(&param->queue_param);
 }
@@ -1594,6 +1628,436 @@ int odp_pktio_info(odp_pktio_t hdl, odp_pktio_info_t *info)
 	info->drv_name = NULL;
 	info->pool = entry->s.pool;
 	memcpy(&info->param, &entry->s.param, sizeof(odp_pktio_param_t));
+
+	return 0;
+}
+
+/* Apply PCD configuration on port */
+static inline int set_port_pcd(netcfg_port_info  *port_info, uint8_t pcd_support)
+{
+	int ret = 0;
+
+	port_info->config_pcd = true;
+	/* Set port info parse params */
+	port_info->prs_param.parsingOffset = 0;
+	port_info->prs_param.prsResultPrivateInfo = 0;
+	port_info->prs_param.firstPrsHdr = HEADER_TYPE_ETH;
+
+	/* Set port info pcd params */
+	port_info->pcd_param.p_CcParams = NULL;
+	port_info->pcd_param.pcdSupport = pcd_support;
+	port_info->pcd_param.p_KgParams = &port_info->kg_param;
+	port_info->pcd_param.p_PrsParams = &port_info->prs_param;
+
+	/* FM PORT Disable */
+	ret = FM_PORT_Disable(port_info->port_handle);
+	if (ret != E_OK) {
+		ODP_ERR("FM_PORT_Disable: Failed, Mac-idx %d\n", port_info->p_cfg->fman_if->mac_idx);
+		return ret;
+	}
+
+	/* FM PORT SetPCD */
+	ret = FM_PORT_SetPCD(port_info->port_handle, &port_info->pcd_param);
+	if (ret != E_OK) {
+		ODP_ERR("FM_PORT_SetPCD: Failed, Mac-idx %d\n", port_info->p_cfg->fman_if->mac_idx);
+		return ret;
+	}
+
+	/* FM PORT Enable */
+	ret = FM_PORT_Enable(port_info->port_handle);
+	if (ret != E_OK) {
+		ODP_ERR("FM_PORT_Enable: Failed, Mac-idx %d\n", port_info->p_cfg->fman_if->mac_idx);
+		return ret;
+	}
+
+	return 0;
+}
+
+static inline struct scheme_info *get_free_scheme(netcfg_port_info  *port_info)
+{
+	int i = 0;
+
+	for (i = 0; i < FMC_SCHEMES_NUM; i++) {
+		if (!port_info->scheme[i].taken) {
+			memset(&port_info->scheme[i], 0, sizeof(port_info->scheme[i]));
+			port_info->scheme[i].taken = 1;
+			return &port_info->scheme[i];
+		}
+	}
+
+	return NULL;
+}
+
+/* Set scheme params for hash distribution */
+static inline int set_scheme_params(struct scheme_info *scheme, netcfg_port_info  *port_info,
+				    uint8_t next_engine, unsigned int num_queue, bool hash_enable)
+{
+	int i, j = 0, k;
+
+	/* Memset scheme priv params */
+	memset(&scheme->priv.params, 0, sizeof(scheme->priv.params));
+
+	scheme->priv.prio = 0;
+	scheme->priv.queue_count = num_queue;
+	scheme->priv.qos_key_idx = -1;
+	scheme->priv.params.useHash = hash_enable;
+	scheme->priv.is_default = true;
+	scheme->priv.params.modify = false;
+	scheme->priv.params.alwaysDirect = false;
+	scheme->priv.params.schemeCounter.update = 1;
+	scheme->priv.params.schemeCounter.value = 0;
+	scheme->priv.params.nextEngine = next_engine;
+	scheme->priv.params.baseFqid = port_info->first_fqid;
+	scheme->priv.params.netEnvParams.h_NetEnv = port_info->net_env_set;
+	scheme->priv.params.netEnvParams.numOfDistinctionUnits = port_info->dist_units.numOfDistinctionUnits;
+
+	scheme->priv.params.keyExtractAndHashParams.hashDistributionNumOfFqids = num_queue;
+	scheme->priv.params.keyExtractAndHashParams.numOfUsedExtracts = 2 * port_info->dist_units.numOfDistinctionUnits;
+
+	for (i = 0; i < port_info->dist_units.numOfDistinctionUnits; i++) {
+		switch (port_info->dist_units.units[i].hdrs[0].hdr) {
+
+		case HEADER_TYPE_IPv4:
+			for (k = 0; k < 2; k++) {
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].type = e_FM_PCD_EXTRACT_BY_HDR;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.hdr = HEADER_TYPE_IPv4;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.hdrIndex = e_FM_PCD_HDR_INDEX_NONE;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.type = e_FM_PCD_EXTRACT_FULL_FIELD;
+				if (k == 0)
+					scheme->priv.params.keyExtractAndHashParams.extractArray[j].
+							extractByHdr.extractByHdrType.fullField.ipv4 = NET_HEADER_FIELD_IPv4_SRC_IP;
+				else
+					scheme->priv.params.keyExtractAndHashParams.extractArray[j].
+							extractByHdr.extractByHdrType.fullField.ipv4 = NET_HEADER_FIELD_IPv4_DST_IP;
+				j++;
+			}
+			break;
+		case HEADER_TYPE_IPv6:
+			for (k = 0; k < 2; k++) {
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].type = e_FM_PCD_EXTRACT_BY_HDR;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.hdr = HEADER_TYPE_IPv6;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.hdrIndex = e_FM_PCD_HDR_INDEX_NONE;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.type = e_FM_PCD_EXTRACT_FULL_FIELD;
+				if (k == 0)
+					scheme->priv.params.keyExtractAndHashParams.extractArray[j].
+							extractByHdr.extractByHdrType.fullField.ipv6 = NET_HEADER_FIELD_IPv6_SRC_IP;
+				else
+					scheme->priv.params.keyExtractAndHashParams.extractArray[j].
+							extractByHdr.extractByHdrType.fullField.ipv6 = NET_HEADER_FIELD_IPv6_DST_IP;
+				j++;
+			}
+			break;
+
+		case HEADER_TYPE_UDP:
+			for (k = 0; k < 2; k++) {
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].type = e_FM_PCD_EXTRACT_BY_HDR;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.hdr = HEADER_TYPE_UDP;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.hdrIndex = e_FM_PCD_HDR_INDEX_NONE;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.type = e_FM_PCD_EXTRACT_FULL_FIELD;
+				if (k == 0)
+					scheme->priv.params.keyExtractAndHashParams.extractArray[j].
+							extractByHdr.extractByHdrType.fullField.udp = NET_HEADER_FIELD_UDP_PORT_SRC;
+				else
+					scheme->priv.params.keyExtractAndHashParams.extractArray[j].
+							extractByHdr.extractByHdrType.fullField.udp = NET_HEADER_FIELD_UDP_PORT_DST;
+				j++;
+			}
+			break;
+
+		case HEADER_TYPE_TCP:
+			for (k = 0; k < 2; k++) {
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].type = e_FM_PCD_EXTRACT_BY_HDR;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.hdr = HEADER_TYPE_TCP;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.hdrIndex = e_FM_PCD_HDR_INDEX_NONE;
+				scheme->priv.params.keyExtractAndHashParams.extractArray[j].extractByHdr.type = e_FM_PCD_EXTRACT_FULL_FIELD;
+				if (k == 0)
+					scheme->priv.params.keyExtractAndHashParams.extractArray[j].
+							extractByHdr.extractByHdrType.fullField.tcp = NET_HEADER_FIELD_TCP_PORT_SRC;
+				else
+					scheme->priv.params.keyExtractAndHashParams.extractArray[j].
+							extractByHdr.extractByHdrType.fullField.tcp = NET_HEADER_FIELD_TCP_PORT_DST;
+				j++;
+			}
+			break;
+		default:
+			ODP_ERR("Invalid Distinction Unit\n");
+		}
+	}
+
+	return 0;
+}
+
+/* Set PCD NetEnv and Scheme in port info */
+static inline int set_pcd_netenv_scheme(netcfg_port_info  *port_info, const odp_pktin_queue_param_t *param)
+{
+	int ret = -1;
+	struct scheme_info *scheme;
+	uint8_t next_engine = e_FM_PCD_DONE;
+	t_Handle scheme_handle = NULL, net_env_handle = NULL;
+	uint32_t i = 0;
+
+	/* Set PCD NetEnvCharacteristics */
+	memset(&port_info->dist_units, 0, sizeof(port_info->dist_units));
+
+	if (param->hash_proto.proto.ipv4 || param->hash_proto.proto.ipv4_udp || param->hash_proto.proto.ipv4_tcp)
+		port_info->dist_units.units[i++].hdrs[0].hdr = HEADER_TYPE_IPv4;
+
+	if (param->hash_proto.proto.ipv6 || param->hash_proto.proto.ipv6_udp || param->hash_proto.proto.ipv6_tcp)
+		port_info->dist_units.units[i++].hdrs[0].hdr = HEADER_TYPE_IPv6;
+
+	if (param->hash_proto.proto.ipv4_udp || param->hash_proto.proto.ipv6_udp)
+		port_info->dist_units.units[i++].hdrs[0].hdr = HEADER_TYPE_UDP;
+
+	if (param->hash_proto.proto.ipv4_tcp || param->hash_proto.proto.ipv6_tcp)
+		port_info->dist_units.units[i++].hdrs[0].hdr = HEADER_TYPE_TCP;
+
+	/* Set Default value to IPv4 */
+	if (!param->hash_proto.all_bits)
+		port_info->dist_units.units[i++].hdrs[0].hdr = HEADER_TYPE_IPv4;
+
+	/* Dist units is set to i */
+	port_info->dist_units.numOfDistinctionUnits = i;
+
+	/* FM PCD NetEnvCharacteristicsSet */
+	net_env_handle = FM_PCD_NetEnvCharacteristicsSet(port_info->pcd_handle, &port_info->dist_units);
+	if (!net_env_handle) {
+		ODP_ERR("FM_PCD_NetEnvCharacteristicsSet: Failed Mac-idx = %d\n",
+			port_info->p_cfg->fman_if->mac_idx);
+		return -1;
+	}
+	port_info->pcd_param.h_NetEnv = net_env_handle;
+	port_info->net_env_set = net_env_handle;
+
+	/* Set PCD Scheme */
+	INIT_LIST_HEAD(&port_info->scheme_list);
+
+	scheme = get_free_scheme(port_info);
+	if (!scheme) {
+		ODP_ERR("No free scheme available\n");
+		return -1;
+	}
+
+	/* Set Scheme params */
+	ret = set_scheme_params(scheme, port_info, next_engine, param->num_queues, param->hash_enable);
+	if (ret) {
+		ODP_ERR("Set scheme params: Failed, Mac-idx %d\n",
+			port_info->p_cfg->fman_if->mac_idx);
+		return ret;
+	}
+
+	/* Add scheme to the scheme list */
+	list_add_tail(&scheme->scheme_node, &port_info->scheme_list);
+	port_info->scheme_count++;
+
+	scheme->priv.params.id.relativeSchemeId = port_info->p_cfg->fman_if->mac_idx - 1;
+	scheme->id = port_info->p_cfg->fman_if->mac_idx - 1;
+
+	/* FM PCD KgSchemeSet */
+	scheme_handle = FM_PCD_KgSchemeSet(port_info->pcd_handle, &scheme->priv.params);
+	if (!scheme_handle) {
+		ODP_ERR("FM_PCD_KgSchemeSet: Failed, Mac-idx %d\n",
+			port_info->p_cfg->fman_if->mac_idx);
+		return -1;
+	}
+
+	scheme->handle = scheme_handle;
+
+	port_info->kg_param.numOfSchemes = port_info->scheme_count;
+	/* One scheme used per port */
+	port_info->kg_param.h_Schemes[0] = scheme_handle;
+
+	return 0;
+}
+
+static inline int set_fm_port_handle(netcfg_port_info  *port_info)
+{
+	t_FmPortParams	fm_port_params;
+
+	/* FMAN mac indexes mappings */
+	uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
+
+	/* Memset FM port params */
+	memset(&fm_port_params, 0, sizeof(fm_port_params));
+
+	/* Set FM port params */
+	fm_port_params.h_Fm = port_info->fman_handle;
+	fm_port_params.portType = GET_PORT_TYPE(port_info->p_cfg->fman_if);
+	fm_port_params.portId = mac_idx[port_info->p_cfg->fman_if->mac_idx];
+
+	/* FM PORT Open */
+	port_info->port_handle = FM_PORT_Open(&fm_port_params);
+	if (!port_info->port_handle) {
+		ODP_ERR("FM_PORT_Open: Failed, Mac-idx = %d\n",
+			port_info->p_cfg->fman_if->mac_idx);
+		return -1;
+	}
+
+	return 0;
+}
+
+/* Configure FM Port for pktio passed for hash distribution */
+int pktio_fm_config(odp_pktio_t pktio, const odp_pktin_queue_param_t *param)
+{
+	pktio_entry_t *pktio_entry;
+	netcfg_port_info  *port_info;
+	/* PCD support for hash distribution */
+	uint8_t pcd_support = e_FM_PORT_PCD_SUPPORT_PRS_AND_KG;
+	int ret;
+
+	pktio_entry = get_pktio_entry(pktio);
+	port_info = pktio_get_port_info(pktio_entry->s.__if);
+
+	/* Open FM Port and set it in port info */
+	ret = set_fm_port_handle(port_info);
+	if (ret) {
+		ODP_ERR("Set FM Port handle: Failed, Mac-idx = %d\n",
+			port_info->p_cfg->fman_if->mac_idx);
+		return -1;
+	}
+
+	/* Set PCD netenv and scheme */
+	ret = set_pcd_netenv_scheme(port_info, param);
+	if (ret) {
+		ODP_ERR("Set PCD NetEnv and Scheme: Failed, Mac-idx = %d\n",
+			port_info->p_cfg->fman_if->mac_idx);
+		return -1;
+	}
+
+	/* Set Port PCD */
+	ret = set_port_pcd(port_info, pcd_support);
+	if (ret) {
+		ODP_ERR("Set Port PCD: Failed, Mac-idx = %d\n",
+			port_info->p_cfg->fman_if->mac_idx);
+		return -1;
+	}
+
+	return 0;
+}
+
+/* De-Configure Pktio FM */
+int pktio_fm_deconfig(odp_pktio_t pktio)
+{
+	pktio_entry_t *pktio_entry;
+	netcfg_port_info  *port_info;
+	int ret;
+
+	pktio_entry = get_pktio_entry(pktio);
+	port_info = pktio_get_port_info(pktio_entry->s.__if);
+
+	/* FM PORT Disable */
+	ret = FM_PORT_Disable(port_info->port_handle);
+	if (ret != E_OK) {
+		ODP_ERR("FM_PORT_Disable: Failed, Mac-idx %d\n", port_info->p_cfg->fman_if->mac_idx);
+		return ret;
+	}
+
+	/* FM PORT DeletePCD */
+	ret = FM_PORT_DeletePCD(port_info->port_handle);
+	if (ret != E_OK) {
+		ODP_ERR("FM_PORT_DeletePCD: Failed, Mac-idx %d\n", port_info->p_cfg->fman_if->mac_idx);
+		return ret;
+	}
+
+	/* FM PCD KgSchemeDelete */
+	ret = FM_PCD_KgSchemeDelete(port_info->kg_param.h_Schemes[0]);
+	if (ret != E_OK) {
+		ODP_ERR("FM_PCD_KgSchemeDelete: Failed, Mac-idx %d\n", port_info->p_cfg->fman_if->mac_idx);
+		return ret;
+	}
+
+	/* FM PCD NetEnvCharacteristicsDelete */
+	ret = FM_PCD_NetEnvCharacteristicsDelete(port_info->net_env_set);
+	if (ret != E_OK) {
+		ODP_ERR("FM_PCD_NetEnvCharacteristicsDelete: Failed, Mac-idx %d\n", port_info->p_cfg->fman_if->mac_idx);
+		return ret;
+	}
+}
+
+/* One time configuration of FM for hash distribution */
+int pktio_fm_init(void)
+{
+	t_Handle fman_handle;
+	t_Handle pcd_handle;
+	t_FmPcdParams fmPcdParams = {0};
+	/* Hard-coded : fman id 0 since one fman is present in LS104x */
+	int fman_id = 0, ret, i;
+	struct fm_eth_port_cfg *port_cfg;
+	netcfg_port_info  *port_info;
+
+	/* FM Open */
+	fman_handle = FM_Open(fman_id);
+	if (!fman_handle) {
+		ODP_ERR("FM_Open: Failed\n");
+		return -1;
+	}
+
+	/* FM PCD Open */
+	fmPcdParams.h_Fm = fman_handle;
+	fmPcdParams.prsSupport = TRUE;
+	fmPcdParams.kgSupport = TRUE;
+	pcd_handle = FM_PCD_Open(&fmPcdParams);
+	if (!pcd_handle) {
+		ODP_ERR("FM_PCD_Open: Failed\n");
+		FM_Close(fman_handle);
+		return -1;
+	}
+
+	/* FM PCD Enable */
+	ret = FM_PCD_Enable(pcd_handle);
+	if (ret) {
+		ODP_ERR("FM_PCD_Enable: Failed\n");
+		FM_PCD_Close(pcd_handle);
+		FM_Close(fman_handle);
+		return -1;
+	}
+
+	/* Set fman and pcd handle in port info */
+	for (i = 0; i < netcfg->num_ethports; i++) {
+		port_cfg = &netcfg->port_cfg[i];
+		port_info = pktio_get_port_info(port_cfg->fman_if);
+
+		port_info->fman_handle = fman_handle;
+		port_info->pcd_handle = pcd_handle;
+	}
+
+	return 0;
+}
+
+/* De-initialization of FM */
+int pktio_fm_term(void)
+{
+	t_Handle fman_handle = NULL;
+	t_Handle pcd_handle = NULL;
+	int ret, i;
+	struct fm_eth_port_cfg *port_cfg;
+	netcfg_port_info  *port_info;
+
+	/* Set fman and pcd handle in port info to NULL */
+	for (i = 0; i < netcfg->num_ethports; i++) {
+		port_cfg = &netcfg->port_cfg[i];
+		port_info = pktio_get_port_info(port_cfg->fman_if);
+
+		if (!fman_handle)
+			fman_handle = port_info->fman_handle;
+		if (!pcd_handle)
+			pcd_handle = port_info->pcd_handle;
+
+		port_info->fman_handle = NULL;
+		port_info->pcd_handle = NULL;
+	}
+
+	/* FM PCD Disable */
+	ret = FM_PCD_Disable(pcd_handle);
+	if (ret) {
+		ODP_ERR("FM_PCD_Disable: Failed\n");
+		return -1;
+	}
+
+	/* FM PCD Close */
+	FM_PCD_Close(pcd_handle);
+
+	/* FM Close */
+	FM_Close(fman_handle);
 
 	return 0;
 }

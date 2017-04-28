@@ -122,6 +122,47 @@ static inline pktio_entry_t *get_pktio_entry(odp_pktio_t pktio)
         return pktio_entry_ptr[pktio_to_id(pktio)];
 }
 
+/**
+ * One time configuration of FM for hash distribution
+ *
+ * @retval 0 on success
+ * @retval -1 on failure
+ *
+ */
+int pktio_fm_init(void);
+
+/**
+ * Configure FM Port for pktio passed for hash distribution
+ *
+ * @param pktio    Packet IO handle
+ * @param param    Packet input queue configuration parameters.
+ *
+ * @retval 0 on success
+ * @retval -1 on failure
+ *
+ */
+int pktio_fm_config(odp_pktio_t pktio, const odp_pktin_queue_param_t *param);
+
+/**
+ * De-initialization of FM
+ *
+ * @retval 0 on success
+ * @retval -1 on failure
+ *
+ */
+int pktio_fm_term(void);
+
+/**
+ * De-configure FM Port for pktio passed
+ *
+ * @param pktio    Packet IO handle
+ *
+ * @retval 0 on success
+ * @retval -1 on failure
+ *
+ */
+int pktio_fm_deconfig(odp_pktio_t pktio);
+
 #ifdef __cplusplus
 }
 #endif
