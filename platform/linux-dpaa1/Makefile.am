@@ -2,9 +2,10 @@
 include $(top_srcdir)/platform/Makefile.inc
 include $(top_srcdir)/platform/@with_platform@/Makefile.inc
 
-PLAT_CFLAGS = -D$(SOC)
 
-if LS1043_SOC
+if BUILD_LS1043
+SOC=LS1043
+PLAT_CFLAGS = -D$(SOC)
 FMD_CFLAGS = -D$(SOC) -DNCSW_LINUX
 QBMAN_CFLAGS = -DCONFIG_ARM64
 FMLIB = fm-arm64a53
@@ -12,7 +13,9 @@ USDPAA_LIB_PATH = lib_arm64
 LIB_PATH = lib
 SPEC_CFLAGS =
 endif
-if LS1046_SOC
+if BUILD_LS1046
+SOC=LS1046
+PLAT_CFLAGS = -D$(SOC)
 FMD_CFLAGS = -D$(SOC) -DNCSW_LINUX
 QBMAN_CFLAGS = -DCONFIG_ARM64
 FMLIB = fm-arm64a72
@@ -21,6 +24,8 @@ LIB_PATH = lib
 SPEC_CFLAGS =
 endif
 if P4_SOC
+SOC=P4080
+PLAT_CFLAGS = -D$(SOC)
 FMD_CFLAGS = -D$(SOC) -DNCSW_LINUX
 QBMAN_CFLAGS =
 FMLIB = fm-ppce500mc
@@ -29,6 +34,8 @@ LIB_PATH = lib
 SPEC_CFLAGS =
 endif
 if T1_SOC
+SOC=T1040
+PLAT_CFLAGS = -D$(SOC)
 FMD_CFLAGS = -DFMAN_V3L -DNCSW_LINUX
 QBMAN_CFLAGS =
 FMLIB = fm-ppc64e5500-fmv3l
@@ -37,6 +44,8 @@ LIB_PATH = lib64
 SPEC_CFLAGS = -m64 -mhard-float -mcpu=e5500
 endif
 if T4_SOC
+SOC=T4240
+PLAT_CFLAGS = -D$(SOC)
 FMD_CFLAGS = -DFMAN_V3H -DNCSW_LINUX
 QBMAN_CFLAGS =
 FMLIB = fm-ppc64e6500
