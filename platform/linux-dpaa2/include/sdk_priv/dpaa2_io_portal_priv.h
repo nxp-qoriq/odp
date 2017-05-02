@@ -45,6 +45,8 @@ extern "C" {
 #define LDPAA_IO_P_MIN_NUM	DPIO_VER_MINOR
 #define LDPAA_IO_P_NAME		"ldpaa-dpio"
 
+/*QBMAN Version*/
+#define QBMAN_REV_4100   0x04010000
 
 /*Maximum number of slots available in TX ring*/
 #define MAX_TX_RING_SLOTS       8
@@ -124,12 +126,19 @@ do { \
 #endif
 
 /*
+ * Structure to represent hold dqrr entry.
+ */
+struct dqrr {
+	struct qbman_result *hold_dqrr; /**< Last DQRR Entry which is on hold for this SW portal */
+	dpaa2_mbuf_pt hold_buf; /**< Last buffer which is on hold  w.r.t hold_dqrr ptr */
+};
+
+/*
  * The DPAA2 DPIO device structure.
  */
 struct dpaa2_dpio_dev {
 	TAILQ_ENTRY(dpaa2_dpio_dev) next; /**< Pointer to Next device instance */
-	struct qbman_result *hold_dqrr; /**< Last DQRR Entry which is on hold for this SW portal */
-	dpaa2_mbuf_pt hold_buf; /**< Last buffer which is on hold  w.r.t hold_dqrr ptr */
+	struct dqrr *dqrr_entry;
 	uint32_t index; /**< Index of a instance in the list */
 	odp_atomic_u16_t ref_count; /**< How many thread contexts are sharing this.*/
 	struct fsl_mc_io *dpio; /** handle to DPIO portal object */
@@ -148,23 +157,24 @@ struct dpaa2_dpio_dev {
 			  objects for static dequeue mapping */
 	uint8_t ch_count;  /**< count of channels which are mapped for
 			     static dequeue **/
+	uint8_t	dqrr_size;
 };
 
 /* DCA related helper Macros */
 #define ANY_ATOMIC_CNTXT_TO_FREE(mbuf) \
-	(mbuf->atomic_cntxt == thread_io_info.dpio_dev->hold_dqrr)
-#define IS_HOLD_DQRR_VALID (thread_io_info.dpio_dev->hold_dqrr != NULL)
-#define MARK_HOLD_DQRR_PTR_INVALID (thread_io_info.dpio_dev->hold_dqrr = NULL)
-#define MARK_HOLD_BUF_CNTXT_INVALID \
-	(thread_io_info.dpio_dev->hold_buf->atomic_cntxt = INVALID_CNTXT_PTR)
-#define SAVE_HOLD_BUF_PTR(val) \
-	(thread_io_info.dpio_dev->hold_buf = val)
-#define SAVE_HOLD_DQRR_PTR(val) \
-	(thread_io_info.dpio_dev->hold_dqrr = (struct qbman_result *)val)
+	(mbuf->atomic_cntxt == thread_io_info.dpio_dev->dqrr_entry[mbuf->index].hold_dqrr)
+#define IS_HOLD_DQRR_VALID(index) (thread_io_info.dpio_dev->dqrr_entry[index].hold_dqrr != NULL)
+#define MARK_HOLD_DQRR_PTR_INVALID(index)  (thread_io_info.dpio_dev->dqrr_entry[index].hold_dqrr = NULL)
+#define MARK_HOLD_BUF_CNTXT_INVALID(index) \
+	(thread_io_info.dpio_dev->dqrr_entry[index].hold_buf->atomic_cntxt = INVALID_CNTXT_PTR)
+#define SAVE_HOLD_BUF_PTR(val, index) \
+	(thread_io_info.dpio_dev->dqrr_entry[index].hold_buf = val)
+#define SAVE_HOLD_DQRR_PTR(val, index) \
+	(thread_io_info.dpio_dev->dqrr_entry[index].hold_dqrr = (struct qbman_result *)val)
 
-#define GET_HOLD_DQRR_PTR (thread_io_info.dpio_dev->hold_dqrr)
-#define GET_HOLD_DQRR_IDX \
-	(qbman_get_dqrr_idx(thread_io_info.dpio_dev->hold_dqrr))
+#define GET_HOLD_DQRR_PTR(index) (thread_io_info.dpio_dev->dqrr_entry[index].hold_dqrr)
+#define GET_HOLD_DQRR_IDX(index) \
+	(qbman_get_dqrr_idx(thread_io_info.dpio_dev->dqrr_entry[index].hold_dqrr))
 
 /*!
  * DPAA2 device list structure
