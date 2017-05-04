@@ -49,12 +49,10 @@
  */
 #define MAX_TM_SYSTEM_PRIO          8
 
-#if 0
 /** @def DEFAULT_THRESHOLD
- * @brief Default threshold value applied on tm_queues
+ * @brief Default threshold value applied on tm_queues in number of packets.
  */
 #define DEFAULT_THRESHOLD          250
-#endif
 
 /** @def DEFAULT_WEIGHT
  * @brief Default weight value applied on tm_queues
@@ -298,6 +296,10 @@ static void usage(char *progname)
 		"	0: Scheduling profile as Strict Priority\n"
 		"	1: Scheduling profile as Weighted scheduling.\n"
 		"	Default Scheduling profile as Strict Priority\n"
+		"  -t,  --threshold <number> Value of thrshold applied on \n"
+		"			tm_queues.\n"
+		"			Values must be in range (1, 10000)\n"
+		"			Default value is 250 packets\n"
 		"  -s,  --shaping <boolean> Flag to enable/disable shaping.\n"
 		"	0: To disable\n"
 		"	1: To enable.\n"
@@ -404,23 +406,17 @@ static void configure_tm(odp_pktio_t pktio, appl_args_t *appl_args, int map_inde
 		sprintf(name, "%s-shaper", appl_args->if_names[map_index]);
 		tm_node_shaper = odp_tm_shaper_create(name, &tm_shaper_params);
 	}
-	/*Putting below code in #if 0 as taildrop support is not exposed to the
-	user. Code in functional so not removing it. In later releases once
-	taildrop support will be enabled then same code can be used.*/
-#if 0
 	odp_tm_threshold_params_t tm_node_queue_thres_params;
 	/*Create threshold profile to be attached with tm_node and applied on
 	tm_queues*/
 	odp_tm_threshold_params_init(&tm_node_queue_thres_params);
-	tm_node_queue_thres_params.enable_max_bytes = true;
-	tm_node_queue_thres_params.max_bytes =
-				DEFAULT_THRESHOLD * SHM_PKT_POOL_BUF_SIZE;
+	tm_node_queue_thres_params.enable_max_pkts = true;
+	tm_node_queue_thres_params.max_pkts = DEFAULT_THRESHOLD;
 
 	if (appl_args->threshold)
-		tm_node_queue_thres_params.max_bytes = appl_args->threshold;
-	tm_node_queue_thres = odp_tm_threshold_create("validation-threshold",
+		tm_node_queue_thres_params.max_pkts = appl_args->threshold;
+	tm_node_queue_thres = odp_tm_threshold_create("queue-thres-profile",
 						      &tm_node_queue_thres_params);
-#endif
 
 	odp_pktio_capability(pktio, &capa);
 	tm_node_params.level = 0;
@@ -714,7 +710,6 @@ send_packet:
 		tm_queue = args->appl.map[index].tm_node_queue[prio];
 		/* Enqueue the packet for output */
 		if (odp_tm_enq(tm_queue, pkt) != 0) {
-			EXAMPLE_ERR("  [%i] Packet send failed.\n", odp_thread_id());
 			odp_packet_free(pkt);
 			continue;
 		}
