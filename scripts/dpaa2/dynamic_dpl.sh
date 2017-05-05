@@ -330,7 +330,7 @@ get_dpio_parameters() {
 get_dpci_parameters() {
 	if [[ -z "$DPCI_COUNT" ]]
 	then
-		DPCI_COUNT=12
+		DPCI_COUNT=20
 	fi
 	echo "DPCI parameters :-->" >> dynamic_dpl_logs
 	echo -e "\tDPCI_COUNT = "$DPCI_COUNT >> dynamic_dpl_logs
