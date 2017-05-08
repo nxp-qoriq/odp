@@ -232,6 +232,14 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 
 	dev->num_rx_vqueues = 0;
 
+	/*Allocate DMA'ble memory to receieve congestion notifications*/
+	dev->notification_mem = dpaa2_data_calloc(NULL, dev->num_tx_vqueues,
+					sizeof(struct qbman_result), 16);
+	if (!dev->notification_mem) {
+		DPAA2_ERR(ETH, "Failure to allocate memory for notification\n");
+		goto get_attr_failure;
+	}
+
 	j = 0;
 	for (i = 0; i < attr.num_tcs; i++) {
 		q_config->tc_config[i].num_dist = attr.num_queues;
@@ -389,6 +397,7 @@ get_attr_failure:
 dev_open_failure:
 		dpaa2_free(dpni_dev);
 mem_alloc_failure:
+		dpaa2_data_free(dev->notification_mem);
 		dpaa2_free(eth_priv);
 		return DPAA2_FAILURE;
 }
@@ -425,6 +434,7 @@ int32_t dpaa2_eth_close(struct dpaa2_dev *dev)
 		DPAA2_ERR(ETH, "Error in closing the Ethernet"
 				" device: ErrorCode = %d\n", retcode);
 	/*Free the allocated memory for ethernet private data and dpni*/
+	dpaa2_data_free(dev->notification_mem);
 	dpaa2_free(eth_priv);
 	dpaa2_free(dpni);
 	dev_priv->hw = NULL;
@@ -755,11 +765,17 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 	struct qbman_swp *swp;
 	struct dpaa2_vq *eth_tx_vq = (struct dpaa2_vq *)vq;
 	struct eqcr_entry *eqcr = (struct eqcr_entry *)&eqdesc[0];
+	struct qbman_result *result =
+				(struct qbman_result *)dev->notification_mem;
+
 
 	swp = thread_io_info.dpio_dev->sw_portal;
 
 	/*Clear the unused FD fields before sending*/
 	while (num) {
+		if (qbman_result_SCN_state_in_mem(result + eqcr->qpri))
+			goto skip_tx;
+
 		frames_to_send = (num >> 3) ? MAX_TX_RING_SLOTS : num;
 		/*Prepare each packet which is to be sent*/
 		for (loop = 0; loop < frames_to_send; loop++) {
@@ -813,6 +829,7 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 		num -= frames_to_send;
 	}
 
+skip_tx:
 	return num_pkts;
 }
 

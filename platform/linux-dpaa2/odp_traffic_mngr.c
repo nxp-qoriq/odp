@@ -434,7 +434,8 @@ odp_tm_node_t odp_tm_node_create(odp_tm_t             odp_tm,
 	struct queues_config *q_config;
 	struct fsl_mc_io *dpni;
 	struct dpni_tx_shaping_cfg tx_shaper;
-	struct dpni_taildrop taildrop;
+	struct dpni_congestion_notification_cfg cong_notif_cfg;
+	struct qbman_result *result;
 	int32_t retcode;
 	uint8_t tc_index;
 
@@ -498,23 +499,47 @@ odp_tm_node_t odp_tm_node_create(odp_tm_t             odp_tm,
 		threshold_profile_obj =
 			&odp_threshold_profiles[params->threshold_profile];
 		/*Configure taildrop*/
-		memset(&taildrop, 0, sizeof(struct dpni_taildrop));
-		taildrop.enable = true;
-		if (threshold_profile_obj->enable_max_pkts) {
-			taildrop.units = DPNI_CONGESTION_UNIT_FRAMES;
-			taildrop.threshold = threshold_profile_obj->max_pkts;
-		} else {
-			taildrop.units = DPNI_CONGESTION_UNIT_BYTES;
-			taildrop.threshold = threshold_profile_obj->max_bytes;
-		}
+		memset(&cong_notif_cfg, 0,
+		       sizeof(struct dpni_congestion_notification_cfg));
+
+		result = (struct qbman_result *)dev->notification_mem;
 		q_config = dpaa2_eth_get_queues_config(dev);
 		for (tc_index = 0; tc_index < q_config->num_tcs; tc_index++) {
-			retcode = dpni_set_taildrop(dpni, CMD_PRI_LOW,
-						dev_priv->token, DPNI_CP_GROUP,
-						DPNI_QUEUE_TX, tc_index, 0,
-						&taildrop);
+			if (threshold_profile_obj->enable_max_pkts) {
+				cong_notif_cfg.units =
+						DPNI_CONGESTION_UNIT_FRAMES;
+				cong_notif_cfg.threshold_entry =
+					threshold_profile_obj->max_pkts;
+				cong_notif_cfg.threshold_exit =
+					threshold_profile_obj->max_pkts - 1;
+			} else {
+				cong_notif_cfg.units =
+						DPNI_CONGESTION_UNIT_BYTES;
+				cong_notif_cfg.threshold_entry =
+					threshold_profile_obj->max_bytes;
+				/*Setting 75 percent of bytes as exit point
+				  total bytes - (25 % of total bytes) */
+				cong_notif_cfg.threshold_exit =
+					threshold_profile_obj->max_bytes -
+					PERCENTAGE(threshold_profile_obj->max_bytes, 25);
+			}
+			/* Notify that the queue is not congested when the data
+			 * in the queue is below this thershold.
+			 */
+			cong_notif_cfg.message_ctx = 0;
+			cong_notif_cfg.message_iova = (uint64_t)
+							(result + tc_index);
+			cong_notif_cfg.dest_cfg.dest_type = DPNI_DEST_NONE;
+			cong_notif_cfg.notification_mode =
+					DPNI_CONG_OPT_WRITE_MEM_ON_ENTER |
+					DPNI_CONG_OPT_WRITE_MEM_ON_EXIT |
+					DPNI_CONG_OPT_COHERENT_WRITE;
+			retcode = dpni_set_congestion_notification(dpni,
+								   CMD_PRI_LOW,
+						dev_priv->token, DPNI_QUEUE_TX,
+						tc_index, &cong_notif_cfg);
 			if (retcode) {
-				ODP_ERR("Error: tail drop setting failure"
+				ODP_ERR("Error: congesiton setting failure"
 					" TC ID = %hhu (ErrorCode = %d)\n",
 					tc_index, retcode);
 				return ODP_TM_INVALID;
@@ -536,7 +561,7 @@ int odp_tm_node_destroy(odp_tm_node_t tm_node)
 	struct fsl_mc_io *dpni;
 	struct dpni_tx_shaping_cfg tx_shaper;
 	struct dpni_tx_priorities_cfg tx_sched;
-	struct dpni_taildrop taildrop;
+	struct dpni_congestion_notification_cfg cong_notif_cfg;
 	int32_t retcode;
 	uint8_t tc_index;
 
@@ -570,14 +595,15 @@ int odp_tm_node_destroy(odp_tm_node_t tm_node)
 	}
 
 	/*Reset taildrop*/
-	memset(&taildrop, 0, sizeof(struct dpni_taildrop));
+	memset(&cong_notif_cfg, 0,
+	       sizeof(struct dpni_congestion_notification_cfg));
 	for (tc_index = 0; tc_index < q_config->num_tcs; tc_index++) {
-		retcode = dpni_set_taildrop(dpni, CMD_PRI_LOW,
-					dev_priv->token, DPNI_CP_GROUP,
-					DPNI_QUEUE_TX, tc_index, 0,
-					&taildrop);
+		retcode = dpni_set_congestion_notification(dpni,
+							   CMD_PRI_LOW,
+						dev_priv->token, DPNI_QUEUE_TX,
+						tc_index, &cong_notif_cfg);
 		if (retcode < 0) {
-			ODP_ERR("Error: tail drop setting failure"
+			ODP_ERR("Error: Congestion resetting failure"
 				" TC ID = %hhu (ErrorCode = %d)\n",
 				tc_index, retcode);
 			return -1;
@@ -626,7 +652,7 @@ odp_tm_threshold_t odp_tm_threshold_create(const char *name,
 		}
 	}
 	if (loop >= ODP_TM_MAX_TM_NODE_QUEUE_THRES_PROFILES) {
-		ODP_ERR("Shaper profile can not be created."
+		ODP_ERR("Threshold profile can not be created."
 			"Maximum  limit reached (%d)\n",
 			ODP_TM_MAX_TM_NODE_QUEUE_THRES_PROFILES);
 		return ODP_TM_INVALID;

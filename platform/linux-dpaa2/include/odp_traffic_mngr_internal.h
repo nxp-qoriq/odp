@@ -36,7 +36,7 @@ extern "C" {
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
+#define PERCENTAGE(value, percent) ((value / 100) * percent)
 
 /* Macros to convert handles to internal pointers and vice versa. */
 

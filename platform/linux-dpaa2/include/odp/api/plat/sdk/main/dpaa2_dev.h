@@ -128,6 +128,8 @@ struct dpaa2_dev {
 	void *err_vq[MAX_ERR_VQS + MAX_DEF_ERR_VQS]; /*!< Set of Err virtual
 						Queues for this device */
 	uint64_t	pktio;
+	void	*notification_mem;/*Pointer to contain address of notification
+				area.*/
 };
 
 /*!
