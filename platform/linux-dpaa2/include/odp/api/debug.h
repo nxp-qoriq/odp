@@ -108,8 +108,12 @@ typedef struct ipc_msg {
 #define _Static_assert(e, s) (extern int (*static_assert_checker(void)) \
 	[sizeof(struct { unsigned int error_if_negative:(e) ? 1 : -1; })])
 
+#else
+#define _Static_assert(e, s)
 #endif
 
+#else
+#define _Static_assert(e, s)
 #endif
 
 /**
