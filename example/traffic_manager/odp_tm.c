@@ -27,7 +27,7 @@
 /** @def MAX_WORKERS
  * @brief Maximum number of worker threads
  */
-#define MAX_WORKERS            8
+#define MAX_WORKERS            32
 
 /** @def SHM_PKT_POOL_SIZE
  * @brief Size of the shared memory block
