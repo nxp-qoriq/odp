@@ -43,5 +43,13 @@
 enum IP_STATUS ip_send(odp_packet_t pkt,
 		       struct neigh_t *neigh);
 
+/**
+\brief				Sends multiple IP Packets to a netdev.
+\param[in] pkt			packet list which is to be sent.
+\param[in] neigh		Target node where data is to be sent.
+\param[in] num_packets		Number of packets to be sent in a batch.
+*/
+int32_t ip_send_multi(odp_packet_t pkt[],
+		      struct neigh_t *neigh, int32_t num_packets);
 
 #endif	/* __IP_OUTPUT_H */
