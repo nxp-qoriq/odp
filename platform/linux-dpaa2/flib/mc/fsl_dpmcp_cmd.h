@@ -1,4 +1,5 @@
-/* Copyright 2013-2016 Freescale Semiconductor Inc.
+/*
+ * Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -10,7 +11,6 @@
  * * Neither the name of the above-listed copyright holders nor the
  * names of any contributors may be used to endorse or promote products
  * derived from this software without specific prior written permission.
- *
  *
  * ALTERNATIVELY, this software may be distributed under the terms of the
  * GNU General Public License ("GPL") as published by the Free Software
@@ -32,84 +32,91 @@
 #ifndef _FSL_DPMCP_CMD_H
 #define _FSL_DPMCP_CMD_H
 
-/* DPMCP Version */
-#define DPMCP_VER_MAJOR				4
-#define DPMCP_VER_MINOR				0
+/* Minimal supported DPMCP Version */
+#define DPMCP_VER_MAJOR		4
+#define DPMCP_VER_MINOR		0
+
+/* Command versioning */
+#define DPMCP_CMD_BASE_VERSION		1
+#define DPMCP_CMD_ID_OFFSET		4
+
+#define DPMCP_CMD(id)	((id << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
 
 /* Command IDs */
-#define DPMCP_CMDID_CLOSE                               0x8001
-#define DPMCP_CMDID_OPEN                                0x80b1
-#define DPMCP_CMDID_CREATE                              0x90b1
-#define DPMCP_CMDID_DESTROY                             0x98b1
-#define DPMCP_CMDID_GET_API_VERSION                     0xa0b1
+#define DPMCP_CMDID_CLOSE		DPMCP_CMD(0x800)
+#define DPMCP_CMDID_OPEN		DPMCP_CMD(0x80b)
+#define DPMCP_CMDID_CREATE		DPMCP_CMD(0x90b)
+#define DPMCP_CMDID_DESTROY		DPMCP_CMD(0x98b)
+#define DPMCP_CMDID_GET_API_VERSION	DPMCP_CMD(0xa0b)
 
-#define DPMCP_CMDID_GET_ATTR                            0x0041
-#define DPMCP_CMDID_RESET                               0x0051
+#define DPMCP_CMDID_GET_ATTR		DPMCP_CMD(0x004)
+#define DPMCP_CMDID_RESET		DPMCP_CMD(0x005)
 
-#define DPMCP_CMDID_SET_IRQ_ENABLE                      0x0121
-#define DPMCP_CMDID_GET_IRQ_ENABLE                      0x0131
-#define DPMCP_CMDID_SET_IRQ_MASK                        0x0141
-#define DPMCP_CMDID_GET_IRQ_MASK                        0x0151
-#define DPMCP_CMDID_GET_IRQ_STATUS                      0x0161
+#define DPMCP_CMDID_SET_IRQ_ENABLE	DPMCP_CMD(0x012)
+#define DPMCP_CMDID_GET_IRQ_ENABLE	DPMCP_CMD(0x013)
+#define DPMCP_CMDID_SET_IRQ_MASK	DPMCP_CMD(0x014)
+#define DPMCP_CMDID_GET_IRQ_MASK	DPMCP_CMD(0x015)
+#define DPMCP_CMDID_GET_IRQ_STATUS	DPMCP_CMD(0x016)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_CMD_OPEN(cmd, dpmcp_id) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    dpmcp_id)
+#pragma pack(push, 1)
+struct dpmcp_cmd_open {
+	uint32_t dpmcp_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_CMD_CREATE(cmd, cfg) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      cfg->portal_id)
+struct dpmcp_cmd_create {
+	uint32_t portal_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_CMD_SET_IRQ_ENABLE(cmd, irq_index, en) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  en); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dpmcp_cmd_destroy {
+	uint32_t object_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_CMD_GET_IRQ_ENABLE(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+struct dpmcp_cmd_set_irq_enable {
+	uint8_t enable;
+	uint8_t pad[3];
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_RSP_GET_IRQ_ENABLE(cmd, en) \
-	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,  en)
+struct dpmcp_cmd_get_irq_enable {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_CMD_SET_IRQ_MASK(cmd, irq_index, mask) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, mask);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dpmcp_rsp_get_irq_enable {
+	uint8_t enabled;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_CMD_GET_IRQ_MASK(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+struct dpmcp_cmd_set_irq_mask {
+	uint32_t mask;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_RSP_GET_IRQ_MASK(cmd, mask) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, mask)
+struct dpmcp_cmd_get_irq_mask {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_CMD_GET_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dpmcp_rsp_get_irq_mask {
+	uint32_t mask;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMCP_RSP_GET_IRQ_STATUS(cmd, status) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, status)
+struct dpmcp_cmd_get_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type,	arg_name */
-#define DPMCP_RSP_GET_ATTRIBUTES(cmd, attr) \
-	MC_RSP_OP(cmd, 0, 32, 32, int, (attr)->id)
+struct dpmcp_rsp_get_irq_status {
+	uint32_t status;
+};
 
-/*                cmd, param, offset, width, type,      arg_name */
-#define DPMCP_RSP_GET_API_VERSION(cmd, major, minor) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
-} while (0)
+struct dpmcp_rsp_get_attributes {
+	uint32_t pad;
+	uint32_t id;
+};
 
+struct dpmcp_rsp_get_api_version {
+	uint16_t major;
+	uint16_t minor;
+};
+#pragma pack(pop)
 #endif /* _FSL_DPMCP_CMD_H */

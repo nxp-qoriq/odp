@@ -33,132 +33,146 @@
 #define _FSL_DPDCEI_CMD_H
 
 /* DPDCEI Version */
-#define DPDCEI_VER_MAJOR				2
-#define DPDCEI_VER_MINOR				2
+#define DPDCEI_VER_MAJOR		2
+#define DPDCEI_VER_MINOR		2
+
+#define DPDCEI_CMD_BASE_VERSION		1
+#define DPDCEI_CMD_ID_OFFSET		4
+
+#define DPDCEI_CMD(id)	((id << DPDCEI_CMD_ID_OFFSET) | DPDCEI_CMD_BASE_VERSION)
 
 /* Command IDs */
-#define DPDCEI_CMDID_CLOSE                           0x8001
-#define DPDCEI_CMDID_OPEN                            0x80d1
-#define DPDCEI_CMDID_CREATE                          0x90d1
-#define DPDCEI_CMDID_DESTROY                         0x98d1
-#define DPDCEI_CMDID_GET_API_VERSION                 0xa0d1
+#define DPDCEI_CMDID_CLOSE		DPDCEI_CMD(0x800)
+#define DPDCEI_CMDID_OPEN		DPDCEI_CMD(0x80D)
+#define DPDCEI_CMDID_CREATE		DPDCEI_CMD(0x90D)
+#define DPDCEI_CMDID_DESTROY		DPDCEI_CMD(0x98D)
+#define DPDCEI_CMDID_GET_API_VERSION	DPDCEI_CMD(0xa0D)
 
-#define DPDCEI_CMDID_ENABLE                          0x0021
-#define DPDCEI_CMDID_DISABLE                         0x0031
-#define DPDCEI_CMDID_GET_ATTR                        0x0041
-#define DPDCEI_CMDID_RESET                           0x0051
-#define DPDCEI_CMDID_IS_ENABLED                      0x0061
+#define DPDCEI_CMDID_ENABLE		DPDCEI_CMD(0x002)
+#define DPDCEI_CMDID_DISABLE		DPDCEI_CMD(0x003)
+#define DPDCEI_CMDID_GET_ATTR		DPDCEI_CMD(0x004)
+#define DPDCEI_CMDID_RESET		DPDCEI_CMD(0x005)
+#define DPDCEI_CMDID_IS_ENABLED		DPDCEI_CMD(0x006)
 
-#define DPDCEI_CMDID_SET_IRQ_ENABLE                  0x0121
-#define DPDCEI_CMDID_GET_IRQ_ENABLE                  0x0131
-#define DPDCEI_CMDID_SET_IRQ_MASK                    0x0141
-#define DPDCEI_CMDID_GET_IRQ_MASK                    0x0151
-#define DPDCEI_CMDID_GET_IRQ_STATUS                  0x0161
-#define DPDCEI_CMDID_CLEAR_IRQ_STATUS                0x0171
+#define DPDCEI_CMDID_SET_IRQ_ENABLE	DPDCEI_CMD(0x012)
+#define DPDCEI_CMDID_GET_IRQ_ENABLE	DPDCEI_CMD(0x013)
+#define DPDCEI_CMDID_SET_IRQ_MASK	DPDCEI_CMD(0x014)
+#define DPDCEI_CMDID_GET_IRQ_MASK	DPDCEI_CMD(0x015)
+#define DPDCEI_CMDID_GET_IRQ_STATUS	DPDCEI_CMD(0x016)
+#define DPDCEI_CMDID_CLEAR_IRQ_STATUS	DPDCEI_CMD(0x017)
 
-#define DPDCEI_CMDID_SET_RX_QUEUE                    0x1b01
-#define DPDCEI_CMDID_GET_RX_QUEUE                    0x1b11
-#define DPDCEI_CMDID_GET_TX_QUEUE                    0x1b21
+#define DPDCEI_CMDID_SET_RX_QUEUE	DPDCEI_CMD(0x1B0)
+#define DPDCEI_CMDID_GET_RX_QUEUE	DPDCEI_CMD(0x1B1)
+#define DPDCEI_CMDID_GET_TX_QUEUE	DPDCEI_CMD(0x1B2)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_OPEN(cmd, dpdcei_id) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      dpdcei_id)
+/* Macros for accessing command fields smaller than 1byte */
+#define DPDCEI_MASK(field)        \
+	GENMASK(DPDCEI_##field##_SHIFT + DPDCEI_##field##_SIZE - 1, \
+		DPDCEI_##field##_SHIFT)
+#define dpdcei_set_field(var, field, val) \
+	((var) |= (((val) << DPDCEI_##field##_SHIFT) & DPDCEI_MASK(field)))
+#define dpdcei_get_field(var, field)      \
+	(((var) & DPDCEI_MASK(field)) >> DPDCEI_##field##_SHIFT)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_CREATE(cmd, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 8,  8,  enum dpdcei_engine,  cfg->engine);\
-	MC_CMD_OP(cmd, 0, 16, 8,  uint8_t,  cfg->priority);\
-} while (0)
+#pragma pack(push, 1)
+struct dpdcei_cmd_open {
+	uint32_t dpdcei_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_RSP_IS_ENABLED(cmd, en) \
-	MC_RSP_OP(cmd, 0, 0,  1,  int,	    en)
+struct dpdcei_cmd_create {
+	uint8_t pad;
+	uint8_t engine;
+	uint8_t priority;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_SET_IRQ_ENABLE(cmd, irq_index, enable_state) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  enable_state); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+struct dpdcei_cmd_destroy {
+	uint32_t dpdcei_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_GET_IRQ_ENABLE(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+#define DPDCEI_ENABLE_SHIFT	0
+#define DPDCEI_ENABLE_SIZE	1
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_RSP_GET_IRQ_ENABLE(cmd, enable_state) \
-	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,  enable_state)
+struct dpdcei_rsp_is_enabled {
+	/* only the LSB */
+	uint8_t en;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_SET_IRQ_MASK(cmd, irq_index, mask) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, mask); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+struct dpdcei_cmd_set_irq_enable {
+	uint8_t enable_state;
+	uint8_t pad[3];
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_GET_IRQ_MASK(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+struct dpdcei_cmd_get_irq_enable {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_RSP_GET_IRQ_MASK(cmd, mask) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, mask)
+struct dpdcei_rsp_get_irq_enable {
+	uint8_t enable_state;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_GET_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dpdcei_cmd_set_irq_mask {
+	uint32_t mask;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_RSP_GET_IRQ_STATUS(cmd, status) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t,  status)
+struct dpdcei_cmd_get_irq_mask {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_CLEAR_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+struct dpdcei_rsp_get_irq_mask {
+	uint32_t mask;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_RSP_GET_ATTRIBUTES(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0,  0, 32, int,                (attr)->id); \
-	MC_RSP_OP(cmd, 0, 32,  8, enum dpdcei_engine, (attr)->engine); \
-} while (0)
+struct dpdcei_cmd_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_CMD_SET_RX_QUEUE(cmd, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      cfg->dest_cfg.dest_id); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  cfg->dest_cfg.priority); \
-	MC_CMD_OP(cmd, 0, 48, 4,  enum dpdcei_dest, cfg->dest_cfg.dest_type); \
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, cfg->user_ctx); \
-	MC_CMD_OP(cmd, 2, 0,  32, uint32_t, cfg->options);\
-} while (0)
+struct dpdcei_rsp_get_irq_status {
+	uint32_t status;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_RSP_GET_RX_QUEUE(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, int,      attr->dest_cfg.dest_id);\
-	MC_RSP_OP(cmd, 0, 32, 8,  uint8_t,  attr->dest_cfg.priority);\
-	MC_RSP_OP(cmd, 0, 48, 4,  enum dpdcei_dest, attr->dest_cfg.dest_type);\
-	MC_RSP_OP(cmd, 1, 0,  64, uint64_t,  attr->user_ctx);\
-	MC_RSP_OP(cmd, 2, 0,  32, uint32_t,  attr->fqid);\
-} while (0)
+struct dpdcei_rsp_get_attr {
+	uint32_t id;
+	uint8_t dpdcei_engine;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDCEI_RSP_GET_TX_QUEUE(cmd, attr) \
-	MC_RSP_OP(cmd, 0, 32, 32, uint32_t,  attr->fqid)
+#define DPDCEI_DEST_TYPE_SHIFT	0
+#define DPDCEI_DEST_TYPE_SIZE	4
 
-/*                cmd, param, offset, width, type,      arg_name */
-#define DPDCEI_RSP_GET_API_VERSION(cmd, major, minor) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
-} while (0)
+struct dpdcei_cmd_set_rx_queue {
+	uint32_t dest_id;
+	uint8_t dest_priority;
+	uint8_t pad1;
+	/* from LSB: dest_type:4 */
+	uint8_t dest_type;
+	uint8_t pad2;
+	uint64_t user_ctx;
+	uint32_t options;
+};
 
+struct dpdcei_rsp_get_rx_queue {
+	uint32_t dest_id;
+	uint8_t dest_priority;
+	uint8_t pad1;
+	/* from LSB: dest_type:4 */
+	uint8_t dest_type;
+	uint8_t pad2;
+	uint64_t user_ctx;
+	uint32_t fqid;
+};
+
+struct dpdcei_rsp_get_tx_queue {
+	uint32_t pad;
+	uint32_t fqid;
+};
+
+struct dpdcei_rsp_get_api_version {
+	uint16_t major;
+	uint16_t minor;
+};
+#pragma pack(pop)
 #endif /* _FSL_DPDCEI_CMD_H */

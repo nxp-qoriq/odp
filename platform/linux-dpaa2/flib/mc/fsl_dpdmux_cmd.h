@@ -33,230 +33,248 @@
 #define _FSL_DPDMUX_CMD_H
 
 /* DPDMUX Version */
-#define DPDMUX_VER_MAJOR				6
-#define DPDMUX_VER_MINOR				0
+#define DPDMUX_VER_MAJOR		6
+#define DPDMUX_VER_MINOR		1
+
+#define DPDMUX_CMD_BASE_VERSION		1
+#define DPDMUX_CMD_ID_OFFSET		4
+
+#define DPDMUX_CMD(id)	((id << DPDMUX_CMD_ID_OFFSET) | DPDMUX_CMD_BASE_VERSION)
 
 /* Command IDs */
-#define DPDMUX_CMDID_CLOSE                              0x8001
-#define DPDMUX_CMDID_OPEN                               0x8061
-#define DPDMUX_CMDID_CREATE                             0x9061
-#define DPDMUX_CMDID_DESTROY                            0x9861
-#define DPDMUX_CMDID_GET_API_VERSION                    0xa061
+#define DPDMUX_CMDID_CLOSE			DPDMUX_CMD(0x800)
+#define DPDMUX_CMDID_OPEN			DPDMUX_CMD(0x806)
+#define DPDMUX_CMDID_CREATE			DPDMUX_CMD(0x906)
+#define DPDMUX_CMDID_DESTROY			DPDMUX_CMD(0x986)
+#define DPDMUX_CMDID_GET_API_VERSION		DPDMUX_CMD(0xa06)
 
-#define DPDMUX_CMDID_ENABLE                             0x0021
-#define DPDMUX_CMDID_DISABLE                            0x0031
-#define DPDMUX_CMDID_GET_ATTR                           0x0041
-#define DPDMUX_CMDID_RESET                              0x0051
-#define DPDMUX_CMDID_IS_ENABLED                         0x0061
+#define DPDMUX_CMDID_ENABLE			DPDMUX_CMD(0x002)
+#define DPDMUX_CMDID_DISABLE			DPDMUX_CMD(0x003)
+#define DPDMUX_CMDID_GET_ATTR			DPDMUX_CMD(0x004)
+#define DPDMUX_CMDID_RESET			DPDMUX_CMD(0x005)
+#define DPDMUX_CMDID_IS_ENABLED			DPDMUX_CMD(0x006)
 
-#define DPDMUX_CMDID_SET_IRQ_ENABLE                     0x0121
-#define DPDMUX_CMDID_GET_IRQ_ENABLE                     0x0131
-#define DPDMUX_CMDID_SET_IRQ_MASK                       0x0141
-#define DPDMUX_CMDID_GET_IRQ_MASK                       0x0151
-#define DPDMUX_CMDID_GET_IRQ_STATUS                     0x0161
-#define DPDMUX_CMDID_CLEAR_IRQ_STATUS                   0x0171
+#define DPDMUX_CMDID_SET_IRQ_ENABLE		DPDMUX_CMD(0x012)
+#define DPDMUX_CMDID_GET_IRQ_ENABLE		DPDMUX_CMD(0x013)
+#define DPDMUX_CMDID_SET_IRQ_MASK		DPDMUX_CMD(0x014)
+#define DPDMUX_CMDID_GET_IRQ_MASK		DPDMUX_CMD(0x015)
+#define DPDMUX_CMDID_GET_IRQ_STATUS		DPDMUX_CMD(0x016)
+#define DPDMUX_CMDID_CLEAR_IRQ_STATUS		DPDMUX_CMD(0x017)
 
-#define DPDMUX_CMDID_SET_MAX_FRAME_LENGTH               0x0a11
+#define DPDMUX_CMDID_SET_MAX_FRAME_LENGTH	DPDMUX_CMD(0x0a1)
 
-#define DPDMUX_CMDID_UL_RESET_COUNTERS                  0x0a31
+#define DPDMUX_CMDID_UL_RESET_COUNTERS		DPDMUX_CMD(0x0a3)
 
-#define DPDMUX_CMDID_IF_SET_ACCEPTED_FRAMES             0x0a71
-#define DPDMUX_CMDID_IF_GET_ATTR                        0x0a81
+#define DPDMUX_CMDID_IF_SET_ACCEPTED_FRAMES	DPDMUX_CMD(0x0a7)
+#define DPDMUX_CMDID_IF_GET_ATTR		DPDMUX_CMD(0x0a8)
+#define DPDMUX_CMDID_IF_ENABLE			DPDMUX_CMD(0x0a9)
+#define DPDMUX_CMDID_IF_DISABLE			DPDMUX_CMD(0x0aa)
 
-#define DPDMUX_CMDID_IF_ADD_L2_RULE                     0x0b01
-#define DPDMUX_CMDID_IF_REMOVE_L2_RULE                  0x0b11
-#define DPDMUX_CMDID_IF_GET_COUNTER                     0x0b21
-#define DPDMUX_CMDID_IF_SET_LINK_CFG                    0x0b31
-#define DPDMUX_CMDID_IF_GET_LINK_STATE                  0x0b41
+#define DPDMUX_CMDID_IF_ADD_L2_RULE		DPDMUX_CMD(0x0b0)
+#define DPDMUX_CMDID_IF_REMOVE_L2_RULE		DPDMUX_CMD(0x0b1)
+#define DPDMUX_CMDID_IF_GET_COUNTER		DPDMUX_CMD(0x0b2)
+#define DPDMUX_CMDID_IF_SET_LINK_CFG		DPDMUX_CMD(0x0b3)
+#define DPDMUX_CMDID_IF_GET_LINK_STATE		DPDMUX_CMD(0x0b4)
 
-#define DPDMUX_CMDID_SET_CUSTOM_KEY                     0x0b51
-#define DPDMUX_CMDID_ADD_CUSTOM_CLS_ENTRY               0x0b61
-#define DPDMUX_CMDID_REMOVE_CUSTOM_CLS_ENTRY            0x0b71
+#define DPDMUX_CMDID_SET_CUSTOM_KEY		DPDMUX_CMD(0x0b5)
+#define DPDMUX_CMDID_ADD_CUSTOM_CLS_ENTRY	DPDMUX_CMD(0x0b6)
+#define DPDMUX_CMDID_REMOVE_CUSTOM_CLS_ENTRY	DPDMUX_CMD(0x0b7)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_OPEN(cmd, dpdmux_id) \
-	MC_CMD_OP(cmd, 0, 0,  32,  int,	dpdmux_id)
+#define DPDMUX_MASK(field)        \
+	GENMASK(DPDMUX_##field##_SHIFT + DPDMUX_##field##_SIZE - 1, \
+		DPDMUX_##field##_SHIFT)
+#define dpdmux_set_field(var, field, val) \
+	((var) |= (((val) << DPDMUX_##field##_SHIFT) & DPDMUX_MASK(field)))
+#define dpdmux_get_field(var, field)      \
+	(((var) & DPDMUX_MASK(field)) >> DPDMUX_##field##_SHIFT)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_CREATE(cmd, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  enum dpdmux_method, cfg->method);\
-	MC_CMD_OP(cmd, 0, 8,  8,  enum dpdmux_manip, cfg->manip);\
-	MC_CMD_OP(cmd, 0, 16, 16, uint16_t, cfg->num_ifs);\
-	MC_CMD_OP(cmd, 1, 0,  16, uint16_t, cfg->adv.max_dmat_entries);\
-	MC_CMD_OP(cmd, 1, 16, 16, uint16_t, cfg->adv.max_mc_groups);\
-	MC_CMD_OP(cmd, 1, 32, 16, uint16_t, cfg->adv.max_vlan_ids);\
-	MC_CMD_OP(cmd, 2, 0,  64, uint64_t, cfg->adv.options);\
-} while (0)
+#pragma pack(push, 1)
+struct dpdmux_cmd_open {
+	uint32_t dpdmux_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_RSP_IS_ENABLED(cmd, en) \
-	MC_RSP_OP(cmd, 0, 0,  1,  int,	    en)
+struct dpdmux_cmd_create {
+	uint8_t method;
+	uint8_t manip;
+	uint16_t num_ifs;
+	uint32_t pad;
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_SET_IRQ_ENABLE(cmd, irq_index, en) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  en);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+	uint16_t adv_max_dmat_entries;
+	uint16_t adv_max_mc_groups;
+	uint16_t adv_max_vlan_ids;
+	uint16_t pad1;
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_GET_IRQ_ENABLE(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+	uint64_t options;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_RSP_GET_IRQ_ENABLE(cmd, en) \
-	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,  en)
+struct dpdmux_cmd_destroy {
+	uint32_t dpdmux_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_SET_IRQ_MASK(cmd, irq_index, mask) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, mask); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+#define DPDMUX_ENABLE_SHIFT	0
+#define DPDMUX_ENABLE_SIZE	1
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_GET_IRQ_MASK(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+struct dpdmux_rsp_is_enabled {
+	uint8_t en;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_RSP_GET_IRQ_MASK(cmd, mask) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, mask)
+struct dpdmux_cmd_set_irq_enable {
+	uint8_t enable;
+	uint8_t pad[3];
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_GET_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dpdmux_cmd_get_irq_enable {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_RSP_GET_IRQ_STATUS(cmd, status) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, status) \
+struct dpdmux_rsp_get_irq_enable {
+	uint8_t enable;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_CLEAR_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+struct dpdmux_cmd_set_irq_mask {
+	uint32_t mask;
+	uint8_t irq_index;
+};
 
-#define DPDMUX_RSP_GET_ATTRIBUTES(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0,  0,  8, enum dpdmux_method, (attr)->method);\
-	MC_RSP_OP(cmd, 0,  8,  8, enum dpdmux_manip,  (attr)->manip);\
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, (attr)->num_ifs);\
-	MC_RSP_OP(cmd, 0, 32, 16, uint16_t, (attr)->mem_size);\
-	MC_RSP_OP(cmd, 2,  0, 32, int,      (attr)->id);\
-	MC_RSP_OP(cmd, 3,  0, 64, uint64_t, (attr)->options);\
-} while (0)
+struct dpdmux_cmd_get_irq_mask {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_SET_MAX_FRAME_LENGTH(cmd, max_frame_length) \
-	MC_CMD_OP(cmd, 0, 0,  16, uint16_t, max_frame_length)
+struct dpdmux_rsp_get_irq_mask {
+	uint32_t mask;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_IF_SET_ACCEPTED_FRAMES(cmd, if_id, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  16, uint16_t, if_id);\
-	MC_CMD_OP(cmd, 0, 16, 4,  enum dpdmux_accepted_frames_type, cfg->type);\
-	MC_CMD_OP(cmd, 0, 20, 4,  enum dpdmux_unaccepted_frames_action, \
-					    cfg->unaccept_act);\
-} while (0)
+struct dpdmux_cmd_get_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_IF_GET_ATTR(cmd, if_id) \
-	MC_CMD_OP(cmd, 0, 0,  16, uint16_t, if_id)
+struct dpdmux_rsp_get_irq_status {
+	uint32_t status;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_RSP_IF_GET_ATTR(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0, 56, 4,  enum dpdmux_accepted_frames_type, \
-					    attr->accept_frame_type);\
-	MC_RSP_OP(cmd, 0, 24,  1, int,	    attr->enabled);\
-	MC_RSP_OP(cmd, 1, 0,  32, uint32_t, attr->rate);\
-} while (0)
+struct dpdmux_cmd_clear_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
 
-#define DPDMUX_CMD_IF_REMOVE_L2_RULE(cmd, if_id, l2_rule) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  16, uint16_t, if_id);\
-	MC_CMD_OP(cmd, 0, 16, 8,  uint8_t,  l2_rule->mac_addr[5]);\
-	MC_CMD_OP(cmd, 0, 24, 8,  uint8_t,  l2_rule->mac_addr[4]);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  l2_rule->mac_addr[3]);\
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  l2_rule->mac_addr[2]);\
-	MC_CMD_OP(cmd, 0, 48, 8,  uint8_t,  l2_rule->mac_addr[1]);\
-	MC_CMD_OP(cmd, 0, 56, 8,  uint8_t,  l2_rule->mac_addr[0]);\
-	MC_CMD_OP(cmd, 1, 32, 16, uint16_t, l2_rule->vlan_id);\
-} while (0)
+struct dpdmux_rsp_get_attr {
+	uint8_t method;
+	uint8_t manip;
+	uint16_t num_ifs;
+	uint16_t mem_size;
+	uint16_t pad;
 
-#define DPDMUX_CMD_IF_ADD_L2_RULE(cmd, if_id, l2_rule) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  16, uint16_t, if_id);\
-	MC_CMD_OP(cmd, 0, 16, 8,  uint8_t,  l2_rule->mac_addr[5]);\
-	MC_CMD_OP(cmd, 0, 24, 8,  uint8_t,  l2_rule->mac_addr[4]);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  l2_rule->mac_addr[3]);\
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  l2_rule->mac_addr[2]);\
-	MC_CMD_OP(cmd, 0, 48, 8,  uint8_t,  l2_rule->mac_addr[1]);\
-	MC_CMD_OP(cmd, 0, 56, 8,  uint8_t,  l2_rule->mac_addr[0]);\
-	MC_CMD_OP(cmd, 1, 32, 16, uint16_t, l2_rule->vlan_id);\
-} while (0)
+	uint64_t pad1;
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_IF_GET_COUNTER(cmd, if_id, counter_type) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  16, uint16_t, if_id);\
-	MC_CMD_OP(cmd, 0, 16, 8,  enum dpdmux_counter_type, counter_type);\
-} while (0)
+	uint32_t id;
+	uint32_t pad2;
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_RSP_IF_GET_COUNTER(cmd, counter) \
-	MC_RSP_OP(cmd, 1, 0,  64, uint64_t, counter)
+	uint64_t options;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_IF_SET_LINK_CFG(cmd, if_id, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  16, uint16_t, if_id);\
-	MC_CMD_OP(cmd, 1, 0,  32, uint32_t, cfg->rate);\
-	MC_CMD_OP(cmd, 2, 0,  64, uint64_t, cfg->options);\
-} while (0)
+struct dpdmux_cmd_set_max_frame_length {
+	uint16_t max_frame_length;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_IF_GET_LINK_STATE(cmd, if_id) \
-	MC_CMD_OP(cmd, 0, 0,  16, uint16_t, if_id)
+#define DPDMUX_ACCEPTED_FRAMES_TYPE_SHIFT	0
+#define DPDMUX_ACCEPTED_FRAMES_TYPE_SIZE	4
+#define DPDMUX_UNACCEPTED_FRAMES_ACTION_SHIFT	4
+#define DPDMUX_UNACCEPTED_FRAMES_ACTION_SIZE	4
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_RSP_IF_GET_LINK_STATE(cmd, state) \
-do { \
-	MC_RSP_OP(cmd, 0, 32, 1,  int,      state->up);\
-	MC_RSP_OP(cmd, 1, 0,  32, uint32_t, state->rate);\
-	MC_RSP_OP(cmd, 2, 0,  64, uint64_t, state->options);\
-} while (0)
+struct dpdmux_cmd_if_set_accepted_frames {
+	uint16_t if_id;
+	uint8_t frames_options;
+};
 
-/*                cmd, param, offset, width, type,      arg_name */
-#define DPDMUX_RSP_GET_API_VERSION(cmd, major, minor) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
-} while (0)
+struct dpdmux_cmd_if {
+	uint16_t if_id;
+};
 
-#define DPDMUX_CMD_SET_CUSTOM_KEY(cmd, key_cfg_iova) \
-do { \
-	MC_CMD_OP(cmd, 6,  0,  64, uint64_t, key_cfg_iova); \
-} while (0)
+struct dpdmux_rsp_if_get_attr {
+	uint8_t pad[3];
+	uint8_t enabled;
+	uint8_t pad1[3];
+	uint8_t accepted_frames_type;
+	uint32_t rate;
+};
 
-#define DPDMUX_CMD_ADD_CUSTOM_CLS_ENTRY(cmd, rule, action) \
-do { \
-	MC_CMD_OP(cmd, 0, 24,  8,  uint8_t, (rule)->key_size); \
-	MC_CMD_OP(cmd, 0, 48, 16, uint16_t, (action)->dest_if); \
-	MC_CMD_OP(cmd, 1,  0, 64, uint64_t, (rule)->key_iova); \
-	MC_CMD_OP(cmd, 2,  0, 64, uint64_t, (rule)->mask_iova); \
-} while (0)
+struct dpdmux_cmd_if_l2_rule {
+	uint16_t if_id;
+	uint8_t mac_addr5;
+	uint8_t mac_addr4;
+	uint8_t mac_addr3;
+	uint8_t mac_addr2;
+	uint8_t mac_addr1;
+	uint8_t mac_addr0;
 
-#define DPDMUX_CMD_REMOVE_CUSTOM_CLS_ENTRY(cmd, rule) \
-do { \
-	MC_CMD_OP(cmd, 0, 24,  8, uint8_t,  (rule)->key_size); \
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, (rule)->key_iova); \
-	MC_CMD_OP(cmd, 2, 0,  64, uint64_t, (rule)->mask_iova); \
-} while (0)
+	uint32_t pad;
+	uint16_t vlan_id;
+};
 
+struct dpdmux_cmd_if_get_counter {
+	uint16_t if_id;
+	uint8_t counter_type;
+};
+
+struct dpdmux_rsp_if_get_counter {
+	uint64_t pad;
+	uint64_t counter;
+};
+
+struct dpdmux_cmd_if_set_link_cfg {
+	uint16_t if_id;
+	uint16_t pad[3];
+
+	uint32_t rate;
+	uint32_t pad1;
+
+	uint64_t options;
+};
+
+struct dpdmux_cmd_if_get_link_state {
+	uint16_t if_id;
+};
+
+struct dpdmux_rsp_if_get_link_state {
+	uint32_t pad;
+	uint8_t up;
+	uint8_t pad1[3];
+
+	uint32_t rate;
+	uint32_t pad2;
+
+	uint64_t options;
+};
+
+struct dpdmux_rsp_get_api_version {
+	uint16_t major;
+	uint16_t minor;
+};
+
+struct dpdmux_set_custom_key {
+	uint64_t pad[6];
+	uint64_t key_cfg_iova;
+};
+
+struct dpdmux_cmd_add_custom_cls_entry {
+	uint8_t pad[3];
+	uint8_t key_size;
+	uint16_t pad1;
+	uint16_t dest_if;
+	uint64_t key_iova;
+	uint64_t mask_iova;
+};
+
+struct dpdmux_cmd_remove_custom_cls_entry {
+	uint8_t pad[3];
+	uint8_t key_size;
+	uint32_t pad1;
+	uint64_t key_iova;
+	uint64_t mask_iova;
+};
+#pragma pack(pop)
 #endif /* _FSL_DPDMUX_CMD_H */

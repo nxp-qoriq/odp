@@ -33,8 +33,8 @@
 #include <fsl_mc_cmd.h>
 
 /* ODP framework using MC poratl in shared mode. Following
-   changes to introduce Locks must be maintained while
-   merging the FLIB.
+  changes to introduce Locks must be maintained while
+  merging the FLIB.
 */
 
 /**
@@ -62,7 +62,6 @@ static inline void mc_spinlock_unlock(mc_spinlock_t *sl)
 {
 	__sync_lock_release(&sl->locked);
 }
-
 
 static int mc_status_to_error(enum mc_cmd_status status)
 {
@@ -100,6 +99,7 @@ static int mc_status_to_error(enum mc_cmd_status status)
 int mc_send_command(struct fsl_mc_io *mc_io, struct mc_command *cmd)
 {
 	enum mc_cmd_status status;
+	uint64_t response;
 
 	if (!mc_io || !mc_io->regs)
 		return -EACCES;
@@ -111,7 +111,8 @@ int mc_send_command(struct fsl_mc_io *mc_io, struct mc_command *cmd)
 
 	/* Spin until status changes */
 	do {
-		status = MC_CMD_HDR_READ_STATUS(ioread64(mc_io->regs));
+		response = ioread64(mc_io->regs);
+		status = mc_cmd_read_status((struct mc_command *)&response);
 
 		/* --- Call wait function here to prevent blocking ---
 		 * Change the loop condition accordingly to exit on timeout.
@@ -126,3 +127,4 @@ int mc_send_command(struct fsl_mc_io *mc_io, struct mc_command *cmd)
 
 	return mc_status_to_error(status);
 }
+

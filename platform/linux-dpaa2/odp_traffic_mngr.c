@@ -433,7 +433,7 @@ odp_tm_node_t odp_tm_node_create(odp_tm_t             odp_tm,
 	struct dpaa2_dev_priv *dev_priv;
 	struct queues_config *q_config;
 	struct fsl_mc_io *dpni;
-	struct dpni_tx_shaping_cfg tx_shaper;
+	struct dpni_tx_shaping_cfg tx_cr_shaper, tx_er_shaper;
 	struct dpni_congestion_notification_cfg cong_notif_cfg;
 	struct qbman_result *result;
 	int32_t retcode;
@@ -476,15 +476,18 @@ odp_tm_node_t odp_tm_node_create(odp_tm_t             odp_tm,
 		shaper_profile_obj =
 			&(odp_shaper_profiles[params->shaper_profile].shaper_params);
 
-		memset(&tx_shaper, 0, sizeof(struct dpni_tx_shaping_cfg));
+		memset(&tx_er_shaper, 0, sizeof(struct dpni_tx_shaping_cfg));
+		memset(&tx_cr_shaper, 0, sizeof(struct dpni_tx_shaping_cfg));
 		/*User provided rate (bits per second) is converted to Mbps*/
-		tx_shaper.rate_limit =
+		tx_cr_shaper.rate_limit =
 				shaper_profile_obj->peak_rate / (1024 * 1024);
 		/*User provided burst_size (bits) is converted to Bytes*/
-		tx_shaper.max_burst_size =
+		tx_cr_shaper.max_burst_size =
 				shaper_profile_obj->peak_burst / 8;
 		retcode = dpni_set_tx_shaping(dpni, CMD_PRI_LOW,
-						dev_priv->token, &tx_shaper);
+						dev_priv->token,
+						&tx_cr_shaper,
+						&tx_er_shaper, 0);
 		if (retcode < 0) {
 			ODP_ERR("Error in setting tx shaper: Error Code = %d\n", 
 								retcode);
@@ -559,7 +562,7 @@ int odp_tm_node_destroy(odp_tm_node_t tm_node)
 	struct dpaa2_dev_priv *dev_priv;
 	struct queues_config *q_config;
 	struct fsl_mc_io *dpni;
-	struct dpni_tx_shaping_cfg tx_shaper;
+	struct dpni_tx_shaping_cfg tx_cr_shaper, tx_er_shaper;
 	struct dpni_tx_priorities_cfg tx_sched;
 	struct dpni_congestion_notification_cfg cong_notif_cfg;
 	int32_t retcode;
@@ -584,9 +587,11 @@ int odp_tm_node_destroy(odp_tm_node_t tm_node)
 	q_config = dpaa2_eth_get_queues_config(dev);
 	/*Configure dpni device with its default state*/
 	if (tm_node_obj->shaper_profile != ODP_TM_INVALID) {
-		memset(&tx_shaper, 0, sizeof(struct dpni_tx_shaping_cfg));
+		memset(&tx_cr_shaper, 0, sizeof(struct dpni_tx_shaping_cfg));
+		memset(&tx_er_shaper, 0, sizeof(struct dpni_tx_shaping_cfg));
 		retcode = dpni_set_tx_shaping(dpni, CMD_PRI_LOW,
-					dev_priv->token, &tx_shaper);
+					dev_priv->token, &tx_cr_shaper,
+					&tx_er_shaper, 0);
 		if (retcode < 0) {
 			ODP_ERR("Error in setting tx shaper: Error Code = %d\n",
 								retcode);

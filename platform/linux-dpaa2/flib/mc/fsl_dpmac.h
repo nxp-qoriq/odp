@@ -38,42 +38,14 @@
 
 struct fsl_mc_io;
 
-/**
- * dpmac_open() - Open a control session for the specified object.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @dpmac_id:	DPMAC unique ID
- * @token:	Returned token; use in subsequent API calls
- *
- * This function can be used to open a control session for an
- * already created object; an object may have been declared in
- * the DPL or by calling the dpmac_create function.
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent commands for
- * this specific object
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_open(struct fsl_mc_io	*mc_io,
-	       uint32_t		cmd_flags,
-	       int		dpmac_id,
-	       uint16_t		*token);
+int dpmac_open(struct fsl_mc_io *mc_io,
+	       uint32_t cmd_flags,
+	       int dpmac_id,
+	       uint16_t *token);
 
-/**
- * dpmac_close() - Close the control session of the object
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- *
- * After this function is called, no further operations are
- * allowed on the object without opening a new control session.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_close(struct fsl_mc_io	*mc_io,
-		uint32_t		cmd_flags,
-		uint16_t		token);
+int dpmac_close(struct fsl_mc_io *mc_io,
+		uint32_t cmd_flags,
+		uint16_t token);
 
 /**
  * enum dpmac_link_type -  DPMAC link type
@@ -125,50 +97,16 @@ struct dpmac_cfg {
 	uint16_t mac_id;
 };
 
-/**
- * dpmac_create() - Create the DPMAC object.
- * @mc_io:	Pointer to MC portal's I/O object
- * @dprc_token: Parent container token; '0' for default container
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @cfg:	Configuration structure
- * @obj_id: returned object id
- *
- * Create the DPMAC object, allocate required resources and
- * perform required initialization.
- *
- * The function accepts an authentication token of a parent
- * container that this object should be assigned to. The token
- * can be '0' so the object will be assigned to the default container.
- * The newly created object can be opened with the returned
- * object id and using the container's associated tokens and MC portals.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_create(struct fsl_mc_io	*mc_io,
-		 uint16_t		dprc_token,
-		 uint32_t		cmd_flags,
-		 const struct dpmac_cfg	*cfg,
-		 uint32_t		*obj_id);
+int dpmac_create(struct fsl_mc_io *mc_io,
+		 uint16_t dprc_token,
+		 uint32_t cmd_flags,
+		 const struct dpmac_cfg *cfg,
+		 uint32_t *obj_id);
 
-/**
- * dpmac_destroy() - Destroy the DPMAC object and release all its resources.
- * @mc_io:	Pointer to MC portal's I/O object
- * @dprc_token: Parent container token; '0' for default container
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @object_id:	The object id; it must be a valid id within the container that
- * created this object;
- *
- * The function accepts the authentication token of the parent container that
- * created the object (not the one that currently owns the object). The object
- * is searched within parent using the provided 'object_id'.
- * All tokens to the object must be closed before calling destroy.
- *
- * Return:	'0' on Success; error code otherwise.
- */
-int dpmac_destroy(struct fsl_mc_io	*mc_io,
-		  uint16_t		dprc_token,
-		  uint32_t		cmd_flags,
-		  uint32_t		object_id);
+int dpmac_destroy(struct fsl_mc_io *mc_io,
+		  uint16_t dprc_token,
+		  uint32_t cmd_flags,
+		  uint32_t object_id);
 
 /**
  * DPMAC IRQ Index and Events
@@ -187,150 +125,60 @@ int dpmac_destroy(struct fsl_mc_io	*mc_io,
  */
 #define DPMAC_IRQ_EVENT_LINK_CHANGED		0x00000002
 
-/**
- * dpmac_set_irq_enable() - Set overall interrupt state.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @irq_index:	The interrupt index to configure
- * @en:	Interrupt state - enable = 1, disable = 0
- *
- * Allows GPP software to control when interrupts are generated.
- * Each interrupt can have up to 32 causes.  The enable/disable control's the
- * overall interrupt state. if the interrupt is disabled no causes will cause
- * an interrupt.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_set_irq_enable(struct fsl_mc_io	*mc_io,
-			 uint32_t		cmd_flags,
-			 uint16_t		token,
-			 uint8_t		irq_index,
-			 uint8_t		en);
+int dpmac_set_irq_enable(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint8_t irq_index,
+			 uint8_t en);
 
-/**
- * dpmac_get_irq_enable() - Get overall interrupt state
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @irq_index:	The interrupt index to configure
- * @en:		Returned interrupt state - enable = 1, disable = 0
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_get_irq_enable(struct fsl_mc_io	*mc_io,
-			 uint32_t		cmd_flags,
-			 uint16_t		token,
-			 uint8_t		irq_index,
-			 uint8_t		*en);
+int dpmac_get_irq_enable(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint8_t irq_index,
+			 uint8_t *en);
 
-/**
- * dpmac_set_irq_mask() - Set interrupt mask.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @irq_index:	The interrupt index to configure
- * @mask:	Event mask to trigger interrupt;
- *			each bit:
- *				0 = ignore event
- *				1 = consider event for asserting IRQ
- *
- * Every interrupt can have up to 32 causes and the interrupt model supports
- * masking/unmasking each cause independently
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_set_irq_mask(struct fsl_mc_io	*mc_io,
-		       uint32_t		cmd_flags,
-		       uint16_t		token,
-		       uint8_t		irq_index,
-		       uint32_t		mask);
+int dpmac_set_irq_mask(struct fsl_mc_io *mc_io,
+		       uint32_t cmd_flags,
+		       uint16_t token,
+		       uint8_t irq_index,
+		       uint32_t mask);
 
-/**
- * dpmac_get_irq_mask() - Get interrupt mask.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @irq_index:	The interrupt index to configure
- * @mask:	Returned event mask to trigger interrupt
- *
- * Every interrupt can have up to 32 causes and the interrupt model supports
- * masking/unmasking each cause independently
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_get_irq_mask(struct fsl_mc_io	*mc_io,
-		       uint32_t		cmd_flags,
-		       uint16_t		token,
-		       uint8_t		irq_index,
-		       uint32_t		*mask);
+int dpmac_get_irq_mask(struct fsl_mc_io *mc_io,
+		       uint32_t cmd_flags,
+		       uint16_t token,
+		       uint8_t irq_index,
+		       uint32_t *mask);
 
-/**
- * dpmac_get_irq_status() - Get the current status of any pending interrupts.
- *
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @irq_index:	The interrupt index to configure
- * @status:	Returned interrupts status - one bit per cause:
- *			0 = no interrupt pending
- *			1 = interrupt pending
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_get_irq_status(struct fsl_mc_io	*mc_io,
-			 uint32_t		cmd_flags,
-			 uint16_t		token,
-			 uint8_t		irq_index,
-			 uint32_t		*status);
+int dpmac_get_irq_status(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint8_t irq_index,
+			 uint32_t *status);
 
-/**
- * dpmac_clear_irq_status() - Clear a pending interrupt's status
- *
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @irq_index:	The interrupt index to configure
- * @status:	Bits to clear (W1C) - one bit per cause:
- *					0 = don't change
- *					1 = clear status bit
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_clear_irq_status(struct fsl_mc_io	*mc_io,
-			   uint32_t		cmd_flags,
-			   uint16_t		token,
-			   uint8_t		irq_index,
-			   uint32_t		status);
+int dpmac_clear_irq_status(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t token,
+			   uint8_t irq_index,
+			   uint32_t status);
 
 /**
  * struct dpmac_attr - Structure representing DPMAC attributes
- * @id: DPMAC object ID
- * @max_rate: Maximum supported rate - in Mbps
- * @eth_if: Ethernet interface
- * @link_type: link type
+ * @id:		DPMAC object ID
+ * @max_rate:	Maximum supported rate - in Mbps
+ * @eth_if:	Ethernet interface
+ * @link_type:	link type
  */
 struct dpmac_attr {
-	uint16_t		id;
-	uint32_t		max_rate;
-	enum dpmac_eth_if	eth_if;
-	enum dpmac_link_type	link_type;
+	uint16_t id;
+	uint32_t max_rate;
+	enum dpmac_eth_if eth_if;
+	enum dpmac_link_type link_type;
 };
 
-/**
- * dpmac_get_attributes - Retrieve DPMAC attributes.
- *
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @attr:	Returned object's attributes
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_get_attributes(struct fsl_mc_io	*mc_io,
-			 uint32_t		cmd_flags,
-			 uint16_t		token,
-			 struct dpmac_attr	*attr);
+int dpmac_get_attributes(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 struct dpmac_attr *attr);
 
 /**
  * DPMAC link configuration/state options
@@ -363,19 +211,10 @@ struct dpmac_link_cfg {
 	uint64_t options;
 };
 
-/**
- * dpmac_get_link_cfg() - Get Ethernet link configuration
- * @mc_io:	Pointer to opaque I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @cfg:	Returned structure with the link configuration
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_get_link_cfg(struct fsl_mc_io		*mc_io,
-		       uint32_t			cmd_flags,
-		       uint16_t			token,
-		       struct dpmac_link_cfg	*cfg);
+int dpmac_get_link_cfg(struct fsl_mc_io *mc_io,
+		       uint32_t cmd_flags,
+		       uint16_t token,
+		       struct dpmac_link_cfg *cfg);
 
 /**
  * struct dpmac_link_state - DPMAC link configuration request
@@ -384,24 +223,15 @@ int dpmac_get_link_cfg(struct fsl_mc_io		*mc_io,
  * @up: Link state
  */
 struct dpmac_link_state {
-	uint32_t	rate;
-	uint64_t	options;
-	int		up;
+	uint32_t rate;
+	uint64_t options;
+	int up;
 };
 
-/**
- * dpmac_set_link_state() - Set the Ethernet link status
- * @mc_io:	Pointer to opaque I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @link_state:	Link state configuration
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_set_link_state(struct fsl_mc_io		*mc_io,
-			 uint32_t			cmd_flags,
-			 uint16_t			token,
-			 struct dpmac_link_state	*link_state);
+int dpmac_set_link_state(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 struct dpmac_link_state *link_state);
 
 /**
  * enum dpmac_counter - DPMAC counter types
@@ -481,46 +311,19 @@ enum dpmac_counter {
 	DPMAC_CNT_ENG_GOOD_FRAME
 };
 
-/**
- * dpmac_get_counter() - Read a specific DPMAC counter
- * @mc_io:	Pointer to opaque I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @type:	The requested counter
- * @counter:	Returned counter value
- *
- * Return:	The requested counter; '0' otherwise.
- */
-int dpmac_get_counter(struct fsl_mc_io		*mc_io,
-		      uint32_t			cmd_flags,
-		      uint16_t			token,
-		      enum dpmac_counter	 type,
-		      uint64_t			*counter);
+int dpmac_get_counter(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      enum dpmac_counter  type,
+		      uint64_t *counter);
 
-/**
- * dpmac_get_api_version() - Get Data Path MAC version
- * @mc_io:  Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @major_ver:	Major version of data path mac API
- * @minor_ver:	Minor version of data path mac API
- *
- * Return:  '0' on Success; Error code otherwise.
- */
 int dpmac_get_api_version(struct fsl_mc_io *mc_io,
 			  uint32_t cmd_flags,
 			  uint16_t *major_ver,
 			  uint16_t *minor_ver);
 
-/**
- * dpmac_reset() - Reset the DPMAC, returns the object to initial state.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_reset(struct fsl_mc_io	*mc_io,
-	       uint32_t		cmd_flags,
-	       uint16_t		token);
+int dpmac_reset(struct fsl_mc_io *mc_io,
+		uint32_t cmd_flags,
+		uint16_t token);
 
 #endif /* __FSL_DPMAC_H */

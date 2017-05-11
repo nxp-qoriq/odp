@@ -33,141 +33,156 @@
 #define _FSL_DPDMAI_CMD_H
 
 /* DPDMAI Version */
-#define DPDMAI_VER_MAJOR				3
-#define DPDMAI_VER_MINOR				2
+#define DPDMAI_VER_MAJOR		3
+#define DPDMAI_VER_MINOR		2
+
+/* Command versioning */
+#define DPDMAI_CMD_BASE_VERSION		1
+#define DPDMAI_CMD_ID_OFFSET		4
+
+#define DPDMAI_CMD(id)	((id << DPDMAI_CMD_ID_OFFSET) | DPDMAI_CMD_BASE_VERSION)
 
 /* Command IDs */
-#define DPDMAI_CMDID_CLOSE                           0x8001
-#define DPDMAI_CMDID_OPEN                            0x80e1
-#define DPDMAI_CMDID_CREATE                          0x90e1
-#define DPDMAI_CMDID_DESTROY                         0x98e1
-#define DPDMAI_CMDID_GET_API_VERSION                 0xa0e1
+#define DPDMAI_CMDID_CLOSE		DPDMAI_CMD(0x800)
+#define DPDMAI_CMDID_OPEN		DPDMAI_CMD(0x80E)
+#define DPDMAI_CMDID_CREATE		DPDMAI_CMD(0x90E)
+#define DPDMAI_CMDID_DESTROY		DPDMAI_CMD(0x98E)
+#define DPDMAI_CMDID_GET_API_VERSION	DPDMAI_CMD(0xa0E)
 
-#define DPDMAI_CMDID_ENABLE                          0x0021
-#define DPDMAI_CMDID_DISABLE                         0x0031
-#define DPDMAI_CMDID_GET_ATTR                        0x0041
-#define DPDMAI_CMDID_RESET                           0x0051
-#define DPDMAI_CMDID_IS_ENABLED                      0x0061
+#define DPDMAI_CMDID_ENABLE		DPDMAI_CMD(0x002)
+#define DPDMAI_CMDID_DISABLE		DPDMAI_CMD(0x003)
+#define DPDMAI_CMDID_GET_ATTR		DPDMAI_CMD(0x004)
+#define DPDMAI_CMDID_RESET		DPDMAI_CMD(0x005)
+#define DPDMAI_CMDID_IS_ENABLED		DPDMAI_CMD(0x006)
 
-#define DPDMAI_CMDID_SET_IRQ_ENABLE                  0x0121
-#define DPDMAI_CMDID_GET_IRQ_ENABLE                  0x0131
-#define DPDMAI_CMDID_SET_IRQ_MASK                    0x0141
-#define DPDMAI_CMDID_GET_IRQ_MASK                    0x0151
-#define DPDMAI_CMDID_GET_IRQ_STATUS                  0x0161
-#define DPDMAI_CMDID_CLEAR_IRQ_STATUS                0x0171
+#define DPDMAI_CMDID_SET_IRQ_ENABLE	DPDMAI_CMD(0x012)
+#define DPDMAI_CMDID_GET_IRQ_ENABLE	DPDMAI_CMD(0x013)
+#define DPDMAI_CMDID_SET_IRQ_MASK	DPDMAI_CMD(0x014)
+#define DPDMAI_CMDID_GET_IRQ_MASK	DPDMAI_CMD(0x015)
+#define DPDMAI_CMDID_GET_IRQ_STATUS	DPDMAI_CMD(0x016)
+#define DPDMAI_CMDID_CLEAR_IRQ_STATUS	DPDMAI_CMD(0x017)
 
-#define DPDMAI_CMDID_SET_RX_QUEUE                    0x1a01
-#define DPDMAI_CMDID_GET_RX_QUEUE                    0x1a11
-#define DPDMAI_CMDID_GET_TX_QUEUE                    0x1a21
+#define DPDMAI_CMDID_SET_RX_QUEUE	DPDMAI_CMD(0x1A0)
+#define DPDMAI_CMDID_GET_RX_QUEUE	DPDMAI_CMD(0x1A1)
+#define DPDMAI_CMDID_GET_TX_QUEUE	DPDMAI_CMD(0x1A2)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_OPEN(cmd, dpdmai_id) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      dpdmai_id)
+/* Macros for accessing command fields smaller than 1byte */
+#define DPDMAI_MASK(field)        \
+	GENMASK(DPDMAI_##field##_SHIFT + DPDMAI_##field##_SIZE - 1, \
+		DPDMAI_##field##_SHIFT)
+#define dpdmai_set_field(var, field, val) \
+	((var) |= (((val) << DPDMAI_##field##_SHIFT) & DPDMAI_MASK(field)))
+#define dpdmai_get_field(var, field)      \
+	(((var) & DPDMAI_MASK(field)) >> DPDMAI_##field##_SHIFT)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_CREATE(cmd, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 8,  8,  uint8_t,  cfg->priorities[0]);\
-	MC_CMD_OP(cmd, 0, 16, 8,  uint8_t,  cfg->priorities[1]);\
-} while (0)
+#pragma pack(push, 1)
+struct dpdmai_cmd_open {
+	uint32_t dpdmai_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_RSP_IS_ENABLED(cmd, en) \
-	MC_RSP_OP(cmd, 0, 0,  1,  int,	    en)
+struct dpdmai_cmd_create {
+	uint8_t pad;
+	uint8_t priorities[2];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_SET_IRQ_ENABLE(cmd, irq_index, enable_state) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  enable_state); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+struct dpdmai_cmd_destroy {
+	uint32_t dpdmai_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_GET_IRQ_ENABLE(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+#define DPDMAI_ENABLE_SHIFT	0
+#define DPDMAI_ENABLE_SIZE	1
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_RSP_GET_IRQ_ENABLE(cmd, enable_state) \
-	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,  enable_state)
+struct dpdmai_rsp_is_enabled {
+	/* only the LSB bit */
+	uint8_t en;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_SET_IRQ_MASK(cmd, irq_index, mask) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, mask); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+struct dpdmai_cmd_set_irq_enable {
+	uint8_t enable_state;
+	uint8_t pad[3];
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_GET_IRQ_MASK(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+struct dpdmai_cmd_get_irq_enable {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_RSP_GET_IRQ_MASK(cmd, mask) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, mask)
+struct dpdmai_rsp_get_irq_enable {
+	uint8_t enable_state;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_GET_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dpdmai_cmd_set_irq_mask {
+	uint32_t mask;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_RSP_GET_IRQ_STATUS(cmd, status) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t,  status)
+struct dpdmai_cmd_get_irq_mask {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_CLEAR_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+struct dpdmai_rsp_get_irq_mask {
+	uint32_t mask;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_RSP_GET_ATTRIBUTES(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0,  0, 32, int,     (attr)->id); \
-	MC_RSP_OP(cmd, 0, 32,  8, uint8_t, (attr)->num_of_priorities); \
-} while (0)
+struct dpdmai_cmd_get_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_SET_RX_QUEUE(cmd, priority, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      cfg->dest_cfg.dest_id); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  cfg->dest_cfg.priority); \
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  priority); \
-	MC_CMD_OP(cmd, 0, 48, 4,  enum dpdmai_dest, cfg->dest_cfg.dest_type); \
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, cfg->user_ctx); \
-	MC_CMD_OP(cmd, 2, 0,  32, uint32_t, cfg->options);\
-} while (0)
+struct dpdmai_rsp_get_irq_status {
+	uint32_t status;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_GET_RX_QUEUE(cmd, priority) \
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  priority)
+struct dpdmai_cmd_clear_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_RSP_GET_RX_QUEUE(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, int,      attr->dest_cfg.dest_id);\
-	MC_RSP_OP(cmd, 0, 32, 8,  uint8_t,  attr->dest_cfg.priority);\
-	MC_RSP_OP(cmd, 0, 48, 4,  enum dpdmai_dest, attr->dest_cfg.dest_type);\
-	MC_RSP_OP(cmd, 1, 0,  64, uint64_t,  attr->user_ctx);\
-	MC_RSP_OP(cmd, 2, 0,  32, uint32_t,  attr->fqid);\
-} while (0)
+struct dpdmai_rsp_get_attr {
+	uint32_t id;
+	uint8_t num_of_priorities;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_CMD_GET_TX_QUEUE(cmd, priority) \
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  priority)
+#define DPDMAI_DEST_TYPE_SHIFT	0
+#define DPDMAI_DEST_TYPE_SIZE	4
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPDMAI_RSP_GET_TX_QUEUE(cmd, attr) \
-	MC_RSP_OP(cmd, 1, 0,  32, uint32_t,  attr->fqid)
+struct dpdmai_cmd_set_rx_queue {
+	uint32_t dest_id;
+	uint8_t dest_priority;
+	uint8_t priority;
+	/* from LSB: dest_type:4 */
+	uint8_t dest_type;
+	uint8_t pad;
+	uint64_t user_ctx;
+	uint32_t options;
+};
 
-/*                cmd, param, offset, width, type,      arg_name */
-#define DPDMAI_RSP_GET_API_VERSION(cmd, major, minor) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
-} while (0)
+struct dpdmai_cmd_get_queue {
+	uint8_t pad[5];
+	uint8_t priority;
+};
 
+struct dpdmai_rsp_get_rx_queue {
+	uint32_t dest_id;
+	uint8_t dest_priority;
+	uint8_t pad1;
+	/* from LSB: dest_type:4 */
+	uint8_t dest_type;
+	uint8_t pad2;
+	uint64_t user_ctx;
+	uint32_t fqid;
+};
+
+struct dpdmai_rsp_get_tx_queue {
+	uint64_t pad;
+	uint32_t fqid;
+};
+
+struct dpdmai_rsp_get_api_version {
+	uint16_t major;
+	uint16_t minor;
+};
+#pragma pack(pop)
 #endif /* _FSL_DPDMAI_CMD_H */

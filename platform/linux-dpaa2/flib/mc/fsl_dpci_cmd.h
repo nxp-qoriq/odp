@@ -33,195 +33,234 @@
 #define _FSL_DPCI_CMD_H
 
 /* DPCI Version */
-#define DPCI_VER_MAJOR				3
-#define DPCI_VER_MINOR				3
+#define DPCI_VER_MAJOR			3
+#define DPCI_VER_MINOR			3
+
+#define DPCI_CMD_BASE_VERSION		1
+#define DPCI_CMD_BASE_VERSION_V2	2
+#define DPCI_CMD_ID_OFFSET		4
+
+#define DPCI_CMD_V1(id) ((id << DPCI_CMD_ID_OFFSET) | DPCI_CMD_BASE_VERSION)
+#define DPCI_CMD_V2(id) ((id << DPCI_CMD_ID_OFFSET) | DPCI_CMD_BASE_VERSION_V2)
 
 /* Command IDs */
-#define DPCI_CMDID_CLOSE                             0x8001
-#define DPCI_CMDID_OPEN                              0x8071
-#define DPCI_CMDID_CREATE                            0x9072
-#define DPCI_CMDID_DESTROY                           0x9871
-#define DPCI_CMDID_GET_API_VERSION                   0xa071
+#define DPCI_CMDID_CLOSE		DPCI_CMD_V1(0x800)
+#define DPCI_CMDID_OPEN			DPCI_CMD_V1(0x807)
+#define DPCI_CMDID_CREATE		DPCI_CMD_V2(0x907)
+#define DPCI_CMDID_DESTROY		DPCI_CMD_V1(0x987)
+#define DPCI_CMDID_GET_API_VERSION	DPCI_CMD_V1(0xa07)
 
-#define DPCI_CMDID_ENABLE                            0x0021
-#define DPCI_CMDID_DISABLE                           0x0031
-#define DPCI_CMDID_GET_ATTR                          0x0041
-#define DPCI_CMDID_RESET                             0x0051
-#define DPCI_CMDID_IS_ENABLED                        0x0061
+#define DPCI_CMDID_ENABLE		DPCI_CMD_V1(0x002)
+#define DPCI_CMDID_DISABLE		DPCI_CMD_V1(0x003)
+#define DPCI_CMDID_GET_ATTR		DPCI_CMD_V1(0x004)
+#define DPCI_CMDID_RESET		DPCI_CMD_V1(0x005)
+#define DPCI_CMDID_IS_ENABLED		DPCI_CMD_V1(0x006)
 
-#define DPCI_CMDID_SET_IRQ_ENABLE                    0x0121
-#define DPCI_CMDID_GET_IRQ_ENABLE                    0x0131
-#define DPCI_CMDID_SET_IRQ_MASK                      0x0141
-#define DPCI_CMDID_GET_IRQ_MASK                      0x0151
-#define DPCI_CMDID_GET_IRQ_STATUS                    0x0161
-#define DPCI_CMDID_CLEAR_IRQ_STATUS                  0x0171
+#define DPCI_CMDID_SET_IRQ_ENABLE	DPCI_CMD_V1(0x012)
+#define DPCI_CMDID_GET_IRQ_ENABLE	DPCI_CMD_V1(0x013)
+#define DPCI_CMDID_SET_IRQ_MASK		DPCI_CMD_V1(0x014)
+#define DPCI_CMDID_GET_IRQ_MASK		DPCI_CMD_V1(0x015)
+#define DPCI_CMDID_GET_IRQ_STATUS	DPCI_CMD_V1(0x016)
+#define DPCI_CMDID_CLEAR_IRQ_STATUS	DPCI_CMD_V1(0x017)
 
-#define DPCI_CMDID_SET_RX_QUEUE                      0x0e01
-#define DPCI_CMDID_GET_LINK_STATE                    0x0e11
-#define DPCI_CMDID_GET_PEER_ATTR                     0x0e21
-#define DPCI_CMDID_GET_RX_QUEUE                      0x0e31
-#define DPCI_CMDID_GET_TX_QUEUE                      0x0e41
-#define DPCI_CMDID_SET_OPR                    		 0x0e51
-#define DPCI_CMDID_GET_OPR                      	 0x0e61
+#define DPCI_CMDID_SET_RX_QUEUE		DPCI_CMD_V1(0x0e0)
+#define DPCI_CMDID_GET_LINK_STATE	DPCI_CMD_V1(0x0e1)
+#define DPCI_CMDID_GET_PEER_ATTR	DPCI_CMD_V1(0x0e2)
+#define DPCI_CMDID_GET_RX_QUEUE		DPCI_CMD_V1(0x0e3)
+#define DPCI_CMDID_GET_TX_QUEUE		DPCI_CMD_V1(0x0e4)
+#define DPCI_CMDID_SET_OPR		DPCI_CMD_V1(0x0e5)
+#define DPCI_CMDID_GET_OPR		DPCI_CMD_V1(0x0e6)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_OPEN(cmd, dpci_id) \
-	MC_CMD_OP(cmd, 0, 0, 32, int,	    dpci_id)
+/* Macros for accessing command fields smaller than 1byte */
+#define DPCI_MASK(field)        \
+	GENMASK(DPCI_##field##_SHIFT + DPCI_##field##_SIZE - 1, \
+		DPCI_##field##_SHIFT)
+#define dpci_set_field(var, field, val) \
+	((var) |= (((val) << DPCI_##field##_SHIFT) & DPCI_MASK(field)))
+#define dpci_get_field(var, field)      \
+	(((var) & DPCI_MASK(field)) >> DPCI_##field##_SHIFT)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_CREATE(cmd, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  cfg->num_of_priorities);\
-	MC_CMD_OP(cmd, 2, 0,  32, uint32_t, cfg->options);\
-} while (0)
+#pragma pack(push, 1)
+struct dpci_cmd_open {
+	uint32_t dpci_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_RSP_IS_ENABLED(cmd, en) \
-	MC_RSP_OP(cmd, 0, 0,  1,  int,	    en)
+struct dpci_cmd_create {
+	uint8_t num_of_priorities;
+	uint8_t pad[15];
+	uint32_t options;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_SET_IRQ_ENABLE(cmd, irq_index, en) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  en); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dpci_cmd_destroy {
+	uint32_t dpci_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_GET_IRQ_ENABLE(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+#define DPCI_ENABLE_SHIFT	0
+#define DPCI_ENABLE_SIZE	1
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_RSP_GET_IRQ_ENABLE(cmd, en) \
-	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,  en)
+struct dpci_rsp_is_enabled {
+	/* only the LSB bit */
+	uint8_t en;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_SET_IRQ_MASK(cmd, irq_index, mask) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, mask); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dpci_cmd_set_irq_enable {
+	uint8_t en;
+	uint8_t pad[3];
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_GET_IRQ_MASK(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+struct dpci_cmd_get_irq_enable {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_RSP_GET_IRQ_MASK(cmd, mask) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, mask)
+struct dpci_rsp_get_irq_enable {
+	uint8_t en;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_GET_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_RSP_GET_IRQ_STATUS(cmd, status) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, status)
+struct dpci_cmd_set_irq_mask {
+	uint32_t mask;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_CLEAR_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dpci_cmd_get_irq_mask {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_RSP_GET_ATTRIBUTES(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0,  0, 32, int,     (attr)->id);\
-	MC_RSP_OP(cmd, 0, 48,  8, uint8_t, (attr)->num_of_priorities);\
-} while (0)
+struct dpci_rsp_get_irq_mask {
+	uint32_t mask;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_RSP_GET_PEER_ATTR(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, int,      attr->peer_id);\
-	MC_RSP_OP(cmd, 1, 0,  8,  uint8_t,  attr->num_of_priorities);\
-} while (0)
+struct dpci_cmd_get_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_RSP_GET_LINK_STATE(cmd, up) \
-	MC_RSP_OP(cmd, 0, 0,  1,  int,	    up)
+struct dpci_rsp_get_irq_status {
+	uint32_t status;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_SET_RX_QUEUE(cmd, priority, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      cfg->dest_cfg.dest_id);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  cfg->dest_cfg.priority);\
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  priority);\
-	MC_CMD_OP(cmd, 0, 48, 4,  enum dpci_dest, cfg->dest_cfg.dest_type);\
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, cfg->user_ctx);\
-	MC_CMD_OP(cmd, 2, 0,  32, uint32_t, cfg->options);\
-} while (0)
+struct dpci_cmd_clear_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_GET_RX_QUEUE(cmd, priority) \
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  priority)
+struct dpci_rsp_get_attr {
+	uint32_t id;
+	uint16_t pad;
+	uint8_t num_of_priorities;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_RSP_GET_RX_QUEUE(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, int,      attr->dest_cfg.dest_id);\
-	MC_RSP_OP(cmd, 0, 32, 8,  uint8_t,  attr->dest_cfg.priority);\
-	MC_RSP_OP(cmd, 0, 48, 4,  enum dpci_dest, attr->dest_cfg.dest_type);\
-	MC_RSP_OP(cmd, 1, 0,  8,  uint64_t,  attr->user_ctx);\
-	MC_RSP_OP(cmd, 2, 0,  32, uint32_t,  attr->fqid);\
-} while (0)
+struct dpci_rsp_get_peer_attr {
+	uint32_t id;
+	uint32_t pad;
+	uint8_t num_of_priorities;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_GET_TX_QUEUE(cmd, priority) \
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  priority)
+#define DPCI_UP_SHIFT	0
+#define DPCI_UP_SIZE	1
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_RSP_GET_TX_QUEUE(cmd, attr) \
-	MC_RSP_OP(cmd, 0, 32, 32, uint32_t,  attr->fqid)
+struct dpci_rsp_get_link_state {
+	/* only the LSB bit */
+	uint8_t up;
+};
 
-/*                cmd, param, offset, width, type,      arg_name */
-#define DPCI_RSP_GET_API_VERSION(cmd, major, minor) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
-} while (0)
+#define DPCI_DEST_TYPE_SHIFT	0
+#define DPCI_DEST_TYPE_SIZE	4
 
-/*            cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_SET_OPR(cmd, index, options, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 16, 8, uint8_t, index); \
-	MC_CMD_OP(cmd, 0, 24, 8, uint8_t, options); \
-	MC_CMD_OP(cmd, 1, 24, 8, uint8_t, (cfg)->oloe);\
-	MC_CMD_OP(cmd, 1, 32, 8, uint8_t, (cfg)->oeane); \
-	MC_CMD_OP(cmd, 1, 40, 8, uint8_t, (cfg)->olws); \
-	MC_CMD_OP(cmd, 1, 48, 8, uint8_t, (cfg)->oa); \
-	MC_CMD_OP(cmd, 1, 56, 8, uint8_t, (cfg)->oprrws); \
-} while (0)
+struct dpci_cmd_set_rx_queue {
+	uint32_t dest_id;
+	uint8_t dest_priority;
+	uint8_t priority;
+	/* from LSB: dest_type:4 */
+	uint8_t dest_type;
+	uint8_t pad;
+	uint64_t user_ctx;
+	uint32_t options;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPCI_CMD_GET_OPR(cmd, index) \
-do { \
-	MC_CMD_OP(cmd, 0, 16, 8, uint8_t, index); \
-} while (0)
+struct dpci_cmd_get_queue {
+	uint8_t pad[5];
+	uint8_t priority;
+};
 
-/*            cmd, param, offset, width, type, arg_name */
-#define DPCI_RSP_GET_OPR(cmd, cfg, qry) \
-do { \
-	MC_RSP_OP(cmd, 1,  0,  1, char, (qry)->rip); \
-	MC_RSP_OP(cmd, 1,  1,  1, char, (qry)->enable); \
-	MC_RSP_OP(cmd, 1, 24, 8, uint8_t, (cfg)->oloe);\
-	MC_RSP_OP(cmd, 1, 32, 8, uint8_t, (cfg)->oeane); \
-	MC_RSP_OP(cmd, 1, 40, 8, uint8_t, (cfg)->olws); \
-	MC_RSP_OP(cmd, 1, 48, 8, uint8_t, (cfg)->oa); \
-	MC_RSP_OP(cmd, 1, 56, 8, uint8_t, (cfg)->oprrws); \
-	MC_RSP_OP(cmd, 2, 0, 16, uint16_t, (qry)->nesn); \
-	MC_RSP_OP(cmd, 2, 32, 16, uint16_t, (qry)->ndsn); \
-	MC_RSP_OP(cmd, 3, 0, 16, uint16_t, (qry)->ea_tseq); \
-	MC_RSP_OP(cmd, 3, 16, 1, char, (qry)->tseq_nlis); \
-	MC_RSP_OP(cmd, 3, 32, 16, uint16_t, (qry)->ea_hseq); \
-	MC_RSP_OP(cmd, 3, 48, 1, char, (qry)->hseq_nlis); \
-	MC_RSP_OP(cmd, 4, 0, 16, uint16_t, (qry)->ea_hptr); \
-	MC_RSP_OP(cmd, 4, 32, 16, uint16_t, (qry)->ea_tptr); \
-	MC_RSP_OP(cmd, 5, 0, 16, uint16_t, (qry)->opr_vid); \
-	MC_RSP_OP(cmd, 5, 32, 16, uint16_t, (qry)->opr_id); \
-} while (0)
+struct dpci_rsp_get_rx_queue {
+	uint32_t dest_id;
+	uint8_t dest_priority;
+	uint8_t pad;
+	/* from LSB: dest_type:4 */
+	uint8_t dest_type;
+	uint8_t pad1;
+	uint64_t user_ctx;
+	uint32_t fqid;
+};
 
+struct dpci_rsp_get_tx_queue {
+	uint32_t pad;
+	uint32_t fqid;
+};
+
+struct dpci_rsp_get_api_version {
+	uint16_t major;
+	uint16_t minor;
+};
+
+struct dpci_cmd_set_opr {
+	uint16_t pad0;
+	uint8_t index;
+	uint8_t options;
+	uint8_t pad1[7];
+	uint8_t oloe;
+	uint8_t oeane;
+	uint8_t olws;
+	uint8_t oa;
+	uint8_t oprrws;
+};
+
+struct dpci_cmd_get_opr {
+	uint16_t pad;
+	uint8_t index;
+};
+
+#define DPCI_RIP_SHIFT		0
+#define DPCI_RIP_SIZE		1
+#define DPCI_OPR_ENABLE_SHIFT	1
+#define DPCI_OPR_ENABLE_SIZE	1
+#define DPCI_TSEQ_NLIS_SHIFT	0
+#define DPCI_TSEQ_NLIS_SIZE	1
+#define DPCI_HSEQ_NLIS_SHIFT	0
+#define DPCI_HSEQ_NLIS_SIZE	1
+
+struct dpci_rsp_get_opr {
+	uint64_t pad0;
+	/* from LSB: rip:1 enable:1 */
+	uint8_t flags;
+	uint16_t pad1;
+	uint8_t oloe;
+	uint8_t oeane;
+	uint8_t olws;
+	uint8_t oa;
+	uint8_t oprrws;
+	uint16_t nesn;
+	uint16_t pad8;
+	uint16_t ndsn;
+	uint16_t pad2;
+	uint16_t ea_tseq;
+	/* only the LSB */
+	uint8_t tseq_nlis;
+	uint8_t pad3;
+	uint16_t ea_hseq;
+	/* only the LSB */
+	uint8_t hseq_nlis;
+	uint8_t pad4;
+	uint16_t ea_hptr;
+	uint16_t pad5;
+	uint16_t ea_tptr;
+	uint16_t pad6;
+	uint16_t opr_vid;
+	uint16_t pad7;
+	uint16_t opr_id;
+};
+#pragma pack(pop)
 #endif /* _FSL_DPCI_CMD_H */

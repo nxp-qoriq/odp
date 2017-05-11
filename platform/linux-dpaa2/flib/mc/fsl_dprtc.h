@@ -57,42 +57,14 @@ struct fsl_mc_io;
  */
 #define DPRTC_EVENT_PPS				0x08000000
 
-/**
- * dprtc_open() - Open a control session for the specified object.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @dprtc_id:	DPRTC unique ID
- * @token:	Returned token; use in subsequent API calls
- *
- * This function can be used to open a control session for an
- * already created object; an object may have been declared in
- * the DPL or by calling the dprtc_create function.
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent commands for
- * this specific object
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dprtc_open(struct fsl_mc_io	*mc_io,
-	       uint32_t		cmd_flags,
-	       int		dprtc_id,
-	       uint16_t		*token);
+int dprtc_open(struct fsl_mc_io *mc_io,
+	       uint32_t cmd_flags,
+	       int dprtc_id,
+	       uint16_t *token);
 
-/**
- * dprtc_close() - Close the control session of the object
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPRTC object
- *
- * After this function is called, no further operations are
- * allowed on the object without opening a new control session.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dprtc_close(struct fsl_mc_io	*mc_io,
-		uint32_t		cmd_flags,
-		uint16_t		token);
+int dprtc_close(struct fsl_mc_io *mc_io,
+		uint32_t cmd_flags,
+		uint16_t token);
 
 /**
  * struct dprtc_cfg - Structure representing DPRTC configuration
@@ -102,261 +74,82 @@ struct dprtc_cfg {
 	uint32_t options;
 };
 
-/**
- * dprtc_create() - Create the DPRTC object.
- * @mc_io:	Pointer to MC portal's I/O object
- * @dprc_token:	Parent container token; '0' for default container
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @cfg:	Configuration structure
- * @obj_id: returned object id
- *
- * Create the DPRTC object, allocate required resources and
- * perform required initialization.
- *
- * The function accepts an authentication token of a parent
- * container that this object should be assigned to. The token
- * can be '0' so the object will be assigned to the default container.
- * The newly created object can be opened with the returned
- * object id and using the container's associated tokens and MC portals.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dprtc_create(struct fsl_mc_io	*mc_io,
-		 uint16_t		dprc_token,
-		 uint32_t		cmd_flags,
-		 const struct dprtc_cfg	*cfg,
-		 uint32_t		*obj_id);
+int dprtc_create(struct fsl_mc_io *mc_io,
+		 uint16_t dprc_token,
+		 uint32_t cmd_flags,
+		 const struct dprtc_cfg *cfg,
+		 uint32_t *obj_id);
 
-/**
- * dprtc_destroy() - Destroy the DPRTC object and release all its resources.
- * @mc_io:	Pointer to MC portal's I/O object
- * @dprc_token: Parent container token; '0' for default container
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @object_id:	The object id; it must be a valid id within the container that
- * created this object;
- *
- * The function accepts the authentication token of the parent container that
- * created the object (not the one that currently owns the object). The object
- * is searched within parent using the provided 'object_id'.
- * All tokens to the object must be closed before calling destroy.
- *
- * Return:	'0' on Success; error code otherwise.
- */
-int dprtc_destroy(struct fsl_mc_io	*mc_io,
-		  uint16_t		dprc_token,
-		  uint32_t		cmd_flags,
-		  uint32_t		object_id);
+int dprtc_destroy(struct fsl_mc_io *mc_io,
+		  uint16_t dprc_token,
+		  uint32_t cmd_flags,
+		  uint32_t object_id);
 
-/**
- * dprtc_set_clock_offset() - Sets the clock's offset
- * (usually relative to another clock).
- *
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPRTC object
- * @offset: New clock offset (in nanoseconds).
- *
- * Return:	'0' on Success; Error code otherwise.
- */
 int dprtc_set_clock_offset(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
 			   uint16_t token,
 			   int64_t offset);
 
-/**
- * dprtc_set_freq_compensation() - Sets a new frequency compensation value.
- *
- * @mc_io:		Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:		Token of DPRTC object
- * @freq_compensation:
- *				The new frequency compensation value to set.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
 int dprtc_set_freq_compensation(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
 		  uint16_t token,
 		  uint32_t freq_compensation);
 
-/**
- * dprtc_get_freq_compensation() - Retrieves the frequency compensation value
- *
- * @mc_io:		Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:		Token of DPRTC object
- * @freq_compensation:
- *				Frequency compensation value
- *
- * Return:	'0' on Success; Error code otherwise.
- */
 int dprtc_get_freq_compensation(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
 		  uint16_t token,
 		  uint32_t *freq_compensation);
 
-/**
- * dprtc_get_time() - Returns the current RTC time.
- *
- * @mc_io:		Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:		Token of DPRTC object
- * @time:	Current RTC time.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
 int dprtc_get_time(struct fsl_mc_io *mc_io,
 		   uint32_t cmd_flags,
 		   uint16_t token,
 		   uint64_t *time);
 
-/**
- * dprtc_set_time() - Updates current RTC time.
- *
- * @mc_io:		Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:		Token of DPRTC object
- * @time:	New RTC time.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
 int dprtc_set_time(struct fsl_mc_io *mc_io,
 		   uint32_t cmd_flags,
 		   uint16_t token,
 		   uint64_t time);
 
-/**
- * dprtc_set_alarm() - Defines and sets alarm.
- *
- * @mc_io:		Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:		Token of DPRTC object
- * @time:		In nanoseconds, the time when the alarm
- *				should go off - must be a multiple of
- *				1 microsecond
- *
- * Return:	'0' on Success; Error code otherwise.
- */
 int dprtc_set_alarm(struct fsl_mc_io *mc_io,
 		    uint32_t cmd_flags,
 		    uint16_t token,
 		    uint64_t time);
 
-/**
- * dprtc_set_irq_enable() - Set overall interrupt state.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPRTC object
- * @irq_index:	The interrupt index to configure
- * @en:	Interrupt state - enable = 1, disable = 0
- *
- * Allows GPP software to control when interrupts are generated.
- * Each interrupt can have up to 32 causes.  The enable/disable control's the
- * overall interrupt state. if the interrupt is disabled no causes will cause
- * an interrupt.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dprtc_set_irq_enable(struct fsl_mc_io	*mc_io,
-			 uint32_t		cmd_flags,
-			 uint16_t		token,
-			 uint8_t		irq_index,
-			 uint8_t		en);
+int dprtc_set_irq_enable(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint8_t irq_index,
+			 uint8_t en);
 
-/**
- * dprtc_get_irq_enable() - Get overall interrupt state
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPRTC object
- * @irq_index:	The interrupt index to configure
- * @en:		Returned interrupt state - enable = 1, disable = 0
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dprtc_get_irq_enable(struct fsl_mc_io	*mc_io,
-			 uint32_t		cmd_flags,
-			 uint16_t		token,
-			 uint8_t		irq_index,
-			 uint8_t		*en);
+int dprtc_get_irq_enable(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint8_t irq_index,
+			 uint8_t *en);
 
-/**
- * dprtc_set_irq_mask() - Set interrupt mask.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPRTC object
- * @irq_index:	The interrupt index to configure
- * @mask:	Event mask to trigger interrupt;
- *			each bit:
- *				0 = ignore event
- *				1 = consider event for asserting IRQ
- *
- * Every interrupt can have up to 32 causes and the interrupt model supports
- * masking/unmasking each cause independently
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dprtc_set_irq_mask(struct fsl_mc_io	*mc_io,
-		       uint32_t		cmd_flags,
-		       uint16_t		token,
-		       uint8_t		irq_index,
-		       uint32_t		mask);
+int dprtc_set_irq_mask(struct fsl_mc_io *mc_io,
+		       uint32_t cmd_flags,
+		       uint16_t token,
+		       uint8_t irq_index,
+		       uint32_t mask);
 
-/**
- * dprtc_get_irq_mask() - Get interrupt mask.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPRTC object
- * @irq_index:	The interrupt index to configure
- * @mask:	Returned event mask to trigger interrupt
- *
- * Every interrupt can have up to 32 causes and the interrupt model supports
- * masking/unmasking each cause independently
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dprtc_get_irq_mask(struct fsl_mc_io	*mc_io,
-		       uint32_t		cmd_flags,
-		       uint16_t		token,
-		       uint8_t		irq_index,
-		       uint32_t		*mask);
+int dprtc_get_irq_mask(struct fsl_mc_io *mc_io,
+		       uint32_t cmd_flags,
+		       uint16_t token,
+		       uint8_t irq_index,
+		       uint32_t *mask);
 
-/**
- * dprtc_get_irq_status() - Get the current status of any pending interrupts.
- *
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPRTC object
- * @irq_index:	The interrupt index to configure
- * @status:	Returned interrupts status - one bit per cause:
- *			0 = no interrupt pending
- *			1 = interrupt pending
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dprtc_get_irq_status(struct fsl_mc_io	*mc_io,
-			 uint32_t		cmd_flags,
-			 uint16_t		token,
-			 uint8_t		irq_index,
-			 uint32_t		*status);
+int dprtc_get_irq_status(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint8_t irq_index,
+			 uint32_t *status);
 
-/**
- * dprtc_clear_irq_status() - Clear a pending interrupt's status
- *
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPRTC object
- * @irq_index:	The interrupt index to configure
- * @status:	Bits to clear (W1C) - one bit per cause:
- *					0 = don't change
- *					1 = clear status bit
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dprtc_clear_irq_status(struct fsl_mc_io	*mc_io,
-			   uint32_t		cmd_flags,
-			   uint16_t		token,
-			   uint8_t		irq_index,
-			   uint32_t		status);
+int dprtc_clear_irq_status(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t token,
+			   uint8_t irq_index,
+			   uint32_t status);
 
 /**
  * struct dprtc_attr - Structure representing DPRTC attributes
@@ -366,30 +159,11 @@ struct dprtc_attr {
 	int id;
 };
 
-/**
- * dprtc_get_attributes - Retrieve DPRTC attributes.
- *
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPRTC object
- * @attr:	Returned object's attributes
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dprtc_get_attributes(struct fsl_mc_io	*mc_io,
-			 uint32_t		cmd_flags,
-			 uint16_t		token,
-			 struct dprtc_attr	*attr);
+int dprtc_get_attributes(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 struct dprtc_attr *attr);
 
-/**
- * dprtc_get_api_version() - Get Data Path Real Time Counter API version
- * @mc_io:  Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @major_ver:	Major version of data path real time counter API
- * @minor_ver:	Minor version of data path real time counter API
- *
- * Return:  '0' on Success; Error code otherwise.
- */
 int dprtc_get_api_version(struct fsl_mc_io *mc_io,
 			  uint32_t cmd_flags,
 			  uint16_t *major_ver,
