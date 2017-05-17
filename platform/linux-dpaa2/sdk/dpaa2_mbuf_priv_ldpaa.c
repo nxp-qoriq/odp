@@ -271,10 +271,10 @@ struct dpaa2_bp_list *dpaa2_mbuf_create_bp_list(
 		bpid_info[bpid].odp_user_area = bp_list->buf_pool[pool_index].odp_user_area;
 		bpid_info[bpid].meta_data_size = bp_list->buf_pool[pool_index].meta_data_size;
 		bpid_info[bpid].buf_size = bp_list->buf_pool[pool_index].buf_size;
+		DPAA2_INFO(BUF, "BP List created [stockpile in use = %d]\n",
+						bpid_info[bpid].stockpile);
 	}
 
-	DPAA2_INFO(BUF, "BP List created [stockpile in use = %d]\n",
-					bpid_info[bpid].stockpile);
 	return bp_list;
 /* TODO error handling w.r.t memzones */
 err:
@@ -402,14 +402,14 @@ void dpaa2_mbuf_pool_list_deinit(
 					count += ret;
 					for (i = 0; i < ret; i++)
 						DPAA2_DBG(BUF, "Drained"
-							"buffer: %x",
+							"buffer: 0x%"PRIx64"\n",
 							bufs[i]);
 				}
 			}
 			if (ret < DPAA2_MBUF_MAX_ACQ_REL) {
 				ret = qbman_swp_acquire(swp, bpid, bufs, 1);
 				if (ret > 0) {
-					DPAA2_DBG(BUF, "Drained buffer: %x",
+					DPAA2_DBG(BUF, "Drained buffer: 0x%"PRIx64"\n",
 						bufs[1]);
 					count += ret;
 				}

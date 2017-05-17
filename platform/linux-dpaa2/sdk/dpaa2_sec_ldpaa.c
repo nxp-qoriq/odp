@@ -541,14 +541,14 @@ int32_t dpaa2_sec_recv(void *vq,
 		/* Can avoid "qbman_result_is_DQ" check as
 		   we are not expecting Notification on this SW-Portal */
 		fd = qbman_result_DQ_fd(dq_storage);
-		DPAA2_INFO(SEC, "Vq= %x", DPAA2_GET_FD_FLC(fd));
+		DPAA2_INFO(SEC, "Vq= %lx", DPAA2_GET_FD_FLC(fd));
 		mbuf[rcvd_pkts] = sec_vq->qmfq.cb(swp, fd, dq_storage);
 		if (mbuf[rcvd_pkts])
 			rcvd_pkts++;
 		dq_storage++;
 	} /* End of Packet Rx loop */
 
-	DPAA2_INFO(SEC, "SEC Received %d Packets", ret);
+	DPAA2_INFO(SEC, "SEC Received %d Packets", rcvd_pkts);
 	/*Return the total number of packets received to DPAA2 app*/
 	return rcvd_pkts;
 }

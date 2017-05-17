@@ -19,6 +19,8 @@
 #include <dpaa2_internal.h>
 #include <dpaa2_vfio.h>
 
+#include <odp/api/cpu.h>
+
 #if defined(BUILD_LS2085) || defined(BUILD_LS2080) || \
 	defined(BUILD_LS2088) || defined(BUILD_LS1088)
 #define NUM_HOST_CPUS 8
@@ -94,9 +96,9 @@ static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
 	qbman_swp_interrupt_set_inhibit(dpio_dev->sw_portal, 0);
 	qbman_swp_dqrr_thrshld_write(dpio_dev->sw_portal, threshold);
 	qbman_swp_intr_timeout_write(dpio_dev->sw_portal, timeout);
-	DPAA2_DBG("DPIO_ID = %d, INTR: DQRR Threshold value = %d\n", dpio_dev->hw_id,
-			qbman_swp_dqrr_thrshld_read_status(dpio_dev->sw_portal));
-	DPAA2_DBG("DPIO_ID = %d, INTR: Timeout value =        %d\n", dpio_dev->hw_id,
+	DPAA2_DBG(DPIO, "DPIO_ID = %d, INTR: DQRR Threshold value =%d\n",
+			dpio_dev->hw_id, qbman_swp_dqrr_thrshld_read_status(dpio_dev->sw_portal));
+	DPAA2_DBG(DPIO, "DPIO_ID = %d, INTR: Timeout value =        %d\n", dpio_dev->hw_id,
 			qbman_swp_intr_timeout_read_status(dpio_dev->sw_portal));
 
 	eventfd = dpio_dev->intr_handle[VFIO_DPIO_DATA_IRQ_INDEX].fd;
@@ -242,8 +244,8 @@ int32_t dpaa2_io_portal_probe(ODP_UNUSED struct dpaa2_dev *dev,
 
 	DPAA2_INFO(FW, "DPIO ID %d\n", attr.id);
 	DPAA2_INFO(FW, "Qbman Portal ID %d\n", attr.qbman_portal_id);
-	DPAA2_INFO(FW, "Portal CE addr 0x%llX\n", attr.qbman_portal_ce_offset);
-	DPAA2_INFO(FW, "Portal CI addr 0x%llX\n", attr.qbman_portal_ci_offset);
+	DPAA2_INFO(FW, "Portal CE addr 0x%"PRIx64"\n", attr.qbman_portal_ce_offset);
+	DPAA2_INFO(FW, "Portal CI addr 0x%"PRIx64"\n", attr.qbman_portal_ci_offset);
 	/* Configure & setup SW portal */
 	p_des.block = NULL;
 	p_des.idx = attr.qbman_portal_id;

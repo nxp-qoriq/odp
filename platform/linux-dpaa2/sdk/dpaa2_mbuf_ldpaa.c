@@ -426,7 +426,7 @@ void dpaa2_mbuf_free(dpaa2_mbuf_pt mbuf)
 					pool->sp[pool->sp_fill] =
 							(uint64_t)tmp->head ;
 				}
-				DPAA2_INFO(BUF, "Buffer released: %lx", *buf);
+				DPAA2_INFO(BUF, "Buffer released: %p", (void *)buf);
 				pool->sp_fill++;
 			}
 			/* Do hw op if hitting the high-water threshold */

@@ -759,7 +759,7 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 	uint32_t loop = 0, ret, retry_count = RETRY_COUNT, num_pkts = 0, i = 0;
 	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
 	uint32_t frames_to_send;
-	struct qbman_eq_desc eqdesc[MAX_TX_RING_SLOTS] = {{0}};
+	struct qbman_eq_desc eqdesc[MAX_TX_RING_SLOTS] = {{{0}}};
 	struct dpaa2_dev_priv *dev_priv =
 				(struct dpaa2_dev_priv *)dev->priv;
 	struct qbman_swp *swp;
@@ -1023,7 +1023,7 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 			cfg.destination.priority          = 0;
 			dev->conc_dev		= vq_cfg->conc_dev;
 			DPAA2_INFO(ETH, "DPCON ID = %d\t Prio = %d\n",
-				cfg.destination.id, cfg.qdbin);
+				cfg.destination.id, cfg.destination.priority);
 			DPAA2_INFO(ETH, "Attaching Ethernet device %s"
 				"with Channel %s\n", dev->dev_string,
 				vq_cfg->conc_dev->dev_string);

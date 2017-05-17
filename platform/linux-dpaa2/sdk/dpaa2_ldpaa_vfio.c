@@ -234,7 +234,7 @@ static int32_t setup_dmamap(void)
 		group = &vfio_groups[0];
 
 		DPAA2_INFO(FW, "Initial SHM Virtual ADDR %llX\n", dma_map.vaddr);
-		DPAA2_INFO(FW, "DMA size 0x%lX\n", dma_map.size);
+		DPAA2_INFO(FW, "DMA size 0x%llx\n", dma_map.size);
 		dma_map.iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(dma_map.vaddr));
 		ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA, &dma_map);
 		if (ret) {
@@ -295,7 +295,7 @@ void destroy_dmamap(void)
 
 		group = &vfio_groups[0];
 		DPAA2_INFO(FW, "\nDMA-UNMAP IOVA ADDR %llX\n", dma_unmap.iova);
-		DPAA2_INFO(FW, "DMA-UNMAP size 0x%lX\n", dma_unmap.size);
+		DPAA2_INFO(FW, "DMA-UNMAP size 0x%llx\n", dma_unmap.size);
 
 		ret = ioctl(group->container->fd, VFIO_IOMMU_UNMAP_DMA, &dma_unmap);
 		if (ret)

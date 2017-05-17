@@ -116,7 +116,7 @@ void_t *dpaa2_mpool_create(struct dpaa2_mpool_cfg *cfg,
 	ptr->zone_size = ((ptr->data_elem_size + sizeof(struct dpaa2_pool_link_node))
 			* cfg->num_global_blocks) + ptr->align_size;
 
-	DPAA2_DBG(MEMPOOL, "data = %u, blocks =%d, zone size =%llu",
+	DPAA2_DBG(MEMPOOL, "data = %u, blocks =%d, zone size =%"PRIu64"\n",
 		ptr->data_elem_size, ptr->num_entries, ptr->zone_size);
 
 

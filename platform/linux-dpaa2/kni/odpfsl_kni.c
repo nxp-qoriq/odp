@@ -268,8 +268,8 @@ struct odpfsl_kni *odpfsl_kni_alloc(void *pktmbuf_pool,
 	ctx->tx_q = (struct odpfsl_kni_fifo *)dpaa2_memzone_virt(mz);
 	kni_fifo_init(ctx->tx_q, KNI_FIFO_COUNT_MAX);
 	dev_info.tx_phys = mz->phys_addr;
-	DPAA2_DBG(KNI, "tx_phys:      0x%016llx, tx_q addr:      0x%p\n",
-		 mz->phys_addr, ctx->tx_q);
+	DPAA2_DBG(KNI, "tx_phys:      0x%"PRIx64", tx_q addr:      0x%p\n",
+		(uint64_t) mz->phys_addr, ctx->tx_q);
 
 	/* RX RING */
 	snprintf(obj_name, OBJNAMSIZ, "kni_rx_%s", intf_name);

@@ -61,14 +61,14 @@ void *get_mc_portal(uint32_t idx)
 	int64_t v_addr;
 
 	mc_portal_paddr = MC_PORTAL_ID_TO_PADDR(idx);
-	DPAA2_INFO(FW, "MC [%d] has PHY_ADD = 0x%llX\n", idx, mc_portal_paddr);
+	DPAA2_INFO(FW, "MC [%d] has PHY_ADD = 0x%"PRIx64"\n", idx, mc_portal_paddr);
 	v_addr = (uint64_t)mmap(NULL, MC_PORTAL_SIZE,
 		PROT_WRITE | PROT_READ, MAP_SHARED,
 		container_device_fd, mc_portal_paddr);
 	if (v_addr == -1)
 		return NULL;
 
-	DPAA2_INFO(FW, "MC [%d] has VIR_ADD = 0x%llX\n", idx, v_addr);
+	DPAA2_INFO(FW, "MC [%d] has VIR_ADD = 0x%"PRIx64"\n", idx, v_addr);
 	return (void *)v_addr;
 }
 
@@ -191,7 +191,7 @@ static int32_t dpaa2_dev_init_all(struct dpaa2_init_cfg *cfg)
 		goto FAILURE;
 	}
 
-	DPAA2_INFO(FW, "MC  has VIR_ADD = 0x%llX\n", v_addr);
+	DPAA2_INFO(FW, "MC  has VIR_ADD = 0x%"PRIx64"\n", v_addr);
 
 	mcp_ptr_list[0] = (void *)v_addr;
 
