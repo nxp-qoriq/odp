@@ -348,7 +348,8 @@ void dpaa2_mbuf_free(dpaa2_mbuf_pt mbuf)
 	/* Note: Resetting of Buffer context is not required as
 	   it will be done at next odp_schedule / odp_packet_alloc call
 	 */
-	if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf) && IS_HOLD_DQRR_VALID(mbuf->index)) {
+	if (mbuf->index != INVALID_PORTAL_INDEX &&
+	    ANY_ATOMIC_CNTXT_TO_FREE(mbuf)) {
 		qbman_swp_dqrr_consume(swp, GET_HOLD_DQRR_PTR(mbuf->index));
 		MARK_HOLD_DQRR_PTR_INVALID(mbuf->index);
 	} else if (mbuf->opr.orpid != INVALID_ORPID) {

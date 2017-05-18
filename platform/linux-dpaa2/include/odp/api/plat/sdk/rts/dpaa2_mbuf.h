@@ -224,7 +224,10 @@ struct dpaa2_mbuf {
 			uint32_t        reserved;  /*!< reserved */
 		} opr;
 	};
-	uint8_t	index;
+	union {
+		uint8_t	index;
+		uint8_t	resv[8]; /*Reserved area to avoid padding*/
+	};
 	/* Cache line 3 */
 	uint64_t user_cnxt_ptr; /* user context ptr */
 

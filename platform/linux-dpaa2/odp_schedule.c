@@ -63,6 +63,9 @@
 /* Starting handle of users scheduler groups */
 #define _ODP_SCHED_GROUP_NAMED (ODP_SCHED_GROUP_CONTROL + 1)
 
+/*NUmber of retry count in case no packet is received*/
+#define RETRY_COUNT 10
+
 /* Internal routine to get scheduler thread mask addrs */
 odp_thrmask_t *thread_sched_grp_mask(int index);
 
@@ -360,7 +363,6 @@ void odp_schedule_release_atomic(void)
 	int i;
 	uint8_t to_be_released = thread_io_info.dpio_dev->dqrr_size;
 
-	/*Need to change the hard coded value.*/
 	for (i = 0; i < to_be_released; i++) {
 		if (IS_HOLD_DQRR_VALID(i)) {
 			qbman_swp_dqrr_consume(swp, GET_HOLD_DQRR_PTR(i));
@@ -381,7 +383,7 @@ static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num)
 	struct dpaa2_vq *rvq;
 	const struct dqrr_entry *dq;
 	int i = 0;
-	uint8_t	index;
+	uint8_t	index, to_be_released = thread_io_info.dpio_dev->dqrr_size;
 
 	/* Function is responsible to receive frame for a given
 	   DPCON device and Channel ID.
@@ -391,7 +393,7 @@ static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num)
 	   Possible when packet is on hold or consumed
 	   without free in termination cases
 	 */
-	 for (i = 0; i < num; i++) {
+	 for (i = 0; i < to_be_released; i++) {
 		if (IS_HOLD_DQRR_VALID(i)) {
 			qbman_swp_dqrr_consume(swp,
 					GET_HOLD_DQRR_PTR(i));
@@ -678,7 +680,7 @@ RETRY:
 					if (errno == EINTR) {
 						ODP_DBG("odp_schedule: epoll_wait fails\n");
 						i++;
-						if (i > 10) {
+						if (i > RETRY_COUNT) {
 							ODP_PRINT("odp_schedule: epoll_wait fails even after 10 tries\n");
 							ODP_PRINT("odp_schedule: Failed\n");
 							break;
@@ -766,7 +768,7 @@ int odp_schedule_multi(odp_queue_t *out_queue, uint64_t wait,
 					return num_pkt;
 				}
 
-RETRY:
+retry:
 				nfds = epoll_wait(dpio_dev->intr_handle[0].poll_fd, &epoll_ev, 1, time);
 				if (nfds < 1) {
 					if (!nfds) {
@@ -780,12 +782,12 @@ RETRY:
 					if (errno == EINTR) {
 						ODP_DBG("odp_schedule: epoll_wait fails\n");
 						i++;
-						if (i > 10) {
+						if (i > RETRY_COUNT) {
 							ODP_PRINT("odp_schedule: epoll_wait fails even after 10 tries\n");
 							ODP_PRINT("odp_schedule: Failed\n");
 							break;
 						}
-						goto RETRY;
+						goto retry;
 					}
 			}
 

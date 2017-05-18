@@ -67,10 +67,10 @@
  */
 #define MAX_PKTIOS      8
 
-/** @def TX_BATCH_NUM_PACKETS
- * @brief Maximum allowed pktios for application
+/** @def MAX_DEQ_PACKETS
+ * @brief Maximum packets fetch at a time
  */
-#define TX_BATCH_NUM_PACKETS      8
+#define MAX_DEQ_PACKETS      4
 
 /** @def PRINT_APPL_MODE(x)
  * @brief Macro to print the current status of how the application handles
@@ -331,11 +331,10 @@ static void *pktio_alloc_thread(void *arg)
 static void *pktio_thread(void *arg)
 {
 	int thr, ret, i = 0, j = 0;
-	int num_pkts = 0;
 	odp_pktout_queue_t pktout;
 	thread_args_t *thr_args;
-	odp_packet_t pkt[8];
-	odp_event_t ev[8];
+	odp_packet_t pkt[MAX_DEQ_PACKETS];
+	odp_event_t ev[MAX_DEQ_PACKETS];
 	odp_thrmask_t thread_mask;
 
 	thr = odp_thread_id();
@@ -373,13 +372,14 @@ static void *pktio_thread(void *arg)
 #ifdef PERF_MONITOR
 		read1 = arm_read_cycle_counter();
 #endif
-               ret = odp_schedule_multi(NULL, ODP_SCHED_WAIT, ev, 4);
-               if (ret > 0) {
-                       for (i = 0; i < ret; i++) {
-                               if (ev[i] != ODP_EVENT_INVALID)
-                                       pkt[i] = odp_packet_from_event(ev[i]);
-                       }
-                       pktio_tmp = odp_packet_input(pkt[0]);
+		ret = odp_schedule_multi(NULL, ODP_SCHED_WAIT,
+					 ev, MAX_DEQ_PACKETS);
+		if (ret > 0) {
+			for (i = 0; i < ret; i++) {
+			if (ev[i] != ODP_EVENT_INVALID)
+				pkt[i] = odp_packet_from_event(ev[i]);
+			}
+			pktio_tmp = odp_packet_input(pkt[0]);
 
 			if (odp_pktout_queue(args->dest_pktios[odp_pktio_index(pktio_tmp)], &pktout, 1) != 1) {
 				EXAMPLE_ERR("  [%02i] Error: no pktout queue\n", thr);
