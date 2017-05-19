@@ -156,12 +156,8 @@ sdkincludeaiop_HEADERS = \
 
 sdkincludeethdir= $(includedir)/odp/api/plat/sdk/eth
 sdkincludeeth_HEADERS = \
-		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/sdk/eth/dpaa2_vq.h \
-		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/sdk/eth/dpaa2_eth_ldpaa_annot.h \
 		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/sdk/eth/dpaa2_eth_ldpaa_qbman.h \
-		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/sdk/eth/dpaa2_ether.h \
-		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/sdk/eth/dpaa2_ethdev.h
-
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/sdk/eth/dpaa2_ether.h
 
 odpplatincludedir= $(includedir)/odp/api/plat
 odpplatinclude_HEADERS = \
@@ -239,6 +235,9 @@ noinst_HEADERS = \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_queue_internal.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_schedule_internal.h \
 		  ${top_srcdir}/platform/linux-dpaa2/include/odp_timer_internal.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/sdk/eth/dpaa2_vq.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/sdk/eth/dpaa2_eth_ldpaa_annot.h \
+		  $(top_srcdir)/platform/linux-dpaa2/include/odp/api/plat/sdk/eth/dpaa2_ethdev.h \
 		  ${top_srcdir}/platform/linux-dpaa2/Makefile.inc
 
 
