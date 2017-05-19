@@ -65,7 +65,7 @@ void odp_flow_table_print(void)
 	printf("***************************** Flows *********************************\n");
 	for (i = 0; i < bucket_count; i++) {
 		head = flow_table[i].next;
-		for (flow = head; flow != NULL; flow = flow->next) {
+		for (flow = head; flow != NULL; flow = (odp_flow_entry_t *)flow->next) {
 			temp = (uint8_t *)&flow->l3_src;
 			printf("SIP: %d.%d.%d.%d\t", *(temp + 3), *(temp + 2), *(temp + 1), *(temp + 0));
 			temp = (uint8_t *)&flow->l3_dst;
@@ -89,7 +89,7 @@ void init_fwd_db(void)
 			      ODP_CACHE_LINE_SIZE,
 			      0);
 
-	fwd_db = odp_shm_addr(shm);
+	fwd_db = (fwd_db_t *)odp_shm_addr(shm);
 
 	if (fwd_db == NULL) {
 		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
@@ -111,7 +111,7 @@ int create_fwd_db_entry(char *input)
 		return -1;
 
 	/* Make a local copy */
-	local = malloc(strlen(input) + 1);
+	local = (char *)malloc(strlen(input) + 1);
 	if (NULL == local)
 		return -1;
 	strcpy(local, input);
@@ -234,7 +234,7 @@ void odp_init_routing_table(void)
 	hash_shm = odp_shm_reserve("route_table",
 			sizeof(flow_bucket_t) * bucket_count,
 						ODP_CACHE_LINE_SIZE, 0);
-	flow_table = odp_shm_addr(hash_shm);
+	flow_table = (flow_bucket_t *)odp_shm_addr(hash_shm);
 	if (!flow_table) {
 		EXAMPLE_ABORT("Error: shared mem alloc failed.\n");
 	}

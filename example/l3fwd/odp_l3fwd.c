@@ -284,7 +284,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 			}
 			len += 1;	/* add room for '\0' */
 
-			appl_args->if_str = malloc(len);
+			appl_args->if_str = (char *)malloc(len);
 			if (!appl_args->if_str) {
 				usage(argv[0]);
 				exit(EXIT_FAILURE);
@@ -307,7 +307,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 
 			/* allocate storage for the if names */
 			appl_args->if_names =
-			    calloc(appl_args->if_count, sizeof(char *));
+			    (char **)calloc(appl_args->if_count, sizeof(char *));
 
 			/* store the if names (reset names string) */
 			strcpy(appl_args->if_str, optarg);
@@ -328,7 +328,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 				printf("No more routes can be added\n");
 				break;
 			}
-			local = calloc(1, strlen(optarg) + 1);
+			local = (char *)calloc(1, strlen(optarg) + 1);
 			if (!local) {
 				mem_failure = 1;
 				break;
@@ -487,7 +487,7 @@ void odp_process_and_send_packet(odp_packet_t pkt_tbl[], uint32_t pkts_ok)
 					}
 
 					/*Entry found. Updated in Flow table first.*/
-					flow = calloc(1, sizeof(odp_flow_entry_t));
+					flow = (odp_flow_entry_t *)calloc(1, sizeof(odp_flow_entry_t));
 					if (!flow) {
 						EXAMPLE_ABORT("Failure to allocate memory");
 					}
@@ -607,7 +607,7 @@ static void *pktio_ifburst_thread(void *arg)
 #endif
 
 	thr = odp_thread_id();
-	thr_args = arg;
+	thr_args = (thread_args_t *)arg;
 
 	src_idx = thr_args->src_idx;
 	pktio_src = gbl_args->pktios[src_idx];
@@ -726,7 +726,7 @@ int main(int argc, char *argv[])
 	odp_instance_t instance;
 	odph_linux_thr_params_t thr_params;
 
-	gbl_args = calloc(1, sizeof(args_t));
+	gbl_args = (args_t *)calloc(1, sizeof(args_t));
 	if (gbl_args == NULL) {
 		EXAMPLE_ABORT("Error: args mem alloc failed.\n");
 	}

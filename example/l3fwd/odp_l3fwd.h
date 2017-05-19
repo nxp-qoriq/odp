@@ -209,7 +209,7 @@ static inline odp_flow_entry_t *odp_route_flow_lookup_in_bucket(uint32_t sip,
 	odp_flow_entry_t      *flow, *head;
 
 	head = ((flow_bucket_t *)bucket)->next;
-	for (flow = head; flow != NULL; flow = flow->next) {
+	for (flow = head; flow != NULL; flow = (odp_flow_entry_t *)flow->next) {
 		if ((flow->l3_src == sip) && (flow->l3_dst == dip)
 #if !ODP_L3FWD_PERF_MODE
 			&& (flow->l4_sport == sport) && (flow->l4_dport == dport)
