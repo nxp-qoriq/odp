@@ -67,10 +67,10 @@
  */
 #define MAX_PKTIOS      8
 
-/** @def TX_BATCH_NUM_PACKETS
- * @brief Maximum allowed pktios for application
+/** @def MAX_DEQ_PACKETS
+ * @brief Maximum packets fetch at a time
  */
-#define TX_BATCH_NUM_PACKETS      8
+#define MAX_DEQ_PACKETS      4
 
 /** @def PRINT_APPL_MODE(x)
  * @brief Macro to print the current status of how the application handles
@@ -331,11 +331,10 @@ static void *pktio_alloc_thread(void *arg)
 static void *pktio_thread(void *arg)
 {
 	int thr, ret, i = 0, j = 0;
-	int pin_cnt = 0;
 	odp_pktout_queue_t pktout;
 	thread_args_t *thr_args;
-	odp_packet_t pkt, pkt_in[TX_BATCH_NUM_PACKETS];
-	odp_event_t ev;
+	odp_packet_t pkt[MAX_DEQ_PACKETS];
+	odp_event_t ev[MAX_DEQ_PACKETS];
 	odp_thrmask_t thread_mask;
 
 	thr = odp_thread_id();
@@ -373,35 +372,25 @@ static void *pktio_thread(void *arg)
 #ifdef PERF_MONITOR
 		read1 = arm_read_cycle_counter();
 #endif
-		ev = odp_schedule(NULL, ODP_SCHED_NO_WAIT);
-		if (ev != ODP_EVENT_INVALID) {
-			pkt = odp_packet_from_event(ev);
-#if 0
-			/* Swap Eth MACs and possibly IP-addrs before sending
-			back */
-			swap_spkt_addrs(pkt);
-#endif
-			/* Enqueue the packet for output */
-			pkt_in[pin_cnt] = pkt;
-			odp_schedule_release_atomic();
-			++pin_cnt;
-			if (pin_cnt < TX_BATCH_NUM_PACKETS)
-				continue;
-		}
+		ret = odp_schedule_multi(NULL, ODP_SCHED_WAIT,
+					 ev, MAX_DEQ_PACKETS);
+		if (ret > 0) {
+			for (i = 0; i < ret; i++) {
+			if (ev[i] != ODP_EVENT_INVALID)
+				pkt[i] = odp_packet_from_event(ev[i]);
+			}
+			pktio_tmp = odp_packet_input(pkt[0]);
 
-		if(pin_cnt > 0) {
-			pktio_tmp = odp_packet_input(pkt_in[0]);
 			if (odp_pktout_queue(args->dest_pktios[odp_pktio_index(pktio_tmp)], &pktout, 1) != 1) {
 				EXAMPLE_ERR("  [%02i] Error: no pktout queue\n", thr);
 				return NULL;
 			}
-			j = odp_pktout_send(pktout, &pkt_in[0], pin_cnt);
-			if (j != pin_cnt) {
-				EXAMPLE_ERR("  [%i] Queue enqueue failed.\n", thr);
-				for (;j < pin_cnt; j++)
-					odp_packet_free(pkt_in[j]);
+			j = odp_pktout_send(pktout, &pkt[0], ret);
+			if (j < ret) {
+				EXAMPLE_ERR("  [%i] Queue enqueue failed. j = %d\n", thr, j);
+				for (;j < ret; j++)
+					odp_packet_free(pkt[j]);
 			}
-			pin_cnt = 0;
 		}
 #ifdef PERF_MONITOR
 		read2 = arm_read_cycle_counter();

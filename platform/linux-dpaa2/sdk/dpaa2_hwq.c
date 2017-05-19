@@ -426,8 +426,9 @@ int dpaa2_hwq_xmit(void *h_dpaa2_hwq,
 		   The same need to be freed by H/W.
 		*/
 		if (ANY_ATOMIC_CNTXT_TO_FREE(buf_list[loop])) {
-			qbman_eq_desc_set_dca(&eqdesc, 1, GET_HOLD_DQRR_IDX, 0);
-			MARK_HOLD_DQRR_PTR_INVALID;
+			qbman_eq_desc_set_dca(&eqdesc, 1,
+				GET_HOLD_DQRR_IDX(buf_list[loop]->index), 0);
+			MARK_HOLD_DQRR_PTR_INVALID(buf_list[loop]->index);
 		} else if (buf_list[loop]->opr.orpid != INVALID_ORPID) {
 			qbman_eq_desc_set_orp(&eqdesc, 0, buf_list[loop]->opr.orpid,
 					buf_list[loop]->opr.seqnum, 0);

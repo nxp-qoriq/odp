@@ -22,6 +22,9 @@ extern "C" {
 /* Invalid context pointer value */
 #define INVALID_CNTXT_PTR	((void *)0xFFFFFFFF)
 
+/* Invalid context pointer value */
+#define INVALID_PORTAL_INDEX	0xff
+
 /* get the first pools bpid */
 int dpaa2_mbuf_pool_get_bpid(void *bplist);
 
@@ -44,6 +47,7 @@ static inline void dpaa2_inline_mbuf_reset(
 	mbuf->next_sg = 0;
 	/*todo - need to reset hash_val, timestamp, destructor also,
 	however they are not in use currently*/
+	mbuf->index = INVALID_PORTAL_INDEX; /*Setting to invalid portal index*/
 }
 
 

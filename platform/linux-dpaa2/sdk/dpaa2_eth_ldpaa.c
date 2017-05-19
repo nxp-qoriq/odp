@@ -756,7 +756,7 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 	/* Function to transmit the frames to given device and VQ*/
 	#define QBMAN_IDX_FROM_DQRR(p) (((unsigned long)p & 0x1ff) >> 6)
 	#define RETRY_COUNT 10000
-	uint32_t loop = 0, ret, retry_count = RETRY_COUNT, num_pkts = 0, i = 0;
+	uint32_t loop = 0, ret, retry_count = RETRY_COUNT, num_pkts = 0, i = 0, index = 0;
 	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
 	uint32_t frames_to_send;
 	struct qbman_eq_desc eqdesc[MAX_TX_RING_SLOTS] = {{{0}}};
@@ -792,9 +792,10 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 			   DQRR entry index in buffer when using DQRR mode.
 			   The same need to be freed by H/W.
 			*/
+			index = mbuf[loop + num_pkts]->index;
 			if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf[loop + num_pkts])) {
-				eqcr->dca = ENABLE_DCA | GET_HOLD_DQRR_IDX;
-				MARK_HOLD_DQRR_PTR_INVALID;
+				eqcr->dca = ENABLE_DCA |	GET_HOLD_DQRR_IDX(index);
+				MARK_HOLD_DQRR_PTR_INVALID(index);
 			} else if (mbuf[loop + num_pkts]->opr.orpid != INVALID_ORPID){
 				eqcr->orpid = mbuf[loop + num_pkts]->opr.orpid;
 				eqcr->seqnum = mbuf[loop + num_pkts]->opr.seqnum;

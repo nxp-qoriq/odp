@@ -209,7 +209,6 @@ struct dpaa2_mbuf {
 
 	/* Cache line 2 */
 	void *drv_priv_cnxt; /*!< Private context 1 for Driver usage */
-	/* Cache line 3 */
 	uint64_t buf_pool; /*!< odp buffer pool pointer - only for non packet */
 
 	uint32_t drv_priv_resv[2]; /*!< Private context reserverd for Driver usage usage */
@@ -217,7 +216,6 @@ struct dpaa2_mbuf {
 	struct dpaa2_mbuf *next_sg; /*!< Pointer to hold list of Scatter/Gather
 			* packets. */
 	void *user_priv_area; /*!< Private data space location pointer for the user. */
-	uint64_t user_cnxt_ptr; /* user context ptr */
 	union {
 		void *atomic_cntxt; /* The Atomic context hold by this buffer */
 		struct {
@@ -226,7 +224,12 @@ struct dpaa2_mbuf {
 			uint32_t        reserved;  /*!< reserved */
 		} opr;
 	};
-
+	union {
+		uint8_t	index;
+		uint8_t	resv[8]; /*Reserved area to avoid padding*/
+	};
+	/* Cache line 3 */
+	uint64_t user_cnxt_ptr; /* user context ptr */
 
 #ifdef ODP_IPSEC_DEBUG
 	void *drv_priv_cnxt1; /*!< Private context 1 for Driver usage */

@@ -63,6 +63,9 @@
 /* Starting handle of users scheduler groups */
 #define _ODP_SCHED_GROUP_NAMED (ODP_SCHED_GROUP_CONTROL + 1)
 
+/*NUmber of retry count in case no packet is received*/
+#define RETRY_COUNT 10
+
 /* Internal routine to get scheduler thread mask addrs */
 odp_thrmask_t *thread_sched_grp_mask(int index);
 
@@ -357,24 +360,30 @@ struct dpaa2_dev *odp_get_conc_from_grp(odp_schedule_group_t grp)
 void odp_schedule_release_atomic(void)
 {
 	struct qbman_swp *swp = thread_io_info.dpio_dev->sw_portal;
+	int i;
+	uint8_t to_be_released = thread_io_info.dpio_dev->dqrr_size;
 
-	if (IS_HOLD_DQRR_VALID) {
-		qbman_swp_dqrr_consume(swp, GET_HOLD_DQRR_PTR);
-		MARK_HOLD_DQRR_PTR_INVALID;
-		/* Since Last buffer is not freed yet,
-		   its safe to access it */
-		MARK_HOLD_BUF_CNTXT_INVALID;
+	for (i = 0; i < to_be_released; i++) {
+		if (IS_HOLD_DQRR_VALID(i)) {
+			qbman_swp_dqrr_consume(swp, GET_HOLD_DQRR_PTR(i));
+			MARK_HOLD_DQRR_PTR_INVALID(i);
+			/* Since Last buffer is not freed yet,
+			   its safe to access it */
+			MARK_HOLD_BUF_CNTXT_INVALID(i);
+		}
 	}
 }
 
 /*
  * Function to receive Scheduled packet from I/O Portal with PUSH Mode
  */
-static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num ODP_UNUSED)
+static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num)
 {
 	struct qbman_swp *swp = thread_io_info.dpio_dev->sw_portal;
 	struct dpaa2_vq *rvq;
 	const struct dqrr_entry *dq;
+	int i = 0;
+	uint8_t	index, to_be_released = thread_io_info.dpio_dev->dqrr_size;
 
 	/* Function is responsible to receive frame for a given
 	   DPCON device and Channel ID.
@@ -384,46 +393,53 @@ static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num ODP_UNUSED
 	   Possible when packet is on hold or consumed
 	   without free in termination cases
 	 */
-	if (IS_HOLD_DQRR_VALID) {
-		qbman_swp_dqrr_consume(swp, GET_HOLD_DQRR_PTR);
-		/* Since Last buffer is not freed yet,
-		   its safe to access it */
-		MARK_HOLD_BUF_CNTXT_INVALID;
-		MARK_HOLD_DQRR_PTR_INVALID;
-	}
-	/*Receive the packets*/
-	dq = (struct dqrr_entry *)qbman_swp_dqrr_next(swp);
-	if (!dq)
-		return 0;
-
-	if (odp_unlikely((dq->stat & QBMAN_DQ_STAT_VALIDFRAME) == 0)) {
-		ODP_DBG("No frame is delivered\n");
-		qbman_swp_dqrr_consume(swp, (struct qbman_result *)dq);
-		return 0;
-	}
-
-	rvq = (struct dpaa2_vq *)dq->fqd_ctx;
-	if (rvq) {
-		mbuf[0] = rvq->qmfq.cb(swp, (struct qbman_fd *)&dq->fd,
-				(struct qbman_result *)dq);
-		if (dq->stat & (1 << QBMAN_DQRR_STAT_FQ_ODP_ENABLE)) {
-			mbuf[0]->opr.orpid = dq->orpid;
-			mbuf[0]->opr.seqnum = dq->seqnum;
-			qbman_swp_dqrr_consume(swp, (struct qbman_result *)dq);
-		} else {
-			/* Set the current context in both threadinfo & buffer */
-			SAVE_HOLD_DQRR_PTR(dq);
-			SAVE_HOLD_BUF_PTR(mbuf[0]);
-			mbuf[0]->atomic_cntxt = (void *)dq;
+	 for (i = 0; i < to_be_released; i++) {
+		if (IS_HOLD_DQRR_VALID(i)) {
+			qbman_swp_dqrr_consume(swp,
+					GET_HOLD_DQRR_PTR(i));
+			/* Since Last buffer is not freed yet,
+			   its safe to access it */
+			MARK_HOLD_BUF_CNTXT_INVALID(i);
+			MARK_HOLD_DQRR_PTR_INVALID(i);
 		}
-	} else {
-		qbman_swp_dqrr_consume(swp, (struct qbman_result *)dq);
-		ODP_ERR("Null Return VQ received\n");
-		return 0;
 	}
+	for (i = 0; i < num; i++) {
+		/*Receive the packets*/
+		dq = (struct dqrr_entry *)qbman_swp_dqrr_next(swp);
+		if (!dq)
+			goto return_packet;
+
+		if (odp_unlikely((dq->stat & QBMAN_DQ_STAT_VALIDFRAME) == 0)) {
+			ODP_DBG("No frame is delivered\n");
+			qbman_swp_dqrr_consume(swp, (struct qbman_result *)dq);
+			goto return_packet;
+		}
+		rvq = (struct dpaa2_vq *)dq->fqd_ctx;
+		if (rvq) {
+			mbuf[i] = rvq->qmfq.cb(swp, (struct qbman_fd *)&dq->fd,
+					(struct qbman_result *)dq);
+			if (dq->stat & (1 << QBMAN_DQRR_STAT_FQ_ODP_ENABLE)) {
+				mbuf[i]->opr.orpid = dq->orpid;
+				mbuf[i]->opr.seqnum = dq->seqnum;
+				qbman_swp_dqrr_consume(swp, (struct qbman_result *)dq);
+			} else {
+				/* Set the current context in both threadinfo & buffer */
+				index = qbman_get_dqrr_idx((struct qbman_result *)dq);
+				SAVE_HOLD_DQRR_PTR(dq, index);
+				SAVE_HOLD_BUF_PTR(mbuf[i], index);
+				mbuf[i]->atomic_cntxt = (void *)dq;
+				mbuf[i]->index = index;
+			}
+		} else {
+			qbman_swp_dqrr_consume(swp, (struct qbman_result *)dq);
+			ODP_ERR("Null Return VQ received\n");
+			goto return_packet;
+		}
+	}
+return_packet:
 	/*Check for the errors received*/
 	/*Return the total number of packets received to DPAA2 app*/
-	return 1;
+	return i;
 }
 
 /* Function to benchmark low level performance */
@@ -664,7 +680,7 @@ RETRY:
 					if (errno == EINTR) {
 						ODP_DBG("odp_schedule: epoll_wait fails\n");
 						i++;
-						if (i > 10) {
+						if (i > RETRY_COUNT) {
 							ODP_PRINT("odp_schedule: epoll_wait fails even after 10 tries\n");
 							ODP_PRINT("odp_schedule: Failed\n");
 							break;
@@ -693,7 +709,7 @@ RETRY:
 int odp_schedule_multi(odp_queue_t *out_queue, uint64_t wait,
 		       odp_event_t events[], int num)
 {
-	int32_t num_pkt = 0, i, nfds;
+	int32_t num_pkt = 0, i = 0, nfds;
 	dpaa2_mbuf_pt pkt_buf[MAX_DEQ];
 	uint64_t wait_till = 0, time;
 	struct dpaa2_dpio_dev *dpio_dev = thread_io_info.dpio_dev;
@@ -714,17 +730,31 @@ int odp_schedule_multi(odp_queue_t *out_queue, uint64_t wait,
 
 			return num_pkt;
 		} else {
-			if (!sched_intr && !num_pkt) {
+			if (odp_unlikely(received_sigint)) {
+				if (odp_term_local() < 0)
+					fprintf(stderr, "error: odp_term_local() failed.\n");
+				pthread_exit(NULL);
+			}
+
+			if (!sched_intr) {
 				if ((wait != ODP_SCHED_WAIT) && (wait_till <= dpaa2_time_get_cycles()))
 					break;
 			} else {
-				if (wait == ODP_SCHED_NO_WAIT)
-					break;
-				if (wait) {
-					time = wait/ODP_TIME_MSEC_IN_NS;
-				} else
+				if (!wait)
 					time = -1;
+				else if (wait == ODP_SCHED_NO_WAIT)
+					break;
+				else
+					time = wait/ODP_TIME_MSEC_IN_NS;
+
 				qbman_swp_interrupt_clear_status(dpio_dev->sw_portal, QBMAN_SWP_INTERRUPT_DQRI);
+				/* Here, need to call the recv_fn again to check
+				that valid dqrr_entry is now available on portal
+				or not as there may be the chances that
+				dqrr_entry pushed at portal before calling qbman
+				interrupt clear status API and we may not be
+				able to get the interrupt for that entry.
+				 */
 				num_pkt = fn_sch_recv_pkt(pkt_buf, num);
 				if (num_pkt > 0) {
 					if (out_queue) {
@@ -738,11 +768,27 @@ int odp_schedule_multi(odp_queue_t *out_queue, uint64_t wait,
 					return num_pkt;
 				}
 
+retry:
 				nfds = epoll_wait(dpio_dev->intr_handle[0].poll_fd, &epoll_ev, 1, time);
 				if (nfds < 1) {
-					ODP_DBG("odp_schedule: ERROR or TIMEOUT\n");
+					if (!nfds) {
+						ODP_DBG("odp_schedule: ERROR or TIMEOUT\n");
 						break;
+					}
 				}
+					/* sometimes due to some spurious inerrupts epoll_wait fails
+					   with errno EINTR. so here we are retrying epoll_wait in such
+					   case to avoid the problem.*/
+					if (errno == EINTR) {
+						ODP_DBG("odp_schedule: epoll_wait fails\n");
+						i++;
+						if (i > RETRY_COUNT) {
+							ODP_PRINT("odp_schedule: epoll_wait fails even after 10 tries\n");
+							ODP_PRINT("odp_schedule: Failed\n");
+							break;
+						}
+						goto retry;
+					}
 			}
 
 		}

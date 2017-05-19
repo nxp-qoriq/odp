@@ -261,13 +261,24 @@ int32_t dpaa2_io_portal_probe(ODP_UNUSED struct dpaa2_dev *dev,
 		dpio_close(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token);
 		goto free_res;
 	}
+	if ((p_des.qman_version & 0xFFFF0000) < QBMAN_REV_4100)
+		dpio_dev->dqrr_size = 4;
+	else
+		dpio_dev->dqrr_size = 8;
+	/*Allocate space to hold dqrr entries*/
+	dpio_dev->dqrr_entry = dpaa2_calloc(NULL, dpio_dev->dqrr_size,
+					sizeof(struct dqrr), 0);
+	if (!dpio_dev->dqrr_entry) {
+		DPAA2_ERR(FW, "ERROR, No Memory for DQRR entries\n");
+		goto free_res;
+	}
 	DPAA2_INFO(FW, "\t DPIO[%d]  ", dpio_dev->hw_id);
 	DPAA2_INFO(FW, "QBMan SW Portal 0x%p\n", dpio_dev->sw_portal);
 
 	if(dev_priv->flags & DPAA2_ENABLE_INTERRUPTS) {
 		if (dpaa2_dpio_intr_init(dpio_dev) != DPAA2_SUCCESS) {
 			DPAA2_ERR(FW, "Interrupt registration failed for dpio");
-			goto free_res;
+			goto free_dqrr;
 		}
 	}
 
@@ -278,6 +289,8 @@ int32_t dpaa2_io_portal_probe(ODP_UNUSED struct dpaa2_dev *dev,
 
 	DPAA2_INFO(FW, "\t Allocated DPIO Device %d\n", io_space_count);
 	return DPAA2_SUCCESS;
+free_dqrr:
+	dpaa2_free(dpio_dev->dqrr_entry);
 free_res:
 	if (dpio_dev->sw_portal)
 		qbman_swp_finish(dpio_dev->sw_portal);
@@ -314,6 +327,9 @@ void release_dpio(struct dpaa2_dpio_dev *dpio_dev)
 			DPAA2_ERR(FW, "Error in Closing DPIO "
 				"device %p  Error %d\n", dpio_dev, ret);
 		dpaa2_free(dpio_dev->dpio);
+	}
+	if (dpio_dev->dqrr_entry) {
+		dpaa2_free(dpio_dev->dqrr_entry);
 	}
 	SWP_UNLOCK(dpio_dev);
 	dpaa2_free(dpio_dev);

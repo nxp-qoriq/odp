@@ -1663,8 +1663,9 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 	   The same need to be freed by H/W.
 	*/
 	if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf)) {
-		qbman_eq_desc_set_dca(&eqdesc, 1, GET_HOLD_DQRR_IDX, 0);
-		MARK_HOLD_DQRR_PTR_INVALID;
+		qbman_eq_desc_set_dca(&eqdesc, 1,
+					GET_HOLD_DQRR_IDX(mbuf->index), 0);
+		MARK_HOLD_DQRR_PTR_INVALID(mbuf->index);
 	} else if (mbuf->opr.orpid != INVALID_ORPID) {
 		qbman_eq_desc_set_orp(&eqdesc, 0, mbuf->opr.orpid,
 					mbuf->opr.seqnum, 0);
