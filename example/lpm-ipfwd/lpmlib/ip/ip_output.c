@@ -83,3 +83,53 @@ enum IP_STATUS ip_send(odp_packet_t pkt,
 	}
 	return IP_STATUS_ACCEPT;
 }
+
+int32_t ip_send_multi(odp_packet_t pkt[],
+		      struct neigh_t *neigh, int32_t num_packets)
+{
+	int32_t ret = 0, loop;
+	odp_pktout_queue_t pktout;
+	struct ll_cache_t *ll_cache;
+
+	if (odp_unlikely(0 == num_packets)) {
+		EXAMPLE_DBG("No Packets are received to transmit\n");
+		return ret;
+	}
+
+	ll_cache = neigh->ll_cache;
+	if (odp_likely(ll_cache)) {
+		struct ether_hdr *ll_hdr;
+
+		if (odp_pktout_queue(neigh->pktio, &pktout, 1) != 1) {
+			EXAMPLE_ERR(" Error: no pktout queue\n");
+			loop = 0;
+			goto free_packets;
+		}
+
+		for (loop = 0; loop < num_packets; loop++) {
+			ll_hdr = (struct ether_hdr *)
+					odp_packet_l2_ptr(pkt[loop], NULL);
+			output_header(ll_hdr, ll_cache);
+		}
+
+		/* Enqueue the packet for output */
+		ret = odp_pktout_send(pktout, pkt, num_packets);
+		if (ret < num_packets) {
+			EXAMPLE_DBG("%d packets are transmitted\n", ret);
+			loop = ret;
+			goto free_packets;
+		}
+	} else {
+		EXAMPLE_DBG("Could not found ARP cache entries for IP 0x%x\n",
+			            neigh->proto_addr[0]);
+		loop = 0;
+		goto free_packets;
+	}
+	return ret;
+
+free_packets:
+	for ( ; loop < num_packets; loop++)
+		odp_packet_free(pkt[loop]);
+	return ret;
+}
+

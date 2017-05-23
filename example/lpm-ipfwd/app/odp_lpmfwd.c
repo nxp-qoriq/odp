@@ -38,6 +38,8 @@
 #include "ip/ip_protos.h"
 #include "ip/ip_appconf.h"
 #include "ip/ip_handler.h"
+#include "ip/ip_output.h"
+#include "net/neigh.h"
 #include <sys/stat.h>
 
 /** \brief	Holds all IP-related data structures */
@@ -86,6 +88,11 @@ static struct sigevent notification;
  */
 #define MAX_WORKERS            32
 
+/** @def MAX_DEQ_PACKETS
+ * @brief Maximum number of packets that can be dequeue'd at once
+ */
+#define MAX_DEQ_PACKETS            4
+
 /** @def SHM_PKT_POOL_SIZE
  * @brief Size of the shared memory block
  */
@@ -99,7 +106,7 @@ static struct sigevent notification;
 /** @def MAX_PKT_BURST
  * @brief Maximum number of packet bursts
  */
-#define MAX_PKT_BURST          32
+#define MAX_PKT_BURST          MAX_DEQ_PACKETS
 
 /** @def APPL_MODE_PKT_BURST
  * @brief The application will handle pakcets in bursts
@@ -152,6 +159,18 @@ typedef struct {
 typedef struct {
 	int32_t		src_idx;	/**< Source interface identifier */
 } thread_args_t;
+
+/**
+ * Held Buffer information in each thread
+ */
+typedef struct {
+	struct neigh_t neigh;
+	odp_packet_t buf_list[MAX_DEQ_PACKETS];
+	int32_t	buf_count;
+} thread_buf_info_t;
+
+/*Pointer to hold held buffers for*/
+__thread thread_buf_info_t *buf_info;
 
 /**
  * Grouping of all global data
@@ -422,15 +441,59 @@ static void usage(char *progname)
  *
  * @param pkts_ok Total number of valid frames
  */
-static void odp_process_and_send_packet(odp_packet_t pkt_tbl[], uint32_t pkts_ok)
+static void odp_process_and_send_packet(odp_packet_t pkt_tbl[],
+					uint32_t pkts_ok)
 {
 	odp_packet_t	pkt = ODP_PACKET_INVALID;
-	uint32_t	loop;
+	uint32_t		tx_pkts = 0;
+	int32_t		loop, ret;
+	uint32_t gwaddr;
+	struct neigh_t neighbor;
+	odph_ipv4hdr_t *ip_hdr;
+	odp_pktio_t old_pktio = ODP_PKTIO_INVALID;
 
-	for (loop = 0; loop < pkts_ok; loop++) {
+	buf_info->buf_count = 0;
+	buf_info->neigh.pktio = ODP_PKTIO_INVALID;
+tx_rest_packets:
+	for (loop = tx_pkts; loop < pkts_ok; loop++) {
 		pkt = pkt_tbl[loop];
-		ip_handler(pkt);
+		ip_hdr = (odph_ipv4hdr_t *)(odp_packet_l3_ptr(pkt, NULL));
+		ret = ip_route_lookup(htonl(ip_hdr->dst_addr), &gwaddr,
+				      &neighbor);
+		if (odp_unlikely(ret != 0)) {
+			EXAMPLE_ERR("error in lookup for IP%x\n",
+				    htonl(ip_hdr->dst_addr));
+			odp_packet_free(pkt);
+			goto process_and_tx;
+		}
+		if ((old_pktio != ODP_PKTIO_INVALID) &&
+		    (old_pktio != neighbor.pktio)) {
+			old_pktio = ODP_PKTIO_INVALID;
+			goto process_and_tx;
+		}
+		if (odp_likely(ip_hdr->ttl > 1)) {
+			ip_hdr->ttl -= 1;
+			if (ip_hdr->chksum >= odp_cpu_to_be_16(0xffff - 0x100))
+				ip_hdr->chksum += odp_cpu_to_be_16(0x100) + 1;
+			else
+				ip_hdr->chksum += odp_cpu_to_be_16(0x100);
+		}
+
+		buf_info->buf_list[buf_info->buf_count++] = pkt;
+		if (old_pktio == ODP_PKTIO_INVALID) {
+			memcpy(&buf_info->neigh, &neighbor,
+			       sizeof(struct neigh_t));
+			old_pktio = buf_info->neigh.pktio;
+		}
 	}
+process_and_tx:
+	ret = ip_send_multi(buf_info->buf_list, &buf_info->neigh,
+			    buf_info->buf_count);
+	tx_pkts += ret;
+	buf_info->buf_count = 0;
+	if (pkts_ok - tx_pkts)
+		goto tx_rest_packets;
+
 }
 
 /**
@@ -440,9 +503,9 @@ static void odp_process_and_send_packet(odp_packet_t pkt_tbl[], uint32_t pkts_ok
  */
 static void *pktio_queue_thread(void *arg EXAMPLE_UNUSED)
 {
-	int thr;
-	odp_packet_t pkt[1];
-	odp_event_t ev;
+	int thr, ret, i;
+	odp_packet_t pkt[MAX_DEQ_PACKETS];
+	odp_event_t ev[MAX_DEQ_PACKETS];
 #if ODP_LPMFWD_DEBUG
 	unsigned long tmp = 0, pkt_cnt = 0;
 #endif
@@ -451,17 +514,32 @@ static void *pktio_queue_thread(void *arg EXAMPLE_UNUSED)
 
 	printf("[%02i] QUEUE mode\n", thr);
 
+	/*Allocate memory to hold list of buffers for batch transmission*/
+	buf_info = calloc(1, sizeof(thread_buf_info_t));
+	if (!buf_info) {
+		printf("Error in memory allocaiton");
+		return NULL;
+	}
+	for (i = 0; i < MAX_DEQ_PACKETS; i++)
+		buf_info->buf_list[i] = ODP_PACKET_INVALID;
 	/* Loop packets */
 	while (1) {
 		/* Use schedule to get buf from any input queue */
-		ev  = odp_schedule(NULL, ODP_SCHED_WAIT);
-		pkt[0] = odp_packet_from_event(ev);
-
-		/* Drop packets with errors */
-		if (odp_unlikely(drop_err_pkts(pkt, 1) == 0))
+		ret = odp_schedule_multi(NULL, ODP_SCHED_WAIT, ev,
+					 MAX_DEQ_PACKETS);
+		if (odp_likely(ret > 0)) {
+			for (i = 0; i < ret; i++) {
+				if (ev[i] != ODP_EVENT_INVALID)
+					pkt[i] = odp_packet_from_event(ev[i]);
+			}
+			/* Drop packets with errors */
+			ret = drop_err_pkts(pkt, ret);
+			if (odp_unlikely(ret == 0))
+				continue;
+		} else {
 			continue;
-
-		odp_process_and_send_packet(pkt, 1);
+		}
+		odp_process_and_send_packet(pkt, ret);
 
 #if ODP_LPMFWD_DEBUG
 		/* Print packet counts every once in a while */
@@ -476,6 +554,7 @@ static void *pktio_queue_thread(void *arg EXAMPLE_UNUSED)
 #endif
 	}
 
+	free(buf_info);
 	return NULL;
 }
 
@@ -486,7 +565,7 @@ static void *pktio_queue_thread(void *arg EXAMPLE_UNUSED)
  */
 static void *pktio_ifburst_thread(void *arg)
 {
-	int thr;
+	int thr, i;
 	thread_args_t *thr_args;
 	int pkts, pkts_ok;
 	odp_packet_t pkt_tbl[MAX_PKT_BURST];
@@ -511,6 +590,14 @@ static void *pktio_ifburst_thread(void *arg)
 		EXAMPLE_ERR("Error: no pktin queue\n");
 		return NULL;
 	}
+	/*Allocate memory to hold list of buffers for batch transmission*/
+	buf_info = calloc(1, sizeof(thread_buf_info_t));
+	if (!buf_info) {
+		printf("Error in memory allocaiton");
+		return NULL;
+	}
+	for (i = 0; i < MAX_DEQ_PACKETS; i++)
+		buf_info->buf_list[i] = ODP_PACKET_INVALID;
 
 	/* Loop packets */
 	while (1) {
@@ -538,6 +625,7 @@ static void *pktio_ifburst_thread(void *arg)
 			continue;
 	}
 
+	free(buf_info);
 	return NULL;
 }
 
