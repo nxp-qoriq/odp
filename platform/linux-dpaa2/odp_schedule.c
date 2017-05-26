@@ -381,7 +381,7 @@ static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num)
 {
 	struct qbman_swp *swp = thread_io_info.dpio_dev->sw_portal;
 	const struct qbman_fd *fd;
-	const struct qbman_result *dqrr_entry;
+	const struct qbman_result *dq;
 	struct dpaa2_vq *rvq;
 	uint8_t status;
 	int i = 0;
@@ -407,8 +407,8 @@ static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num)
 	}
 	for (i = 0; i < num; i++) {
 		/*Receive the packets*/
-		dqrr_entry = qbman_swp_dqrr_next(swp);
-		if (NULL == dqrr_entry)
+		dq = qbman_swp_dqrr_next(swp);
+		if (!dq)
 			goto return_packet;
 
 		/* Check for valid frame. If not sent a consume
@@ -416,31 +416,31 @@ static inline int32_t odp_rcv_push_mode(dpaa2_mbuf_pt mbuf[], int num)
 		 * application and then send consume confirmation to
 		 * QBMAN.
 		 */
-		status = (uint8_t)qbman_result_DQ_flags(dqrr_entry);
+		status = (uint8_t)qbman_result_DQ_flags(dq);
 		if (odp_unlikely((status & QBMAN_DQ_STAT_VALIDFRAME) == 0)) {
 			ODP_DBG("No frame is delivered\n");
-			qbman_swp_dqrr_consume(swp, dqrr_entry);
+			qbman_swp_dqrr_consume(swp, dq);
 			goto return_packet;
 		}
 
-		fd = qbman_result_DQ_fd(dqrr_entry);
-		rvq = (struct dpaa2_vq *)qbman_result_DQ_fqd_ctx(dqrr_entry);
+		fd = qbman_result_DQ_fd(dq);
+		rvq = (struct dpaa2_vq *)qbman_result_DQ_fqd_ctx(dq);
 		if (rvq) {
-			mbuf[i] = rvq->qmfq.cb(swp, fd, dqrr_entry);
+			mbuf[i] = rvq->qmfq.cb(swp, fd, dq);
 			if (status & (1 << QBMAN_DQRR_STAT_FQ_ODP_ENABLE)) {
-				mbuf[i]->opr.seqnum =  qbman_result_DQ_seqnum(dqrr_entry);
-				mbuf[i]->opr.orpid = qbman_result_DQ_odpid(dqrr_entry);
-				qbman_swp_dqrr_consume(swp, dqrr_entry);
+				mbuf[i]->opr.seqnum =  qbman_result_DQ_seqnum(dq);
+				mbuf[i]->opr.orpid = qbman_result_DQ_odpid(dq);
+				qbman_swp_dqrr_consume(swp, dq);
 			} else {
 				/* Set the current context in both threadinfo & buffer */
-				index = qbman_get_dqrr_idx((struct qbman_result *)dqrr_entry);
-				SAVE_HOLD_DQRR_PTR(dqrr_entry, index);
+				index = qbman_get_dqrr_idx((struct qbman_result *)dq);
+				SAVE_HOLD_DQRR_PTR(dq, index);
 				SAVE_HOLD_BUF_PTR(mbuf[i], index);
-				mbuf[i]->atomic_cntxt = (void *)dqrr_entry;
+				mbuf[i]->atomic_cntxt = (void *)dq;
 				mbuf[i]->index = index;
 			}
 		} else {
-			qbman_swp_dqrr_consume(swp, dqrr_entry);
+			qbman_swp_dqrr_consume(swp, dq);
 			ODP_ERR("Null Return VQ received\n");
 			goto return_packet;
 		}
@@ -462,15 +462,7 @@ static inline int32_t odp_qbman_loopback(dpaa2_mbuf_pt mbuf[] ODP_UNUSED, int nu
 	int cpu_id = odp_cpu_id();
 	struct dpaa2_vq *rvq;
 	struct dpaa2_vq *eth_tx_vq = NULL;
-#if 0
-	struct eqcr_entry *eqcr = (struct eqcr_entry *)&eqdesc;
-	uint32_t *overlay;
-	struct qbman_fd tx_fd;
-	memset(&tx_fd, 0, sizeof(struct qbman_fd));
-	memset(&eqdesc, 0, sizeof(struct qbman_eq_desc));
 
-	eqcr->verb = QBMAN_RESP_IF_REJ_QUE_DEST;
-#endif
 	/* Function is responsible to receive frame for a given
 	   DPCON device and Channel ID.
 	*/
@@ -495,50 +487,6 @@ static inline int32_t odp_qbman_loopback(dpaa2_mbuf_pt mbuf[] ODP_UNUSED, int nu
 
 #define QBMAN_IDX_FROM_DQRR(p) (((unsigned long)p & 0x1ff) >> 6)
 
-/* Disable the direct acces*/
-#if 0 /* Direct access of EQCR */
-		eqcr->tgtid = ((struct dpaa2_dev_priv *)(rvq->dev->priv))->qdid;
-		eqcr->qdbin = eth_tx_vq->flow_id;
-		eqcr->qpri = eth_tx_vq->tc_index;
-		/* SET DCA */
-		eqcr->dca = ENABLE_DCA | (uint8_t)QBMAN_IDX_FROM_DQRR(dqrr_entry);
-		fd = qbman_result_DQ_fd(dqrr_entry);
-
-		/* Prepare Tx descriptor */
-		tx_fd.simple.addr_lo = fd->simple.addr_lo;
-		tx_fd.simple.addr_hi = fd->simple.addr_hi;
-		tx_fd.simple.len = fd->simple.len;
-		tx_fd.simple.bpid_offset = fd->simple.bpid_offset;
-		tx_fd.simple.ctrl = fd->simple.ctrl;
-
-		/* Swap Mac address */
-		overlay = (uint32_t *)DPAA2_IOVA_TO_VADDR(
-				(uint8_t *)DPAA2_GET_FD_ADDR(fd) +
-					DPAA2_GET_FD_OFFSET(fd));
-#if LOOPBACK_DEBUG
-		printf("ETH:  0x%X%X%X\n", overlay[0], overlay[1], overlay[2]);
-#endif
-		/* Swap the SRC & DST Mac addresses */
-		SWAP_MAC_HDR(overlay);
-
-#if LOOPBACK_DEBUG
-		{
-			int i = 0;
-
-			ODP_DBG("%s: FLC 0x%lu 0x%x\n", __func__,
-				DPAA2_GET_FD_FLC(fd), fd->simple.ctrl);
-			while (i < 8) {
-				ODP_DBG(" %08X", fd->words[i]);
-				i++;
-			}
-			ODP_DBG("\n");
-		}
-#endif
-		do {
-			ret = qbman_swp_enqueue(swp, &eqdesc, &tx_fd);
-		} while (ret == -EBUSY);
-
-#else
 		qbman_eq_desc_set_qd(&eqdesc, ((struct dpaa2_dev_priv *)(rvq->dev->priv))->qdid,
 				eth_tx_vq->flow_id, eth_tx_vq->tc_index);
 		/* SET DCA */
@@ -547,7 +495,6 @@ static inline int32_t odp_qbman_loopback(dpaa2_mbuf_pt mbuf[] ODP_UNUSED, int nu
 		do {
 			ret = qbman_swp_enqueue(swp, &eqdesc, fd);
 		} while (ret == -EBUSY);
-#endif
 		/*Check for the errors received*/
 	} /* End of While() */
 }

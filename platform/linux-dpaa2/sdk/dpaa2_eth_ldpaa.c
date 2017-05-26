@@ -796,12 +796,14 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 			*/
 			index = mbuf[loop + num_pkts]->index;
 			if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf[loop + num_pkts])) {
-				qbman_eq_desc_set_dca(&eqdesc[loop], 1, GET_HOLD_DQRR_IDX(index), 0);
+				qbman_eq_desc_set_dca(&eqdesc[loop], true,
+						      GET_HOLD_DQRR_IDX(index),
+						      false);
 				MARK_HOLD_DQRR_PTR_INVALID(index);
 			} else if (mbuf[loop + num_pkts]->opr.orpid != INVALID_ORPID) {
-				qbman_eq_desc_set_orp(&eqdesc[loop], 0,
+				qbman_eq_desc_set_orp(&eqdesc[loop], false,
 						      mbuf[loop + num_pkts]->opr.orpid,
-						      mbuf[loop + num_pkts]->opr.seqnum, 0);
+						      mbuf[loop + num_pkts]->opr.seqnum, false);
 			}
 
 			/*Check whether mbuf has multiple segments or not.
