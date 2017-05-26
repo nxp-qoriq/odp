@@ -353,14 +353,14 @@ void dpaa2_mbuf_free(dpaa2_mbuf_pt mbuf)
 		qbman_swp_dqrr_consume(swp, GET_HOLD_DQRR_PTR(mbuf->index));
 		MARK_HOLD_DQRR_PTR_INVALID(mbuf->index);
 	} else if (mbuf->opr.orpid != INVALID_ORPID) {
-		struct eqcr_entry eqcr = {0};
+		struct qbman_eq_desc eqdesc;
 		struct qbman_fd fd;
 
-		eqcr.orpid = mbuf->opr.orpid;
-		eqcr.seqnum = mbuf->opr.seqnum;
-		eqcr.verb |= (1 << EQCR_ENTRY_ORDER_RES_ENABLE);
+		qbman_eq_desc_clear(&eqdesc);
+		qbman_eq_desc_set_orp_hole(&eqdesc, mbuf->opr.orpid,
+					   mbuf->opr.seqnum);
 		/*calling fake enqueue command to fill ORP gaps*/
-		ret = qbman_swp_enqueue(swp, (struct qbman_eq_desc *)&eqcr, &fd);
+		ret = qbman_swp_enqueue(swp, &eqdesc, &fd);
 		if (ret != 0) {
 			DPAA2_DBG(ETH, "Error while filling ORP gaps\n");
 		}

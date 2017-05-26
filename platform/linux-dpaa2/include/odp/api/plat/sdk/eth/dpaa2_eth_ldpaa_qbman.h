@@ -20,6 +20,7 @@
 #define ENABLE_DCA	0x80
 #define INVALID_ORPID	0xFFFF
 
+#if 0
 struct dqrr_entry {
         uint8_t         verb;
         uint8_t         stat;
@@ -51,6 +52,7 @@ struct eqcr_entry {
         uint8_t         rspid;    /*!< Response ID; Used only if VERB bits 1-0=1*/
         uint64_t        rsp_addr; /*!< Response Address.Used if VERB bits 1-0=1*/
 } __attribute__((packed));
+#endif
 
 static inline void dpaa2_qbman_pull_desc_channel_set(
 		struct qbman_pull_desc *pulldesc,
