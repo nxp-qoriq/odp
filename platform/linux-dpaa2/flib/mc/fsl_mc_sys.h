@@ -50,7 +50,6 @@ struct fsl_mc_io {
 #define iowrite64(_v, _p)   writeq(_v, _p)
 
 #else /* __linux_driver__ */
-
 #include <stdio.h>
 #include <libio.h>
 #include <stdint.h>
@@ -59,18 +58,19 @@ struct fsl_mc_io {
 #include <linux/byteorder/little_endian.h>
 
 #define cpu_to_le64(x) __cpu_to_le64(x)
-#define dmb()           __asm__ __volatile__ ("" : : : "memory")
-#define __iormb()       dmb()
-#define __iowmb()       dmb()
-#define __arch_getq(a)                  (*(volatile unsigned long *)(a))
-#define __arch_putq(v, a)                (*(volatile unsigned long *)(a) = (v))
-#define __arch_putq32(v, a)                (*(volatile unsigned int *)(a) = (v))
-#define readq(c)        ({ uint64_t __v = __arch_getq(c); __iormb(); __v; })
-#define writeq(v, c)     ({ uint64_t __v = v; __iowmb(); __arch_putq(__v, c); __v; })
-#define writeq32(v, c) ({ uint32_t __v = v; __iowmb(); __arch_putq32(__v, c); __v; })
-#define ioread64(_p)	    readq(_p)
-#define iowrite64(_v, _p)   writeq(_v, _p)
-#define iowrite32(_v, _p)   writeq32(_v, _p)
+#define dmb()	__asm__ __volatile__ ("" : : : "memory")
+#define __iormb()	dmb()
+#define __iowmb()	dmb()
+#define __arch_getq(a)	(*(volatile unsigned long *)(a))
+#define __arch_putq(v, a)	(*(volatile unsigned long *)(a) = (v))
+#define __arch_putq32(v, a)	(*(volatile unsigned int *)(a) = (v))
+#define readq(c)	({ uint64_t __v = __arch_getq(c); __iormb(); __v; })
+#define writeq(v, c)	({ uint64_t __v = v; __iowmb(); __arch_putq(__v, c); __v; })
+#define writeq32(v, c)	({ uint32_t __v = v; __iowmb(); __arch_putq32(__v, c); __v; })
+#define ioread64(_p)	readq(_p)
+#define iowrite64(_v, _p)	writeq(_v, _p)
+#define iowrite32(_v, _p)	writeq32(_v, _p)
+
 #define __iomem
 
 struct fsl_mc_io {
@@ -78,11 +78,11 @@ struct fsl_mc_io {
 };
 
 #ifndef ENOTSUP
-#define ENOTSUP		95
+#define ENOTSUP	95
 #endif
 
 /*GPP is supposed to use MC commands with low priority*/
-#define CMD_PRI_LOW          0 /*!< Low Priority command indication */
+#define CMD_PRI_LOW	0 /*!< Low Priority command indication */
 
 struct mc_command;
 

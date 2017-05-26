@@ -50,42 +50,14 @@ struct fsl_mc_io;
  */
 #define DPDMAI_ALL_QUEUES	(uint8_t)(-1)
 
-/**
- * dpdmai_open() - Open a control session for the specified object
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @dpdmai_id:	DPDMAI unique ID
- * @token:	Returned token; use in subsequent API calls
- *
- * This function can be used to open a control session for an
- * already created object; an object may have been declared in
- * the DPL or by calling the dpdmai_create() function.
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent commands for
- * this specific object.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_open(struct fsl_mc_io	*mc_io,
-		uint32_t		cmd_flags,
-		int			dpdmai_id,
-		uint16_t		*token);
+int dpdmai_open(struct fsl_mc_io *mc_io,
+		uint32_t cmd_flags,
+		int dpdmai_id,
+		uint16_t *token);
 
-/**
- * dpdmai_close() - Close the control session of the object
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
- *
- * After this function is called, no further operations are
- * allowed on the object without opening a new control session.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_close(struct fsl_mc_io	*mc_io,
-		 uint32_t		cmd_flags,
-		 uint16_t		token);
+int dpdmai_close(struct fsl_mc_io *mc_io,
+		 uint32_t cmd_flags,
+		 uint16_t token);
 
 /**
  * struct dpdmai_cfg - Structure representing DPDMAI configuration
@@ -97,217 +69,69 @@ struct dpdmai_cfg {
 	uint8_t priorities[DPDMAI_PRIO_NUM];
 };
 
-/**
- * dpdmai_create() - Create the DPDMAI object
- * @mc_io:	Pointer to MC portal's I/O object
- * @dprc_token:	Parent container token; '0' for default container
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @cfg:	Configuration structure
- * @obj_id: returned object id
- *
- * Create the DPDMAI object, allocate required resources and
- * perform required initialization.
- *
- * The object can be created either by declaring it in the
- * DPL file, or by calling this function.
- *
- * The function accepts an authentication token of a parent
- * container that this object should be assigned to. The token
- * can be '0' so the object will be assigned to the default container.
- * The newly created object can be opened with the returned
- * object id and using the container's associated tokens and MC portals.
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_create(struct fsl_mc_io	*mc_io,
-		  uint16_t		dprc_token,
-		uint32_t		cmd_flags,
-		const struct dpdmai_cfg	*cfg,
-		uint32_t		*obj_id);
+int dpdmai_create(struct fsl_mc_io *mc_io,
+		  uint16_t dprc_token,
+		  uint32_t cmd_flags,
+		  const struct dpdmai_cfg *cfg,
+		  uint32_t *obj_id);
 
-/**
- * dpdmai_destroy() - Destroy the DPDMAI object and release all its resources.
- * @mc_io:	Pointer to MC portal's I/O object
- * @dprc_token: Parent container token; '0' for default container
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @object_id:	The object id; it must be a valid id within the container that
- * created this object;
- *
- * The function accepts the authentication token of the parent container that
- * created the object (not the one that currently owns the object). The object
- * is searched within parent using the provided 'object_id'.
- * All tokens to the object must be closed before calling destroy.
- *
- * Return:	'0' on Success; error code otherwise.
- */
-int dpdmai_destroy(struct fsl_mc_io	*mc_io,
-		   uint16_t		dprc_token,
-		uint32_t		cmd_flags,
-		uint32_t		object_id);
+int dpdmai_destroy(struct fsl_mc_io *mc_io,
+		   uint16_t dprc_token,
+		   uint32_t cmd_flags,
+		   uint32_t object_id);
 
-/**
- * dpdmai_enable() - Enable the DPDMAI, allow sending and receiving frames.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_enable(struct fsl_mc_io	*mc_io,
-		  uint32_t		cmd_flags,
-		  uint16_t		token);
+int dpdmai_enable(struct fsl_mc_io *mc_io,
+		  uint32_t cmd_flags,
+		  uint16_t token);
 
-/**
- * dpdmai_disable() - Disable the DPDMAI, stop sending and receiving frames.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_disable(struct fsl_mc_io	*mc_io,
-		   uint32_t		cmd_flags,
-		   uint16_t		token);
+int dpdmai_disable(struct fsl_mc_io *mc_io,
+		   uint32_t cmd_flags,
+		   uint16_t token);
 
-/**
- * dpdmai_is_enabled() - Check if the DPDMAI is enabled.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
- * @en:		Returns '1' if object is enabled; '0' otherwise
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_is_enabled(struct fsl_mc_io	*mc_io,
-		      uint32_t		cmd_flags,
-		      uint16_t		token,
-		      int		*en);
+int dpdmai_is_enabled(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      int *en);
 
-/**
- * dpdmai_reset() - Reset the DPDMAI, returns the object to initial state.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_reset(struct fsl_mc_io	*mc_io,
-		 uint32_t		cmd_flags,
-		 uint16_t		token);
+int dpdmai_reset(struct fsl_mc_io *mc_io,
+		 uint32_t cmd_flags,
+		 uint16_t token);
 
-/**
- * dpdmai_set_irq_enable() - Set overall interrupt state.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:		Token of DPDMAI object
- * @irq_index:	The interrupt index to configure
- * @en:			Interrupt state - enable = 1, disable = 0
- *
- * Allows GPP software to control when interrupts are generated.
- * Each interrupt can have up to 32 causes.  The enable/disable control's the
- * overall interrupt state. if the interrupt is disabled no causes will cause
- * an interrupt
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_set_irq_enable(struct fsl_mc_io	*mc_io,
-			  uint32_t		cmd_flags,
-			  uint16_t		token,
-			  uint8_t		irq_index,
-			  uint8_t		en);
+int dpdmai_set_irq_enable(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t token,
+			  uint8_t irq_index,
+			  uint8_t en);
 
-/**
- * dpdmai_get_irq_enable() - Get overall interrupt state
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:		Token of DPDMAI object
- * @irq_index:	The interrupt index to configure
- * @en:			Returned Interrupt state - enable = 1, disable = 0
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_get_irq_enable(struct fsl_mc_io	*mc_io,
-			  uint32_t		cmd_flags,
-			  uint16_t		token,
-			  uint8_t		irq_index,
-			  uint8_t		*en);
+int dpdmai_get_irq_enable(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t token,
+			  uint8_t irq_index,
+			  uint8_t *en);
 
-/**
- * dpdmai_set_irq_mask() - Set interrupt mask.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:		Token of DPDMAI object
- * @irq_index:	The interrupt index to configure
- * @mask:		event mask to trigger interrupt;
- *				each bit:
- *					0 = ignore event
- *					1 = consider event for asserting IRQ
- *
- * Every interrupt can have up to 32 causes and the interrupt model supports
- * masking/unmasking each cause independently
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_set_irq_mask(struct fsl_mc_io	*mc_io,
-			uint32_t		cmd_flags,
-			uint16_t		token,
-			uint8_t			irq_index,
-			uint32_t		mask);
+int dpdmai_set_irq_mask(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint8_t irq_index,
+			uint32_t mask);
 
-/**
- * dpdmai_get_irq_mask() - Get interrupt mask.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:		Token of DPDMAI object
- * @irq_index:	The interrupt index to configure
- * @mask:		Returned event mask to trigger interrupt
- *
- * Every interrupt can have up to 32 causes and the interrupt model supports
- * masking/unmasking each cause independently
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_get_irq_mask(struct fsl_mc_io	*mc_io,
-			uint32_t		cmd_flags,
-			uint16_t		token,
-			uint8_t			irq_index,
-			uint32_t		*mask);
+int dpdmai_get_irq_mask(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint8_t irq_index,
+			uint32_t *mask);
 
-/**
- * dpdmai_get_irq_status() - Get the current status of any pending interrupts
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:		Token of DPDMAI object
- * @irq_index:	The interrupt index to configure
- * @status:		Returned interrupts status - one bit per cause:
- *					0 = no interrupt pending
- *					1 = interrupt pending
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_get_irq_status(struct fsl_mc_io	*mc_io,
-			  uint32_t		cmd_flags,
-			  uint16_t		token,
-			  uint8_t		irq_index,
-			  uint32_t		*status);
+int dpdmai_get_irq_status(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t token,
+			  uint8_t irq_index,
+			  uint32_t *status);
 
-/**
- * dpdmai_clear_irq_status() - Clear a pending interrupt's status
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
- * @irq_index:	The interrupt index to configure
- * @status:	bits to clear (W1C) - one bit per cause:
- *			0 = don't change
- *			1 = clear status bit
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_clear_irq_status(struct fsl_mc_io	*mc_io,
-			    uint32_t		cmd_flags,
-			    uint16_t		token,
-			    uint8_t		irq_index,
-			    uint32_t		status);
+int dpdmai_clear_irq_status(struct fsl_mc_io *mc_io,
+			    uint32_t cmd_flags,
+			    uint16_t token,
+			    uint8_t irq_index,
+			    uint32_t status);
 
 /**
  * struct dpdmai_attr - Structure representing DPDMAI attributes
@@ -315,23 +139,14 @@ int dpdmai_clear_irq_status(struct fsl_mc_io	*mc_io,
  * @num_of_priorities: number of priorities
  */
 struct dpdmai_attr {
-	int	id;
+	int id;
 	uint8_t num_of_priorities;
 };
 
-/**
- * dpdmai_get_attributes() - Retrieve DPDMAI attributes.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
- * @attr:	Returned object's attributes
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_get_attributes(struct fsl_mc_io	*mc_io,
-			  uint32_t		cmd_flags,
-			  uint16_t		token,
-			  struct dpdmai_attr	*attr);
+int dpdmai_get_attributes(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t token,
+			  struct dpdmai_attr *attr);
 
 /**
  * enum dpdmai_dest - DPDMAI destination types
@@ -360,9 +175,9 @@ enum dpdmai_dest {
  *	channel; not relevant for 'DPDMAI_DEST_NONE' option
  */
 struct dpdmai_dest_cfg {
-	enum dpdmai_dest	dest_type;
-	int			dest_id;
-	uint8_t			priority;
+	enum dpdmai_dest dest_type;
+	int dest_id;
+	uint8_t priority;
 };
 
 /* DPDMAI queue modification options */
@@ -388,30 +203,17 @@ struct dpdmai_dest_cfg {
  *	valid only if 'DPDMAI_QUEUE_OPT_DEST' is contained in 'options'
  */
 struct dpdmai_rx_queue_cfg {
-	uint32_t		options;
-	uint64_t		user_ctx;
-	struct dpdmai_dest_cfg	dest_cfg;
+	uint32_t options;
+	uint64_t user_ctx;
+	struct dpdmai_dest_cfg dest_cfg;
 
 };
 
-/**
- * dpdmai_set_rx_queue() - Set Rx queue configuration
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
- * @priority:	Select the queue relative to number of
- *			priorities configured at DPDMAI creation; use
- *			DPDMAI_ALL_QUEUES to configure all Rx queues
- *			identically.
- * @cfg:	Rx queue configuration
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_set_rx_queue(struct fsl_mc_io			*mc_io,
-			uint32_t				cmd_flags,
-			uint16_t				token,
-			uint8_t					priority,
-			const struct dpdmai_rx_queue_cfg	*cfg);
+int dpdmai_set_rx_queue(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint8_t priority,
+			const struct dpdmai_rx_queue_cfg *cfg);
 
 /**
  * struct dpdmai_rx_queue_attr - Structure representing attributes of Rx queues
@@ -421,27 +223,16 @@ int dpdmai_set_rx_queue(struct fsl_mc_io			*mc_io,
  * @fqid: Virtual FQID value to be used for dequeue operations
  */
 struct dpdmai_rx_queue_attr {
-	uint64_t		user_ctx;
-	struct dpdmai_dest_cfg	dest_cfg;
-	uint32_t		fqid;
+	uint64_t user_ctx;
+	struct dpdmai_dest_cfg dest_cfg;
+	uint32_t fqid;
 };
 
-/**
- * dpdmai_get_rx_queue() - Retrieve Rx queue attributes.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
- * @priority:	Select the queue relative to number of
- *				priorities configured at DPDMAI creation
- * @attr:	Returned Rx queue attributes
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_get_rx_queue(struct fsl_mc_io		*mc_io,
-			uint32_t			cmd_flags,
-			uint16_t			token,
-			uint8_t				priority,
-			struct dpdmai_rx_queue_attr	*attr);
+int dpdmai_get_rx_queue(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint8_t priority,
+			struct dpdmai_rx_queue_attr *attr);
 
 /**
  * struct dpdmai_tx_queue_attr - Structure representing attributes of Tx queues
@@ -452,32 +243,12 @@ struct dpdmai_tx_queue_attr {
 	uint32_t fqid;
 };
 
-/**
- * dpdmai_get_tx_queue() - Retrieve Tx queue attributes.
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMAI object
- * @priority:	Select the queue relative to number of
- *			priorities configured at DPDMAI creation
- * @attr:	Returned Tx queue attributes
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpdmai_get_tx_queue(struct fsl_mc_io		*mc_io,
-			uint32_t			cmd_flags,
-			uint16_t			token,
-			uint8_t				priority,
-			struct dpdmai_tx_queue_attr	*attr);
+int dpdmai_get_tx_queue(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint8_t priority,
+			struct dpdmai_tx_queue_attr *attr);
 
-/**
- * dpdmai_get_api_version() - Get Data Path DMA API version
- * @mc_io:  Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @major_ver:	Major version of data path dma API
- * @minor_ver:	Minor version of data path dma API
- *
- * Return:  '0' on Success; Error code otherwise.
- */
 int dpdmai_get_api_version(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
 			   uint16_t *major_ver,

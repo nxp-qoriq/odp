@@ -1,4 +1,5 @@
-/* Copyright 2013-2016 Freescale Semiconductor Inc.
+/*
+ * Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -7,10 +8,9 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- * * Neither the name of the above-listed copyright holders nor the
- * names of any contributors may be used to endorse or promote products
+ *     * Neither the name of the above-listed copyright holders nor the
+ *       names of any contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- *
  *
  * ALTERNATIVELY, this software may be distributed under the terms of the
  * GNU General Public License ("GPL") as published by the Free Software
@@ -29,732 +29,388 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 #ifndef _FSL_DPRC_CMD_H
 #define _FSL_DPRC_CMD_H
 
-/* DPRC Version */
-#define DPRC_VER_MAJOR				6
-#define DPRC_VER_MINOR				1
+/* Minimal supported DPRC Version */
+#define DPRC_VER_MAJOR			6
+#define DPRC_VER_MINOR			1
+
+/* Command versioning */
+#define DPRC_CMD_BASE_VERSION			1
+#define DPRC_CMD_ID_OFFSET			4
+
+#define DPRC_CMD(id)	((id << DPRC_CMD_ID_OFFSET) | DPRC_CMD_BASE_VERSION)
 
 /* Command IDs */
-#define DPRC_CMDID_CLOSE                        0x8001
-#define DPRC_CMDID_OPEN                         0x8051
-#define DPRC_CMDID_GET_API_VERSION              0xa051
+#define DPRC_CMDID_CLOSE                        DPRC_CMD(0x800)
+#define DPRC_CMDID_OPEN                         DPRC_CMD(0x805)
+#define DPRC_CMDID_CREATE                       DPRC_CMD(0x905)
+#define DPRC_CMDID_GET_API_VERSION              DPRC_CMD(0xa05)
 
-#define DPRC_CMDID_GET_ATTR                     0x0041
-#define DPRC_CMDID_RESET_CONT                   0x0051
+#define DPRC_CMDID_GET_ATTR                     DPRC_CMD(0x004)
+#define DPRC_CMDID_RESET_CONT                   DPRC_CMD(0x005)
 
-#define DPRC_CMDID_SET_IRQ                      0x0101
-#define DPRC_CMDID_GET_IRQ                      0x0111
-#define DPRC_CMDID_SET_IRQ_ENABLE               0x0121
-#define DPRC_CMDID_GET_IRQ_ENABLE               0x0131
-#define DPRC_CMDID_SET_IRQ_MASK                 0x0141
-#define DPRC_CMDID_GET_IRQ_MASK                 0x0151
-#define DPRC_CMDID_GET_IRQ_STATUS               0x0161
-#define DPRC_CMDID_CLEAR_IRQ_STATUS             0x0171
+#define DPRC_CMDID_SET_IRQ                      DPRC_CMD(0x010)
+#define DPRC_CMDID_GET_IRQ                      DPRC_CMD(0x011)
+#define DPRC_CMDID_SET_IRQ_ENABLE               DPRC_CMD(0x012)
+#define DPRC_CMDID_GET_IRQ_ENABLE               DPRC_CMD(0x013)
+#define DPRC_CMDID_SET_IRQ_MASK                 DPRC_CMD(0x014)
+#define DPRC_CMDID_GET_IRQ_MASK                 DPRC_CMD(0x015)
+#define DPRC_CMDID_GET_IRQ_STATUS               DPRC_CMD(0x016)
+#define DPRC_CMDID_CLEAR_IRQ_STATUS             DPRC_CMD(0x017)
 
-#define DPRC_CMDID_CREATE_CONT                  0x1511
-#define DPRC_CMDID_DESTROY_CONT                 0x1521
-#define DPRC_CMDID_GET_CONT_ID                  0x8301
-#define DPRC_CMDID_SET_RES_QUOTA                0x1551
-#define DPRC_CMDID_GET_RES_QUOTA                0x1561
-#define DPRC_CMDID_ASSIGN                       0x1571
-#define DPRC_CMDID_UNASSIGN                     0x1581
-#define DPRC_CMDID_GET_OBJ_COUNT                0x1591
-#define DPRC_CMDID_GET_OBJ                      0x15a1
-#define DPRC_CMDID_GET_RES_COUNT                0x15b1
-#define DPRC_CMDID_GET_RES_IDS                  0x15c1
-#define DPRC_CMDID_GET_OBJ_REG                  0x15e1
-#define DPRC_CMDID_SET_OBJ_IRQ                  0x15f1
-#define DPRC_CMDID_GET_OBJ_IRQ                  0x1601
-#define DPRC_CMDID_SET_OBJ_LABEL                0x1611
-#define DPRC_CMDID_GET_OBJ_DESC                 0x1621
+#define DPRC_CMDID_CREATE_CONT                  DPRC_CMD(0x151)
+#define DPRC_CMDID_DESTROY_CONT                 DPRC_CMD(0x152)
+#define DPRC_CMDID_GET_CONT_ID                  DPRC_CMD(0x830)
+#define DPRC_CMDID_SET_RES_QUOTA                DPRC_CMD(0x155)
+#define DPRC_CMDID_GET_RES_QUOTA                DPRC_CMD(0x156)
+#define DPRC_CMDID_ASSIGN                       DPRC_CMD(0x157)
+#define DPRC_CMDID_UNASSIGN                     DPRC_CMD(0x158)
+#define DPRC_CMDID_GET_OBJ_COUNT                DPRC_CMD(0x159)
+#define DPRC_CMDID_GET_OBJ                      DPRC_CMD(0x15A)
+#define DPRC_CMDID_GET_RES_COUNT                DPRC_CMD(0x15B)
+#define DPRC_CMDID_GET_RES_IDS                  DPRC_CMD(0x15C)
+#define DPRC_CMDID_GET_OBJ_REG                  DPRC_CMD(0x15E)
+#define DPRC_CMDID_SET_OBJ_IRQ                  DPRC_CMD(0x15F)
+#define DPRC_CMDID_GET_OBJ_IRQ                  DPRC_CMD(0x160)
+#define DPRC_CMDID_SET_OBJ_LABEL                DPRC_CMD(0x161)
+#define DPRC_CMDID_GET_OBJ_DESC                 DPRC_CMD(0x162)
 
-#define DPRC_CMDID_CONNECT                      0x1671
-#define DPRC_CMDID_DISCONNECT                   0x1681
-#define DPRC_CMDID_GET_POOL                     0x1691
-#define DPRC_CMDID_GET_POOL_COUNT               0x16a1
+#define DPRC_CMDID_CONNECT                      DPRC_CMD(0x167)
+#define DPRC_CMDID_DISCONNECT                   DPRC_CMD(0x168)
+#define DPRC_CMDID_GET_POOL                     DPRC_CMD(0x169)
+#define DPRC_CMDID_GET_POOL_COUNT               DPRC_CMD(0x16A)
 
-#define DPRC_CMDID_GET_CONNECTION               0x16c1
+#define DPRC_CMDID_GET_CONNECTION               DPRC_CMD(0x16C)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_CONTAINER_ID(cmd, container_id) \
-	MC_RSP_OP(cmd, 0, 0,  32,  int,	    container_id)
+/* Macros for accessing command fields smaller than 1byte */
+#define DPRC_MASK(field)        \
+	GENMASK(DPRC_##field##_SHIFT + DPRC_##field##_SIZE - 1, \
+		DPRC_##field##_SHIFT)
+#define dprc_set_field(var, field, val) \
+	((var) |= (((val) << DPRC_##field##_SHIFT) & DPRC_MASK(field)))
+#define dprc_get_field(var, field)      \
+	(((var) & DPRC_MASK(field)) >> DPRC_##field##_SHIFT)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_OPEN(cmd, container_id) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    container_id)
+#pragma pack(push, 1)
+struct dprc_cmd_open {
+	uint32_t container_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_CREATE_CONTAINER(cmd, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 32, 16, uint16_t, cfg->icid); \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, cfg->options); \
-	MC_CMD_OP(cmd, 1, 32, 32, int,	    cfg->portal_id); \
-	MC_CMD_OP(cmd, 2, 0,  8,  char,	    cfg->label[0]);\
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    cfg->label[1]);\
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    cfg->label[2]);\
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    cfg->label[3]);\
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    cfg->label[4]);\
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    cfg->label[5]);\
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    cfg->label[6]);\
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    cfg->label[7]);\
-	MC_CMD_OP(cmd, 3, 0,  8,  char,	    cfg->label[8]);\
-	MC_CMD_OP(cmd, 3, 8,  8,  char,	    cfg->label[9]);\
-	MC_CMD_OP(cmd, 3, 16, 8,  char,	    cfg->label[10]);\
-	MC_CMD_OP(cmd, 3, 24, 8,  char,	    cfg->label[11]);\
-	MC_CMD_OP(cmd, 3, 32, 8,  char,	    cfg->label[12]);\
-	MC_CMD_OP(cmd, 3, 40, 8,  char,	    cfg->label[13]);\
-	MC_CMD_OP(cmd, 3, 48, 8,  char,	    cfg->label[14]);\
-	MC_CMD_OP(cmd, 3, 56, 8,  char,	    cfg->label[15]);\
-} while (0)
+struct dprc_cmd_create_container {
+	uint32_t options;
+	uint16_t icid;
+	uint16_t pad0;
+	uint32_t pad1;
+	uint32_t portal_id;
+	uint8_t label[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_CREATE_CONTAINER(cmd, child_container_id, child_portal_offset)\
-do { \
-	MC_RSP_OP(cmd, 1, 0,  32, int,	   child_container_id); \
-	MC_RSP_OP(cmd, 2, 0,  64, uint64_t, child_portal_offset);\
-} while (0)
+struct dprc_rsp_create_container {
+	uint64_t pad0;
+	uint32_t child_container_id;
+	uint32_t pad1;
+	uint64_t child_portal_addr;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_DESTROY_CONTAINER(cmd, child_container_id) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    child_container_id)
+struct dprc_cmd_destroy_container {
+	uint32_t child_container_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_RESET_CONTAINER(cmd, child_container_id) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    child_container_id)
+struct dprc_cmd_reset_container {
+	uint32_t child_container_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_SET_IRQ(cmd, irq_index, irq_cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, irq_cfg->val); \
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr);\
-	MC_CMD_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-} while (0)
+struct dprc_cmd_set_irq {
+	uint32_t irq_val;
+	uint8_t irq_index;
+	uint8_t pad[3];
+	uint64_t irq_addr;
+	uint32_t irq_num;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_IRQ(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+struct dprc_cmd_get_irq {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_IRQ(cmd, type, irq_cfg) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, irq_cfg->val); \
-	MC_RSP_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr);\
-	MC_RSP_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-	MC_RSP_OP(cmd, 2, 32, 32, int,      type); \
-} while (0)
+struct dprc_rsp_get_irq {
+	uint32_t irq_val;
+	uint32_t pad;
+	uint64_t irq_addr;
+	uint32_t irq_num;
+	uint32_t type;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_SET_IRQ_ENABLE(cmd, irq_index, en) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8, uint8_t, en); \
-	MC_CMD_OP(cmd, 0, 32, 8, uint8_t, irq_index);\
-} while (0)
+struct dprc_cmd_set_irq_enable {
+	uint8_t enable;
+	uint8_t pad[3];
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_IRQ_ENABLE(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+struct dprc_cmd_get_irq_enable {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_IRQ_ENABLE(cmd, en) \
-	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,  en)
+struct dprc_rsp_get_irq_enable {
+	uint8_t enabled;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_SET_IRQ_MASK(cmd, irq_index, mask) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, mask); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dprc_cmd_set_irq_mask {
+	uint32_t mask;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_IRQ_MASK(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+struct dprc_cmd_get_irq_mask {
+	uint32_t pad;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_IRQ_MASK(cmd, mask) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, mask)
+struct dprc_rsp_get_irq_mask {
+	uint32_t mask;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dprc_cmd_get_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_IRQ_STATUS(cmd, status) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, status)
+struct dprc_rsp_get_irq_status {
+	uint32_t status;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_CLEAR_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+struct dprc_cmd_clear_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_ATTRIBUTES(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0,  0, 32, int,      (attr)->container_id); \
-	MC_RSP_OP(cmd, 0, 32, 16, uint16_t, (attr)->icid); \
-	MC_RSP_OP(cmd, 1,  0, 32, uint32_t, (attr)->options);\
-	MC_RSP_OP(cmd, 1, 32, 32, int,      (attr)->portal_id); \
-} while (0)
+struct dprc_rsp_get_attributes {
+	uint32_t container_id;
+	uint16_t icid;
+	uint16_t pad;
+	uint32_t options;
+	uint32_t portal_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_SET_RES_QUOTA(cmd, child_container_id, type, quota) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    child_container_id); \
-	MC_CMD_OP(cmd, 0, 32, 16, uint16_t, quota);\
-	MC_CMD_OP(cmd, 1, 0,  8,  char,	    type[0]);\
-	MC_CMD_OP(cmd, 1, 8,  8,  char,     type[1]);\
-	MC_CMD_OP(cmd, 1, 16, 8,  char,	    type[2]);\
-	MC_CMD_OP(cmd, 1, 24, 8,  char,	    type[3]);\
-	MC_CMD_OP(cmd, 1, 32, 8,  char,	    type[4]);\
-	MC_CMD_OP(cmd, 1, 40, 8,  char,     type[5]);\
-	MC_CMD_OP(cmd, 1, 48, 8,  char,	    type[6]);\
-	MC_CMD_OP(cmd, 1, 56, 8,  char,	    type[7]);\
-	MC_CMD_OP(cmd, 2, 0,  8,  char,     type[8]);\
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    type[9]);\
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    type[10]);\
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    type[11]);\
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    type[12]);\
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    type[13]);\
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    type[14]);\
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    type[15]);\
-} while (0)
+struct dprc_cmd_set_res_quota {
+	uint32_t child_container_id;
+	uint16_t quota;
+	uint16_t pad;
+	uint8_t type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_RES_QUOTA(cmd, child_container_id, type) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    child_container_id); \
-	MC_CMD_OP(cmd, 1, 0,  8,  char,	    type[0]);\
-	MC_CMD_OP(cmd, 1, 8,  8,  char,     type[1]);\
-	MC_CMD_OP(cmd, 1, 16, 8,  char,	    type[2]);\
-	MC_CMD_OP(cmd, 1, 24, 8,  char,	    type[3]);\
-	MC_CMD_OP(cmd, 1, 32, 8,  char,	    type[4]);\
-	MC_CMD_OP(cmd, 1, 40, 8,  char,     type[5]);\
-	MC_CMD_OP(cmd, 1, 48, 8,  char,	    type[6]);\
-	MC_CMD_OP(cmd, 1, 56, 8,  char,	    type[7]);\
-	MC_CMD_OP(cmd, 2, 0,  8,  char,     type[8]);\
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    type[9]);\
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    type[10]);\
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    type[11]);\
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    type[12]);\
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    type[13]);\
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    type[14]);\
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    type[15]);\
-} while (0)
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_RES_QUOTA(cmd, quota) \
-	MC_RSP_OP(cmd,	  0,	32,	16,	uint16_t, quota)
+struct dprc_cmd_get_res_quota {
+	uint32_t child_container_id;
+	uint32_t pad;
+	uint8_t type[16];
+};
 
-/*	param, offset, width,	type,		arg_name */
-#define DPRC_CMD_ASSIGN(cmd, container_id, res_req) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      container_id); \
-	MC_CMD_OP(cmd, 0, 32, 32, uint32_t, res_req->options);\
-	MC_CMD_OP(cmd, 1, 0,  32, uint32_t, res_req->num); \
-	MC_CMD_OP(cmd, 1, 32, 32, int,	    res_req->id_base_align); \
-	MC_CMD_OP(cmd, 2, 0,  8,  char,	    res_req->type[0]);\
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    res_req->type[1]);\
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    res_req->type[2]);\
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    res_req->type[3]);\
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    res_req->type[4]);\
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    res_req->type[5]);\
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    res_req->type[6]);\
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    res_req->type[7]);\
-	MC_CMD_OP(cmd, 3, 0,  8,  char,	    res_req->type[8]);\
-	MC_CMD_OP(cmd, 3, 8,  8,  char,	    res_req->type[9]);\
-	MC_CMD_OP(cmd, 3, 16, 8,  char,	    res_req->type[10]);\
-	MC_CMD_OP(cmd, 3, 24, 8,  char,	    res_req->type[11]);\
-	MC_CMD_OP(cmd, 3, 32, 8,  char,	    res_req->type[12]);\
-	MC_CMD_OP(cmd, 3, 40, 8,  char,	    res_req->type[13]);\
-	MC_CMD_OP(cmd, 3, 48, 8,  char,	    res_req->type[14]);\
-	MC_CMD_OP(cmd, 3, 56, 8,  char,	    res_req->type[15]);\
-} while (0)
+struct dprc_rsp_get_res_quota {
+	uint32_t pad;
+	uint16_t quota;
+};
 
-/*	param, offset, width,	type,		arg_name */
-#define DPRC_CMD_UNASSIGN(cmd, child_container_id, res_req) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      child_container_id); \
-	MC_CMD_OP(cmd, 0, 32, 32, uint32_t, res_req->options);\
-	MC_CMD_OP(cmd, 1, 0,  32, uint32_t, res_req->num); \
-	MC_CMD_OP(cmd, 1, 32, 32, int,	    res_req->id_base_align); \
-	MC_CMD_OP(cmd, 2, 0,  8,  char,	    res_req->type[0]);\
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    res_req->type[1]);\
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    res_req->type[2]);\
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    res_req->type[3]);\
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    res_req->type[4]);\
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    res_req->type[5]);\
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    res_req->type[6]);\
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    res_req->type[7]);\
-	MC_CMD_OP(cmd, 3, 0,  8,  char,	    res_req->type[8]);\
-	MC_CMD_OP(cmd, 3, 8,  8,  char,	    res_req->type[9]);\
-	MC_CMD_OP(cmd, 3, 16, 8,  char,	    res_req->type[10]);\
-	MC_CMD_OP(cmd, 3, 24, 8,  char,	    res_req->type[11]);\
-	MC_CMD_OP(cmd, 3, 32, 8,  char,	    res_req->type[12]);\
-	MC_CMD_OP(cmd, 3, 40, 8,  char,	    res_req->type[13]);\
-	MC_CMD_OP(cmd, 3, 48, 8,  char,	    res_req->type[14]);\
-	MC_CMD_OP(cmd, 3, 56, 8,  char,	    res_req->type[15]);\
-} while (0)
+struct dprc_cmd_assign {
+	uint32_t container_id;
+	uint32_t options;
+	uint32_t num;
+	uint32_t id_base_align;
+	uint8_t type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_POOL_COUNT(cmd, pool_count) \
-	MC_RSP_OP(cmd, 0, 0,  32, int,	    pool_count)
+struct dprc_cmd_unassign {
+	uint32_t child_container_id;
+	uint32_t options;
+	uint32_t num;
+	uint32_t id_base_align;
+	uint8_t type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_POOL(cmd, pool_index) \
-	MC_CMD_OP(cmd,	  0,	0,	32,	int,	pool_index)
+struct dprc_rsp_get_pool_count {
+	uint32_t pool_count;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_POOL(cmd, type) \
-do { \
-	MC_RSP_OP(cmd, 1, 0,  8,  char,     type[0]);\
-	MC_RSP_OP(cmd, 1, 8,  8,  char,	    type[1]);\
-	MC_RSP_OP(cmd, 1, 16, 8,  char,	    type[2]);\
-	MC_RSP_OP(cmd, 1, 24, 8,  char,	    type[3]);\
-	MC_RSP_OP(cmd, 1, 32, 8,  char,	    type[4]);\
-	MC_RSP_OP(cmd, 1, 40, 8,  char,	    type[5]);\
-	MC_RSP_OP(cmd, 1, 48, 8,  char,	    type[6]);\
-	MC_RSP_OP(cmd, 1, 56, 8,  char,	    type[7]);\
-	MC_RSP_OP(cmd, 2, 0,  8,  char,	    type[8]);\
-	MC_RSP_OP(cmd, 2, 8,  8,  char,	    type[9]);\
-	MC_RSP_OP(cmd, 2, 16, 8,  char,	    type[10]);\
-	MC_RSP_OP(cmd, 2, 24, 8,  char,	    type[11]);\
-	MC_RSP_OP(cmd, 2, 32, 8,  char,	    type[12]);\
-	MC_RSP_OP(cmd, 2, 40, 8,  char,	    type[13]);\
-	MC_RSP_OP(cmd, 2, 48, 8,  char,     type[14]);\
-	MC_RSP_OP(cmd, 2, 56, 8,  char,	    type[15]);\
-} while (0)
+struct dprc_cmd_get_pool {
+	uint32_t pool_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_OBJ_COUNT(cmd, obj_count) \
-	MC_RSP_OP(cmd, 0, 32, 32, int,      obj_count)
+struct dprc_rsp_get_pool {
+	uint64_t pad;
+	uint8_t type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_OBJ(cmd, obj_index) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    obj_index)
+struct dprc_rsp_get_obj_count {
+	uint32_t pad;
+	uint32_t obj_count;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_OBJ(cmd, obj_desc) \
-do { \
-	MC_RSP_OP(cmd, 0, 32, 32, int,	    obj_desc->id); \
-	MC_RSP_OP(cmd, 1, 0,  16, uint16_t, obj_desc->vendor); \
-	MC_RSP_OP(cmd, 1, 16, 8,  uint8_t,  obj_desc->irq_count); \
-	MC_RSP_OP(cmd, 1, 24, 8,  uint8_t,  obj_desc->region_count); \
-	MC_RSP_OP(cmd, 1, 32, 32, uint32_t, obj_desc->state);\
-	MC_RSP_OP(cmd, 2, 0,  16, uint16_t, obj_desc->ver_major);\
-	MC_RSP_OP(cmd, 2, 16, 16, uint16_t, obj_desc->ver_minor);\
-	MC_RSP_OP(cmd, 2, 32, 16, uint16_t, obj_desc->flags); \
-	MC_RSP_OP(cmd, 3, 0,  8,  char,	    obj_desc->type[0]);\
-	MC_RSP_OP(cmd, 3, 8,  8,  char,	    obj_desc->type[1]);\
-	MC_RSP_OP(cmd, 3, 16, 8,  char,	    obj_desc->type[2]);\
-	MC_RSP_OP(cmd, 3, 24, 8,  char,	    obj_desc->type[3]);\
-	MC_RSP_OP(cmd, 3, 32, 8,  char,	    obj_desc->type[4]);\
-	MC_RSP_OP(cmd, 3, 40, 8,  char,	    obj_desc->type[5]);\
-	MC_RSP_OP(cmd, 3, 48, 8,  char,	    obj_desc->type[6]);\
-	MC_RSP_OP(cmd, 3, 56, 8,  char,	    obj_desc->type[7]);\
-	MC_RSP_OP(cmd, 4, 0,  8,  char,	    obj_desc->type[8]);\
-	MC_RSP_OP(cmd, 4, 8,  8,  char,	    obj_desc->type[9]);\
-	MC_RSP_OP(cmd, 4, 16, 8,  char,	    obj_desc->type[10]);\
-	MC_RSP_OP(cmd, 4, 24, 8,  char,	    obj_desc->type[11]);\
-	MC_RSP_OP(cmd, 4, 32, 8,  char,	    obj_desc->type[12]);\
-	MC_RSP_OP(cmd, 4, 40, 8,  char,	    obj_desc->type[13]);\
-	MC_RSP_OP(cmd, 4, 48, 8,  char,	    obj_desc->type[14]);\
-	MC_RSP_OP(cmd, 4, 56, 8,  char,	    obj_desc->type[15]);\
-	MC_RSP_OP(cmd, 5, 0,  8,  char,	    obj_desc->label[0]);\
-	MC_RSP_OP(cmd, 5, 8,  8,  char,	    obj_desc->label[1]);\
-	MC_RSP_OP(cmd, 5, 16, 8,  char,	    obj_desc->label[2]);\
-	MC_RSP_OP(cmd, 5, 24, 8,  char,	    obj_desc->label[3]);\
-	MC_RSP_OP(cmd, 5, 32, 8,  char,	    obj_desc->label[4]);\
-	MC_RSP_OP(cmd, 5, 40, 8,  char,	    obj_desc->label[5]);\
-	MC_RSP_OP(cmd, 5, 48, 8,  char,	    obj_desc->label[6]);\
-	MC_RSP_OP(cmd, 5, 56, 8,  char,	    obj_desc->label[7]);\
-	MC_RSP_OP(cmd, 6, 0,  8,  char,	    obj_desc->label[8]);\
-	MC_RSP_OP(cmd, 6, 8,  8,  char,	    obj_desc->label[9]);\
-	MC_RSP_OP(cmd, 6, 16, 8,  char,	    obj_desc->label[10]);\
-	MC_RSP_OP(cmd, 6, 24, 8,  char,	    obj_desc->label[11]);\
-	MC_RSP_OP(cmd, 6, 32, 8,  char,	    obj_desc->label[12]);\
-	MC_RSP_OP(cmd, 6, 40, 8,  char,	    obj_desc->label[13]);\
-	MC_RSP_OP(cmd, 6, 48, 8,  char,	    obj_desc->label[14]);\
-	MC_RSP_OP(cmd, 6, 56, 8,  char,	    obj_desc->label[15]);\
-} while (0)
+struct dprc_cmd_get_obj {
+	uint32_t obj_index;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_OBJ_DESC(cmd, obj_type, obj_id) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    obj_id);\
-	MC_CMD_OP(cmd, 1, 0,  8,  char,     obj_type[0]);\
-	MC_CMD_OP(cmd, 1, 8,  8,  char,	    obj_type[1]);\
-	MC_CMD_OP(cmd, 1, 16, 8,  char,	    obj_type[2]);\
-	MC_CMD_OP(cmd, 1, 24, 8,  char,	    obj_type[3]);\
-	MC_CMD_OP(cmd, 1, 32, 8,  char,	    obj_type[4]);\
-	MC_CMD_OP(cmd, 1, 40, 8,  char,	    obj_type[5]);\
-	MC_CMD_OP(cmd, 1, 48, 8,  char,	    obj_type[6]);\
-	MC_CMD_OP(cmd, 1, 56, 8,  char,	    obj_type[7]);\
-	MC_CMD_OP(cmd, 2, 0,  8,  char,	    obj_type[8]);\
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    obj_type[9]);\
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    obj_type[10]);\
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    obj_type[11]);\
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    obj_type[12]);\
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    obj_type[13]);\
-	MC_CMD_OP(cmd, 2, 48, 8,  char,     obj_type[14]);\
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    obj_type[15]);\
-} while (0)
+struct dprc_rsp_get_obj {
+	uint32_t pad0;
+	uint32_t id;
+	uint16_t vendor;
+	uint8_t irq_count;
+	uint8_t region_count;
+	uint32_t state;
+	uint16_t version_major;
+	uint16_t version_minor;
+	uint16_t flags;
+	uint16_t pad1;
+	uint8_t type[16];
+	uint8_t label[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_OBJ_DESC(cmd, obj_desc) \
-do { \
-	MC_RSP_OP(cmd, 0, 32, 32, int,	    obj_desc->id); \
-	MC_RSP_OP(cmd, 1, 0,  16, uint16_t, obj_desc->vendor); \
-	MC_RSP_OP(cmd, 1, 16, 8,  uint8_t,  obj_desc->irq_count); \
-	MC_RSP_OP(cmd, 1, 24, 8,  uint8_t,  obj_desc->region_count); \
-	MC_RSP_OP(cmd, 1, 32, 32, uint32_t, obj_desc->state);\
-	MC_RSP_OP(cmd, 2, 0,  16, uint16_t, obj_desc->ver_major);\
-	MC_RSP_OP(cmd, 2, 16, 16, uint16_t, obj_desc->ver_minor);\
-	MC_RSP_OP(cmd, 2, 32, 16, uint16_t, obj_desc->flags); \
-	MC_RSP_OP(cmd, 3, 0,  8,  char,	    obj_desc->type[0]);\
-	MC_RSP_OP(cmd, 3, 8,  8,  char,	    obj_desc->type[1]);\
-	MC_RSP_OP(cmd, 3, 16, 8,  char,	    obj_desc->type[2]);\
-	MC_RSP_OP(cmd, 3, 24, 8,  char,	    obj_desc->type[3]);\
-	MC_RSP_OP(cmd, 3, 32, 8,  char,	    obj_desc->type[4]);\
-	MC_RSP_OP(cmd, 3, 40, 8,  char,	    obj_desc->type[5]);\
-	MC_RSP_OP(cmd, 3, 48, 8,  char,	    obj_desc->type[6]);\
-	MC_RSP_OP(cmd, 3, 56, 8,  char,	    obj_desc->type[7]);\
-	MC_RSP_OP(cmd, 4, 0,  8,  char,	    obj_desc->type[8]);\
-	MC_RSP_OP(cmd, 4, 8,  8,  char,	    obj_desc->type[9]);\
-	MC_RSP_OP(cmd, 4, 16, 8,  char,	    obj_desc->type[10]);\
-	MC_RSP_OP(cmd, 4, 24, 8,  char,	    obj_desc->type[11]);\
-	MC_RSP_OP(cmd, 4, 32, 8,  char,	    obj_desc->type[12]);\
-	MC_RSP_OP(cmd, 4, 40, 8,  char,	    obj_desc->type[13]);\
-	MC_RSP_OP(cmd, 4, 48, 8,  char,	    obj_desc->type[14]);\
-	MC_RSP_OP(cmd, 4, 56, 8,  char,	    obj_desc->type[15]);\
-	MC_RSP_OP(cmd, 5, 0,  8,  char,	    obj_desc->label[0]);\
-	MC_RSP_OP(cmd, 5, 8,  8,  char,	    obj_desc->label[1]);\
-	MC_RSP_OP(cmd, 5, 16, 8,  char,	    obj_desc->label[2]);\
-	MC_RSP_OP(cmd, 5, 24, 8,  char,	    obj_desc->label[3]);\
-	MC_RSP_OP(cmd, 5, 32, 8,  char,	    obj_desc->label[4]);\
-	MC_RSP_OP(cmd, 5, 40, 8,  char,	    obj_desc->label[5]);\
-	MC_RSP_OP(cmd, 5, 48, 8,  char,	    obj_desc->label[6]);\
-	MC_RSP_OP(cmd, 5, 56, 8,  char,	    obj_desc->label[7]);\
-	MC_RSP_OP(cmd, 6, 0,  8,  char,	    obj_desc->label[8]);\
-	MC_RSP_OP(cmd, 6, 8,  8,  char,	    obj_desc->label[9]);\
-	MC_RSP_OP(cmd, 6, 16, 8,  char,	    obj_desc->label[10]);\
-	MC_RSP_OP(cmd, 6, 24, 8,  char,	    obj_desc->label[11]);\
-	MC_RSP_OP(cmd, 6, 32, 8,  char,	    obj_desc->label[12]);\
-	MC_RSP_OP(cmd, 6, 40, 8,  char,	    obj_desc->label[13]);\
-	MC_RSP_OP(cmd, 6, 48, 8,  char,	    obj_desc->label[14]);\
-	MC_RSP_OP(cmd, 6, 56, 8,  char,	    obj_desc->label[15]);\
-} while (0)
+struct dprc_cmd_get_obj_desc {
+	uint32_t obj_id;
+	uint32_t pad;
+	uint8_t type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_RES_COUNT(cmd, type) \
-do { \
-	MC_CMD_OP(cmd, 1, 0,  8,  char,	    type[0]);\
-	MC_CMD_OP(cmd, 1, 8,  8,  char,	    type[1]);\
-	MC_CMD_OP(cmd, 1, 16, 8,  char,	    type[2]);\
-	MC_CMD_OP(cmd, 1, 24, 8,  char,	    type[3]);\
-	MC_CMD_OP(cmd, 1, 32, 8,  char,	    type[4]);\
-	MC_CMD_OP(cmd, 1, 40, 8,  char,	    type[5]);\
-	MC_CMD_OP(cmd, 1, 48, 8,  char,	    type[6]);\
-	MC_CMD_OP(cmd, 1, 56, 8,  char,	    type[7]);\
-	MC_CMD_OP(cmd, 2, 0,  8,  char,	    type[8]);\
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    type[9]);\
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    type[10]);\
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    type[11]);\
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    type[12]);\
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    type[13]);\
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    type[14]);\
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    type[15]);\
-} while (0)
+struct dprc_rsp_get_obj_desc {
+	uint32_t pad0;
+	uint32_t id;
+	uint16_t vendor;
+	uint8_t irq_count;
+	uint8_t region_count;
+	uint32_t state;
+	uint16_t version_major;
+	uint16_t version_minor;
+	uint16_t flags;
+	uint16_t pad1;
+	uint8_t type[16];
+	uint8_t label[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_RES_COUNT(cmd, res_count) \
-	MC_RSP_OP(cmd, 0, 0,  32, int,	    res_count)
+struct dprc_cmd_get_res_count {
+	uint64_t pad;
+	uint8_t type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_RES_IDS(cmd, range_desc, type) \
-do { \
-	MC_CMD_OP(cmd, 0, 42, 7,  enum dprc_iter_status, \
-					    range_desc->iter_status); \
-	MC_CMD_OP(cmd, 1, 0,  32, int,	    range_desc->base_id); \
-	MC_CMD_OP(cmd, 1, 32, 32, int,	    range_desc->last_id);\
-	MC_CMD_OP(cmd, 2, 0,  8,  char,	    type[0]);\
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    type[1]);\
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    type[2]);\
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    type[3]);\
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    type[4]);\
-	MC_CMD_OP(cmd, 2, 40, 8,  char,     type[5]);\
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    type[6]);\
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    type[7]);\
-	MC_CMD_OP(cmd, 3, 0,  8,  char,	    type[8]);\
-	MC_CMD_OP(cmd, 3, 8,  8,  char,	    type[9]);\
-	MC_CMD_OP(cmd, 3, 16, 8,  char,	    type[10]);\
-	MC_CMD_OP(cmd, 3, 24, 8,  char,	    type[11]);\
-	MC_CMD_OP(cmd, 3, 32, 8,  char,	    type[12]);\
-	MC_CMD_OP(cmd, 3, 40, 8,  char,	    type[13]);\
-	MC_CMD_OP(cmd, 3, 48, 8,  char,	    type[14]);\
-	MC_CMD_OP(cmd, 3, 56, 8,  char,	    type[15]);\
-} while (0)
+struct dprc_rsp_get_res_count {
+	uint32_t res_count;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_RES_IDS(cmd, range_desc) \
-do { \
-	MC_RSP_OP(cmd, 0, 42, 7,  enum dprc_iter_status, \
-					    range_desc->iter_status);\
-	MC_RSP_OP(cmd, 1, 0,  32, int,	    range_desc->base_id); \
-	MC_RSP_OP(cmd, 1, 32, 32, int,	    range_desc->last_id);\
-} while (0)
+#define DPRC_ITER_STATUS_LO_SHIFT	2
+#define DPRC_ITER_STATUS_LO_SIZE	6
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_OBJ_REGION(cmd, obj_type, obj_id, region_index) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    obj_id); \
-	MC_CMD_OP(cmd, 0, 48, 8,  uint8_t,  region_index);\
-	MC_CMD_OP(cmd, 3, 0,  8,  char,	    obj_type[0]);\
-	MC_CMD_OP(cmd, 3, 8,  8,  char,	    obj_type[1]);\
-	MC_CMD_OP(cmd, 3, 16, 8,  char,	    obj_type[2]);\
-	MC_CMD_OP(cmd, 3, 24, 8,  char,	    obj_type[3]);\
-	MC_CMD_OP(cmd, 3, 32, 8,  char,	    obj_type[4]);\
-	MC_CMD_OP(cmd, 3, 40, 8,  char,	    obj_type[5]);\
-	MC_CMD_OP(cmd, 3, 48, 8,  char,	    obj_type[6]);\
-	MC_CMD_OP(cmd, 3, 56, 8,  char,	    obj_type[7]);\
-	MC_CMD_OP(cmd, 4, 0,  8,  char,	    obj_type[8]);\
-	MC_CMD_OP(cmd, 4, 8,  8,  char,	    obj_type[9]);\
-	MC_CMD_OP(cmd, 4, 16, 8,  char,	    obj_type[10]);\
-	MC_CMD_OP(cmd, 4, 24, 8,  char,	    obj_type[11]);\
-	MC_CMD_OP(cmd, 4, 32, 8,  char,	    obj_type[12]);\
-	MC_CMD_OP(cmd, 4, 40, 8,  char,	    obj_type[13]);\
-	MC_CMD_OP(cmd, 4, 48, 8,  char,	    obj_type[14]);\
-	MC_CMD_OP(cmd, 4, 56, 8,  char,	    obj_type[15]);\
-} while (0)
+#define DPRC_ITER_STATUS_HI_SHIFT	0
+#define DPRC_ITER_STATUS_HI_SIZE	1
 
-/*	param, offset, width,	type,		arg_name */
-#define DPRC_RSP_GET_OBJ_REGION(cmd, region_desc) \
-do { \
-	MC_RSP_OP(cmd, 1, 0,  32, uint32_t, region_desc->base_offset);\
-	MC_RSP_OP(cmd, 2, 0,  32, uint32_t, region_desc->size); \
-	MC_RSP_OP(cmd, 2, 32, 4,  enum dprc_region_type, region_desc->type);\
-	MC_RSP_OP(cmd, 3, 0,  32, uint32_t, region_desc->flags);\
-} while (0)
+struct dprc_cmd_get_res_ids {
+	uint8_t pad0[5];
+	uint8_t iter_status_lo;
+	uint8_t iter_status_hi;
+	uint8_t pad1;
+	uint32_t base_id;
+	uint32_t last_id;
+	uint8_t type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_SET_OBJ_LABEL(cmd, obj_type, obj_id, label) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      obj_id); \
-	MC_CMD_OP(cmd, 1, 0,  8,  char,	    label[0]);\
-	MC_CMD_OP(cmd, 1, 8,  8,  char,	    label[1]);\
-	MC_CMD_OP(cmd, 1, 16, 8,  char,	    label[2]);\
-	MC_CMD_OP(cmd, 1, 24, 8,  char,	    label[3]);\
-	MC_CMD_OP(cmd, 1, 32, 8,  char,	    label[4]);\
-	MC_CMD_OP(cmd, 1, 40, 8,  char,	    label[5]);\
-	MC_CMD_OP(cmd, 1, 48, 8,  char,	    label[6]);\
-	MC_CMD_OP(cmd, 1, 56, 8,  char,	    label[7]);\
-	MC_CMD_OP(cmd, 2, 0,  8,  char,	    label[8]);\
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    label[9]);\
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    label[10]);\
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    label[11]);\
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    label[12]);\
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    label[13]);\
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    label[14]);\
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    label[15]);\
-	MC_CMD_OP(cmd, 3, 0,  8,  char,	    obj_type[0]);\
-	MC_CMD_OP(cmd, 3, 8,  8,  char,	    obj_type[1]);\
-	MC_CMD_OP(cmd, 3, 16, 8,  char,	    obj_type[2]);\
-	MC_CMD_OP(cmd, 3, 24, 8,  char,	    obj_type[3]);\
-	MC_CMD_OP(cmd, 3, 32, 8,  char,	    obj_type[4]);\
-	MC_CMD_OP(cmd, 3, 40, 8,  char,	    obj_type[5]);\
-	MC_CMD_OP(cmd, 3, 48, 8,  char,	    obj_type[6]);\
-	MC_CMD_OP(cmd, 3, 56, 8,  char,	    obj_type[7]);\
-	MC_CMD_OP(cmd, 4, 0,  8,  char,	    obj_type[8]);\
-	MC_CMD_OP(cmd, 4, 8,  8,  char,	    obj_type[9]);\
-	MC_CMD_OP(cmd, 4, 16, 8,  char,	    obj_type[10]);\
-	MC_CMD_OP(cmd, 4, 24, 8,  char,	    obj_type[11]);\
-	MC_CMD_OP(cmd, 4, 32, 8,  char,	    obj_type[12]);\
-	MC_CMD_OP(cmd, 4, 40, 8,  char,	    obj_type[13]);\
-	MC_CMD_OP(cmd, 4, 48, 8,  char,	    obj_type[14]);\
-	MC_CMD_OP(cmd, 4, 56, 8,  char,	    obj_type[15]);\
-} while (0)
+struct dprc_rsp_get_res_ids {
+	uint8_t pad0[5];
+	uint8_t iter_status_lo;
+	uint8_t iter_status_hi;
+	uint8_t pad1;
+	uint32_t base_id;
+	uint32_t last_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_SET_OBJ_IRQ(cmd, obj_type, obj_id, irq_index, irq_cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, irq_cfg->val); \
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr);\
-	MC_CMD_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-	MC_CMD_OP(cmd, 2, 32, 32, int,	    obj_id); \
-	MC_CMD_OP(cmd, 3, 0,  8,  char,	    obj_type[0]);\
-	MC_CMD_OP(cmd, 3, 8,  8,  char,	    obj_type[1]);\
-	MC_CMD_OP(cmd, 3, 16, 8,  char,	    obj_type[2]);\
-	MC_CMD_OP(cmd, 3, 24, 8,  char,	    obj_type[3]);\
-	MC_CMD_OP(cmd, 3, 32, 8,  char,	    obj_type[4]);\
-	MC_CMD_OP(cmd, 3, 40, 8,  char,	    obj_type[5]);\
-	MC_CMD_OP(cmd, 3, 48, 8,  char,	    obj_type[6]);\
-	MC_CMD_OP(cmd, 3, 56, 8,  char,	    obj_type[7]);\
-	MC_CMD_OP(cmd, 4, 0,  8,  char,	    obj_type[8]);\
-	MC_CMD_OP(cmd, 4, 8,  8,  char,	    obj_type[9]);\
-	MC_CMD_OP(cmd, 4, 16, 8,  char,	    obj_type[10]);\
-	MC_CMD_OP(cmd, 4, 24, 8,  char,	    obj_type[11]);\
-	MC_CMD_OP(cmd, 4, 32, 8,  char,	    obj_type[12]);\
-	MC_CMD_OP(cmd, 4, 40, 8,  char,	    obj_type[13]);\
-	MC_CMD_OP(cmd, 4, 48, 8,  char,	    obj_type[14]);\
-	MC_CMD_OP(cmd, 4, 56, 8,  char,	    obj_type[15]);\
-} while (0)
+struct dprc_cmd_get_obj_region {
+	uint32_t obj_id;
+	uint16_t pad0;
+	uint8_t region_index;
+	uint8_t pad1;
+	uint64_t pad2[2];
+	uint8_t obj_type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_OBJ_IRQ(cmd, obj_type, obj_id, irq_index) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    obj_id); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-	MC_CMD_OP(cmd, 1, 0,  8,  char,	    obj_type[0]);\
-	MC_CMD_OP(cmd, 1, 8,  8,  char,	    obj_type[1]);\
-	MC_CMD_OP(cmd, 1, 16, 8,  char,	    obj_type[2]);\
-	MC_CMD_OP(cmd, 1, 24, 8,  char,	    obj_type[3]);\
-	MC_CMD_OP(cmd, 1, 32, 8,  char,	    obj_type[4]);\
-	MC_CMD_OP(cmd, 1, 40, 8,  char,	    obj_type[5]);\
-	MC_CMD_OP(cmd, 1, 48, 8,  char,	    obj_type[6]);\
-	MC_CMD_OP(cmd, 1, 56, 8,  char,	    obj_type[7]);\
-	MC_CMD_OP(cmd, 2, 0,  8,  char,	    obj_type[8]);\
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    obj_type[9]);\
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    obj_type[10]);\
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    obj_type[11]);\
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    obj_type[12]);\
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    obj_type[13]);\
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    obj_type[14]);\
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    obj_type[15]);\
-} while (0)
+struct dprc_rsp_get_obj_region {
+	uint64_t pad;
+	uint64_t base_addr;
+	uint32_t size;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_OBJ_IRQ(cmd, type, irq_cfg) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, irq_cfg->val); \
-	MC_RSP_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr);\
-	MC_RSP_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-	MC_RSP_OP(cmd, 2, 32, 32, int,      type); \
-} while (0)
+struct dprc_cmd_set_obj_label {
+	uint32_t obj_id;
+	uint32_t pad;
+	uint8_t label[16];
+	uint8_t obj_type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_CONNECT(cmd, endpoint1, endpoint2, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      endpoint1->id); \
-	MC_CMD_OP(cmd, 0, 32, 16, uint16_t, endpoint1->if_id); \
-	MC_CMD_OP(cmd, 1, 0,  32, int,	    endpoint2->id); \
-	MC_CMD_OP(cmd, 1, 32, 16, uint16_t, endpoint2->if_id); \
-	MC_CMD_OP(cmd, 2, 0,  8,  char,     endpoint1->type[0]); \
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    endpoint1->type[1]); \
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    endpoint1->type[2]); \
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    endpoint1->type[3]); \
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    endpoint1->type[4]); \
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    endpoint1->type[5]); \
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    endpoint1->type[6]); \
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    endpoint1->type[7]); \
-	MC_CMD_OP(cmd, 3, 0,  8,  char,	    endpoint1->type[8]); \
-	MC_CMD_OP(cmd, 3, 8,  8,  char,	    endpoint1->type[9]); \
-	MC_CMD_OP(cmd, 3, 16, 8,  char,	    endpoint1->type[10]); \
-	MC_CMD_OP(cmd, 3, 24, 8,  char,	    endpoint1->type[11]); \
-	MC_CMD_OP(cmd, 3, 32, 8,  char,     endpoint1->type[12]); \
-	MC_CMD_OP(cmd, 3, 40, 8,  char,	    endpoint1->type[13]); \
-	MC_CMD_OP(cmd, 3, 48, 8,  char,	    endpoint1->type[14]); \
-	MC_CMD_OP(cmd, 3, 56, 8,  char,	    endpoint1->type[15]); \
-	MC_CMD_OP(cmd, 4, 0,  32, uint32_t, cfg->max_rate); \
-	MC_CMD_OP(cmd, 4, 32, 32, uint32_t, cfg->committed_rate); \
-	MC_CMD_OP(cmd, 5, 0,  8,  char,	    endpoint2->type[0]); \
-	MC_CMD_OP(cmd, 5, 8,  8,  char,	    endpoint2->type[1]); \
-	MC_CMD_OP(cmd, 5, 16, 8,  char,	    endpoint2->type[2]); \
-	MC_CMD_OP(cmd, 5, 24, 8,  char,	    endpoint2->type[3]); \
-	MC_CMD_OP(cmd, 5, 32, 8,  char,	    endpoint2->type[4]); \
-	MC_CMD_OP(cmd, 5, 40, 8,  char,	    endpoint2->type[5]); \
-	MC_CMD_OP(cmd, 5, 48, 8,  char,	    endpoint2->type[6]); \
-	MC_CMD_OP(cmd, 5, 56, 8,  char,	    endpoint2->type[7]); \
-	MC_CMD_OP(cmd, 6, 0,  8,  char,	    endpoint2->type[8]); \
-	MC_CMD_OP(cmd, 6, 8,  8,  char,	    endpoint2->type[9]); \
-	MC_CMD_OP(cmd, 6, 16, 8,  char,	    endpoint2->type[10]); \
-	MC_CMD_OP(cmd, 6, 24, 8,  char,	    endpoint2->type[11]); \
-	MC_CMD_OP(cmd, 6, 32, 8,  char,	    endpoint2->type[12]); \
-	MC_CMD_OP(cmd, 6, 40, 8,  char,	    endpoint2->type[13]); \
-	MC_CMD_OP(cmd, 6, 48, 8,  char,	    endpoint2->type[14]); \
-	MC_CMD_OP(cmd, 6, 56, 8,  char,	    endpoint2->type[15]); \
-} while (0)
+struct dprc_cmd_set_obj_irq {
+	uint32_t irq_val;
+	uint8_t irq_index;
+	uint8_t pad[3];
+	uint64_t irq_addr;
+	uint32_t irq_num;
+	uint32_t obj_id;
+	uint8_t obj_type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_DISCONNECT(cmd, endpoint) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,	    endpoint->id); \
-	MC_CMD_OP(cmd, 0, 32, 16, uint16_t, endpoint->if_id); \
-	MC_CMD_OP(cmd, 1, 0,  8,  char,	    endpoint->type[0]); \
-	MC_CMD_OP(cmd, 1, 8,  8,  char,	    endpoint->type[1]); \
-	MC_CMD_OP(cmd, 1, 16, 8,  char,	    endpoint->type[2]); \
-	MC_CMD_OP(cmd, 1, 24, 8,  char,	    endpoint->type[3]); \
-	MC_CMD_OP(cmd, 1, 32, 8,  char,	    endpoint->type[4]); \
-	MC_CMD_OP(cmd, 1, 40, 8,  char,	    endpoint->type[5]); \
-	MC_CMD_OP(cmd, 1, 48, 8,  char,	    endpoint->type[6]); \
-	MC_CMD_OP(cmd, 1, 56, 8,  char,	    endpoint->type[7]); \
-	MC_CMD_OP(cmd, 2, 0,  8,  char,	    endpoint->type[8]); \
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    endpoint->type[9]); \
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    endpoint->type[10]); \
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    endpoint->type[11]); \
-	MC_CMD_OP(cmd, 2, 32, 8,  char,	    endpoint->type[12]); \
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    endpoint->type[13]); \
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    endpoint->type[14]); \
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    endpoint->type[15]); \
-} while (0)
+struct dprc_cmd_get_obj_irq {
+	uint32_t obj_id;
+	uint8_t irq_index;
+	uint8_t pad[3];
+	uint8_t obj_type[16];
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_CMD_GET_CONNECTION(cmd, endpoint1) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      endpoint1->id); \
-	MC_CMD_OP(cmd, 0, 32, 16, uint16_t, endpoint1->if_id); \
-	MC_CMD_OP(cmd, 1, 0,  8,  char,     endpoint1->type[0]); \
-	MC_CMD_OP(cmd, 1, 8,  8,  char,	    endpoint1->type[1]); \
-	MC_CMD_OP(cmd, 1, 16, 8,  char,	    endpoint1->type[2]); \
-	MC_CMD_OP(cmd, 1, 24, 8,  char,	    endpoint1->type[3]); \
-	MC_CMD_OP(cmd, 1, 32, 8,  char,	    endpoint1->type[4]); \
-	MC_CMD_OP(cmd, 1, 40, 8,  char,	    endpoint1->type[5]); \
-	MC_CMD_OP(cmd, 1, 48, 8,  char,	    endpoint1->type[6]); \
-	MC_CMD_OP(cmd, 1, 56, 8,  char,	    endpoint1->type[7]); \
-	MC_CMD_OP(cmd, 2, 0,  8,  char,	    endpoint1->type[8]); \
-	MC_CMD_OP(cmd, 2, 8,  8,  char,	    endpoint1->type[9]); \
-	MC_CMD_OP(cmd, 2, 16, 8,  char,	    endpoint1->type[10]); \
-	MC_CMD_OP(cmd, 2, 24, 8,  char,	    endpoint1->type[11]); \
-	MC_CMD_OP(cmd, 2, 32, 8,  char,     endpoint1->type[12]); \
-	MC_CMD_OP(cmd, 2, 40, 8,  char,	    endpoint1->type[13]); \
-	MC_CMD_OP(cmd, 2, 48, 8,  char,	    endpoint1->type[14]); \
-	MC_CMD_OP(cmd, 2, 56, 8,  char,	    endpoint1->type[15]); \
-} while (0)
+struct dprc_rsp_get_obj_irq {
+	uint32_t irq_val;
+	uint32_t pad;
+	uint64_t irq_addr;
+	uint32_t irq_num;
+	uint32_t type;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPRC_RSP_GET_CONNECTION(cmd, endpoint2, state) \
-do { \
-	MC_RSP_OP(cmd, 3, 0,  32, int,	    endpoint2->id); \
-	MC_RSP_OP(cmd, 3, 32, 16, uint16_t, endpoint2->if_id); \
-	MC_RSP_OP(cmd, 4, 0,  8,  char,	    endpoint2->type[0]); \
-	MC_RSP_OP(cmd, 4, 8,  8,  char,	    endpoint2->type[1]); \
-	MC_RSP_OP(cmd, 4, 16, 8,  char,	    endpoint2->type[2]); \
-	MC_RSP_OP(cmd, 4, 24, 8,  char,	    endpoint2->type[3]); \
-	MC_RSP_OP(cmd, 4, 32, 8,  char,	    endpoint2->type[4]); \
-	MC_RSP_OP(cmd, 4, 40, 8,  char,	    endpoint2->type[5]); \
-	MC_RSP_OP(cmd, 4, 48, 8,  char,	    endpoint2->type[6]); \
-	MC_RSP_OP(cmd, 4, 56, 8,  char,	    endpoint2->type[7]); \
-	MC_RSP_OP(cmd, 5, 0,  8,  char,	    endpoint2->type[8]); \
-	MC_RSP_OP(cmd, 5, 8,  8,  char,	    endpoint2->type[9]); \
-	MC_RSP_OP(cmd, 5, 16, 8,  char,	    endpoint2->type[10]); \
-	MC_RSP_OP(cmd, 5, 24, 8,  char,	    endpoint2->type[11]); \
-	MC_RSP_OP(cmd, 5, 32, 8,  char,	    endpoint2->type[12]); \
-	MC_RSP_OP(cmd, 5, 40, 8,  char,	    endpoint2->type[13]); \
-	MC_RSP_OP(cmd, 5, 48, 8,  char,	    endpoint2->type[14]); \
-	MC_RSP_OP(cmd, 5, 56, 8,  char,	    endpoint2->type[15]); \
-	MC_RSP_OP(cmd, 6, 0,  32, int,	    state); \
-} while (0)
+struct dprc_cmd_connect {
+	uint32_t ep1_id;
+	uint16_t ep1_interface_id;
+	uint16_t pad0;
 
-/*                cmd, param, offset, width, type,      arg_name */
-#define DPRC_RSP_GET_API_VERSION(cmd, major, minor) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
-} while (0)
+	uint32_t ep2_id;
+	uint16_t ep2_interface_id;
+	uint16_t pad1;
 
+	uint8_t ep1_type[16];
+
+	uint32_t max_rate;
+	uint32_t committed_rate;
+
+	uint8_t ep2_type[16];
+};
+
+struct dprc_cmd_disconnect {
+	uint32_t id;
+	uint32_t interface_id;
+	uint8_t type[16];
+};
+
+struct dprc_cmd_get_connection {
+	uint32_t ep1_id;
+	uint16_t ep1_interface_id;
+	uint16_t pad;
+
+	uint8_t ep1_type[16];
+};
+
+struct dprc_rsp_get_connection {
+	uint64_t pad[3];
+	uint32_t ep2_id;
+	uint16_t ep2_interface_id;
+	uint16_t pad1;
+	uint8_t ep2_type[16];
+	uint32_t state;
+};
+
+struct dprc_rsp_get_api_version {
+	uint16_t major;
+	uint16_t minor;
+};
+#pragma pack(pop)
 #endif /* _FSL_DPRC_CMD_H */
