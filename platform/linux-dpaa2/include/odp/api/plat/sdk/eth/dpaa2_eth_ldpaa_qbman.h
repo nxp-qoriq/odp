@@ -51,6 +51,7 @@ struct eqcr_entry {
         uint8_t         wae;      /*!< Bits 7-1:Reserved; Bit 0:Write Allocate Enable*/
         uint8_t         rspid;    /*!< Response ID; Used only if VERB bits 1-0=1*/
         uint64_t        rsp_addr; /*!< Response Address.Used if VERB bits 1-0=1*/
+	uint8_t		res[32];
 } __attribute__((packed));
 #endif
 

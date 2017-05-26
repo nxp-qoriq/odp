@@ -3,8 +3,8 @@ echo "Update submodules"
 git submodule update --init
 cd platform/linux-dpaa2/flib/qbman/.
 git am ../workaround_patches/0001-Removing-Compilation-error.patch
-git am ../workaround_patches/0001-Patch-to-enable-batch-buffers-send-in-TX-path.patch
-git am ../workaround_patches/0001-Enhancing-qbman_swp_send_multiple-API-for-multiple-D.patch
+git am ../workaround_patches/0001-bugfix-in-qbman_swp_enqueue_multiple-API-for-multipl.patch
+git am ../workaround_patches/0002-Enhancing-qbman_swp_enqueue_multiple-for-multi-DCAs.patch
 cd -
 
 set -x

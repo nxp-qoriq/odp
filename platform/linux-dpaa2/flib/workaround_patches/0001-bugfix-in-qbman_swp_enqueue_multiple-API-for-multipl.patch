@@ -1,0 +1,28 @@
+From 53de390e1a6f41ad64ebab133ea0465fb1143603 Mon Sep 17 00:00:00 2001
+From: Sunil Kumar Kori <Sunil.Kori@nxp.com>
+Date: Fri, 26 May 2017 17:28:19 +0530
+Subject: [PATCH 1/2] bugfix in qbman_swp_enqueue_multiple API for multiple
+ packets
+
+Signed-off-by: Sunil Kumar Kori <Sunil.Kori@nxp.com>
+ODP-988
+---
+ driver/qbman_portal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/driver/qbman_portal.c b/driver/qbman_portal.c
+index aa7819b..b18c59a 100644
+--- a/driver/qbman_portal.c
++++ b/driver/qbman_portal.c
+@@ -561,7 +561,7 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
+ 	addr_cena = (uint64_t)s->sys.addr_cena;
+ 	for (i = 0; i < num_enqueued; i++) {
+ 		dcbf((uint64_t *)(addr_cena +
+-				QBMAN_CENA_SWP_EQCR(s->eqcr.pi & 7)));
++				QBMAN_CENA_SWP_EQCR(eqcr_pi & 7)));
+ 		eqcr_pi++;
+ 		eqcr_pi &= 0xF;
+ 	}
+-- 
+1.9.1
+

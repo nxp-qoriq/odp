@@ -755,7 +755,8 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 {
 	/* Function to transmit the frames to given device and VQ*/
 	#define RETRY_COUNT 10000
-	uint32_t loop = 0, ret, retry_count = RETRY_COUNT, num_pkts = 0, i = 0, index = 0;
+	uint32_t loop = 0, num_pkts = 0, i = 0, index = 0, retry_count;
+	int32_t ret;
 	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
 	uint32_t frames_to_send;
 	struct qbman_eq_desc eqdesc[MAX_TX_RING_SLOTS] = {{{0}}};
@@ -774,6 +775,7 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 		if (qbman_result_SCN_state(result + eth_tx_vq->tc_index))
 			goto skip_tx;
 
+		retry_count = RETRY_COUNT;
 		frames_to_send = (num >> 3) ? MAX_TX_RING_SLOTS : num;
 		/*Prepare each packet which is to be sent*/
 		for (loop = 0; loop < frames_to_send; loop++) {
@@ -797,8 +799,9 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 				qbman_eq_desc_set_dca(&eqdesc[loop], 1, GET_HOLD_DQRR_IDX(index), 0);
 				MARK_HOLD_DQRR_PTR_INVALID(index);
 			} else if (mbuf[loop + num_pkts]->opr.orpid != INVALID_ORPID) {
-				qbman_eq_desc_set_orp(&eqdesc[loop], 0, mbuf[loop + num_pkts]->opr.orpid,
-							mbuf[loop + num_pkts]->opr.seqnum, 0);
+				qbman_eq_desc_set_orp(&eqdesc[loop], 0,
+						      mbuf[loop + num_pkts]->opr.orpid,
+						      mbuf[loop + num_pkts]->opr.seqnum, 0);
 			}
 
 			/*Check whether mbuf has multiple segments or not.
@@ -812,8 +815,9 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 		loop = 0;
 
 		while (retry_count && (loop < frames_to_send)) {
-			ret = qbman_swp_send_multiple(swp, &eqdesc[loop],
-					&fd_arr[loop], frames_to_send - loop);
+			ret = qbman_swp_enqueue_multiple(swp, &eqdesc[loop],
+							 &fd_arr[loop],
+							 frames_to_send - loop);
 			if (!ret)
 				retry_count--;
 			loop += ret;
@@ -825,7 +829,7 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 			i++;
 		}
 		i = num_pkts;
-		num -= frames_to_send;
+		num -= num_pkts;
 	}
 
 skip_tx:
