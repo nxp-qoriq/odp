@@ -773,7 +773,7 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 
 	/*Clear the unused FD fields before sending*/
 	while (num) {
-		if (qbman_result_SCN_state_in_mem(result + eqcr->qpri))
+		if (qbman_result_SCN_state(result + eqcr->qpri))
 			goto skip_tx;
 
 		frames_to_send = (num >> 3) ? MAX_TX_RING_SLOTS : num;
