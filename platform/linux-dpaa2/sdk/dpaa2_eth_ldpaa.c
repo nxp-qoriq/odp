@@ -228,7 +228,12 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 	}
 	q_config = &(eth_priv->q_config);
 	q_config->num_tcs = attr.num_tcs;
-	dev->num_tx_vqueues = attr.num_tcs;
+	/* dev->num_tx_vqueues = attr.num_tcs; */
+	/**
+	TODO:Using hard coded value for number of TX queues due to dependency
+	on MC. Once fix will will available in MC, Change needs to be reverted
+	*/
+	dev->num_tx_vqueues = 8;
 
 	dev->num_rx_vqueues = 0;
 
