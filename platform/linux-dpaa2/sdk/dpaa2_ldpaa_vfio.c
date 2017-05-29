@@ -211,9 +211,9 @@ static int32_t setup_dmamap(void)
 
 	int i;
 	const struct dpaa2_memseg *memseg;
-	char *temp;
+	char *temp = NULL;
 	FILE *file;
-	size_t len;
+	size_t len = 0;
 
 	for (i = 0; i < DPAA2_MAX_MEMSEG; i++) {
 		memseg = dpaa2_eal_get_physmem_layout();
@@ -247,23 +247,29 @@ static int32_t setup_dmamap(void)
 	file = fopen("/proc/version", "r");
 	if (!file) {
 		DPAA2_ERR(FW, "Failed to open /proc/version\n");
+		free(temp);
 		return DPAA2_FAILURE;
 	}
 
 	if (getline(&temp, &len, file) == -1) {
 		DPAA2_ERR(FW, "Failed to read from /proc/version\n");
-		return DPAA2_FAILURE;
+		goto err;
 	}
-	if ((strstr(temp, "Linux version 4.1.")) ||
-		(strstr(temp, "Linux version 4.4."))) {
+
+	if ((strstr(temp, "Linux version 4.1")) ||
+		(strstr(temp, "Linux version 4.4"))) {
 		ret = vfio_map_irq_region(group);
 		if (ret) {
 			DPAA2_ERR(FW, "Unable to map IRQ region\n");
-			return DPAA2_FAILURE;
+			goto err;
 		}
 	}
-
 	return DPAA2_SUCCESS;
+
+err:
+	free(temp);
+	fclose(file);
+	return DPAA2_FAILURE;
 }
 
 void destroy_dmamap(void)
