@@ -194,15 +194,14 @@ get_dpni_parameters() {
 			DPNI_ALLOC_PFDR_IN_PEB=""
 		fi
 		DPNI_OPTIONS=$DPNI_OPTIONS,$DPNI_ALLOC_PFDR_IN_PEB
-		if [[ -z "$board_type" ]]
+		if [[ -z "$BOARD_TYPE" ]]
 		then
-			unset board_type
 			if [ -e /sys/firmware/devicetree/base/compatible ]
 			then
-				board_type=`grep -o '1088\|2088\|2080\|2085\|2160' /sys/firmware/devicetree/base/compatible | head -1`
+				board_type=`grep -ao '1088\|2088\|2080\|2085\|2160' /sys/firmware/devicetree/base/compatible | head -1`
 			elif [ -e /sys/firmware/devicetree/base/model ]
 			then
-				board_type=`grep -o '1088\|2088\|2080\|2085\|2160' /sys/firmware/devicetree/base/model | head -1`
+				board_type=`grep -ao '1088\|2088\|2080\|2085\|2160' /sys/firmware/devicetree/base/model | head -1`
 			fi
 			if [ -z "$board_type" ]
 			then
@@ -210,6 +209,8 @@ get_dpni_parameters() {
 				echo "Please enter the board type! (Accepted board type keywords: 1088/2088/2085/2080/2160)"
 				read board_type
 			fi
+		else
+			board_type=$BOARD_TYPE
 		fi
 		if [[ $board_type == "1088" ]]
 		then
