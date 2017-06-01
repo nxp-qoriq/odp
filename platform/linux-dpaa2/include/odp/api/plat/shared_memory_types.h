@@ -22,6 +22,8 @@ extern "C" {
 #include <odp/api/plat/sdk/rts/dpaa2_memzone.h>
 #include <odp/api/plat/strong_types.h>
 
+#define MAP_HUGETLB	0x40000		/* create a huge page mapping */
+
 /** @addtogroup odp_shared_memory ODP SHARED MEMORY
  *  Operations on shared memory.
  *  @{
