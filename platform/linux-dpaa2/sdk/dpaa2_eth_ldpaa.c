@@ -759,9 +759,9 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 			const dpaa2_mbuf_pt mbuf[])
 {
 	/* Function to transmit the frames to given device and VQ*/
-	#define QBMAN_IDX_FROM_DQRR(p) (((unsigned long)p & 0x1ff) >> 6)
 	#define RETRY_COUNT 10000
-	uint32_t loop = 0, ret, retry_count = RETRY_COUNT, num_pkts = 0, i = 0, index = 0;
+	uint32_t loop = 0, num_pkts = 0, i = 0, index = 0, retry_count;
+	int32_t ret;
 	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
 	uint32_t frames_to_send;
 	struct qbman_eq_desc eqdesc[MAX_TX_RING_SLOTS] = {{{0}}};
@@ -769,7 +769,6 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 				(struct dpaa2_dev_priv *)dev->priv;
 	struct qbman_swp *swp;
 	struct dpaa2_vq *eth_tx_vq = (struct dpaa2_vq *)vq;
-	struct eqcr_entry *eqcr = (struct eqcr_entry *)&eqdesc[0];
 	struct qbman_result *result =
 				(struct qbman_result *)dev->notification_mem;
 
@@ -778,17 +777,20 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 
 	/*Clear the unused FD fields before sending*/
 	while (num) {
-		if (qbman_result_SCN_state_in_mem(result + eqcr->qpri))
+		if (qbman_result_SCN_state(result + eth_tx_vq->tc_index))
 			goto skip_tx;
 
+		retry_count = RETRY_COUNT;
 		frames_to_send = (num >> 3) ? MAX_TX_RING_SLOTS : num;
 		/*Prepare each packet which is to be sent*/
 		for (loop = 0; loop < frames_to_send; loop++) {
 			/*Prepare enqueue descriptor*/
-			eqcr->verb = QBMAN_RESP_IF_REJ_QUE_DEST;
-			eqcr->tgtid = dev_priv->qdid;
-			eqcr->qdbin = eth_tx_vq->flow_id;
-			eqcr->qpri = eth_tx_vq->tc_index;
+			qbman_eq_desc_clear(&eqdesc[loop]);
+			qbman_eq_desc_set_no_orp(&eqdesc[loop],
+						 DPAA2_EQ_RESP_ERR_FQ);
+			qbman_eq_desc_set_qd(&eqdesc[loop], dev_priv->qdid,
+					     eth_tx_vq->flow_id,
+					     eth_tx_vq->tc_index);
 			fd_arr[loop].simple.frc = 0;
 			DPAA2_RESET_FD_CTRL((&fd_arr[loop]));
 			DPAA2_SET_FD_FLC((&fd_arr[loop]), NULL);
@@ -799,12 +801,14 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 			*/
 			index = mbuf[loop + num_pkts]->index;
 			if (ANY_ATOMIC_CNTXT_TO_FREE(mbuf[loop + num_pkts])) {
-				eqcr->dca = ENABLE_DCA |	GET_HOLD_DQRR_IDX(index);
+				qbman_eq_desc_set_dca(&eqdesc[loop], true,
+						      GET_HOLD_DQRR_IDX(index),
+						      false);
 				MARK_HOLD_DQRR_PTR_INVALID(index);
-			} else if (mbuf[loop + num_pkts]->opr.orpid != INVALID_ORPID){
-				eqcr->orpid = mbuf[loop + num_pkts]->opr.orpid;
-				eqcr->seqnum = mbuf[loop + num_pkts]->opr.seqnum;
-				eqcr->verb |= (1 << EQCR_ENTRY_ORDER_RES_ENABLE);
+			} else if (mbuf[loop + num_pkts]->opr.orpid != INVALID_ORPID) {
+				qbman_eq_desc_set_orp(&eqdesc[loop], false,
+						      mbuf[loop + num_pkts]->opr.orpid,
+						      mbuf[loop + num_pkts]->opr.seqnum, false);
 			}
 
 			/*Check whether mbuf has multiple segments or not.
@@ -814,13 +818,13 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 				dpaa2_eth_mbuf_to_contig_fd(mbuf[loop + num_pkts], &fd_arr[loop]);
 			else
 				dpaa2_eth_mbuf_to_sg_fd(mbuf[loop + num_pkts], &fd_arr[loop]);
-			eqcr++;
 		}
 		loop = 0;
 
 		while (retry_count && (loop < frames_to_send)) {
-			ret = qbman_swp_send_multiple(swp, &eqdesc[loop],
-					&fd_arr[loop], frames_to_send - loop);
+			ret = qbman_swp_enqueue_multiple(swp, &eqdesc[loop],
+							 &fd_arr[loop],
+							 frames_to_send - loop);
 			if (!ret)
 				retry_count--;
 			loop += ret;
@@ -832,7 +836,7 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 			i++;
 		}
 		i = num_pkts;
-		num -= frames_to_send;
+		num -= num_pkts;
 	}
 
 skip_tx:

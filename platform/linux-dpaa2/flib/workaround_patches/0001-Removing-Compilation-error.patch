@@ -1,0 +1,25 @@
+From 61d4b9cd04b459a46024b8d72192ec28a3e800f7 Mon Sep 17 00:00:00 2001
+From: Sunil Kumar Kori <Sunil.Kori@nxp.com>
+Date: Fri, 26 May 2017 17:00:28 +0530
+Subject: [PATCH] Removing Compilation error
+
+Signed-off-by: Sunil Kumar Kori <Sunil.Kori@nxp.com>
+---
+ include/drivers/fsl_qbman_portal.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/drivers/fsl_qbman_portal.h b/include/drivers/fsl_qbman_portal.h
+index 3559da7..868afe4 100644
+--- a/include/drivers/fsl_qbman_portal.h
++++ b/include/drivers/fsl_qbman_portal.h
+@@ -26,6 +26,7 @@
+ #define _FSL_QBMAN_PORTAL_H
+ 
+ #include <drivers/fsl_qbman_base.h>
++#include <linux/types.h>
+ 
+ /**
+  * DOC - QBMan portal APIs to implement the following functions:
+-- 
+1.9.1
+
