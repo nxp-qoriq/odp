@@ -39,14 +39,6 @@ struct dpaa2_resources dpaa2_res;
 /* Global Lock for calling MC FLIB APIs */
 odpfsl_dq_schedule_mode_t dq_schedule_mode = ODPFSL_PUSH;
 
-#define MAX_CPU		8
-
-struct dpio_user {
-	void *dpio_dev;
-	int ref_count;
-};
-struct dpio_user control_dpio[ODPFSL_MAX_PLATFORM_CORE];
-
 /*TODO after testing signal handler.*/
 /*atomic32_t received_sigint = DPAA2_ATOMIC32_INIT(0);*/
 int received_sigint;
@@ -463,32 +455,12 @@ int odp_init_local(odp_instance_t instance ODP_UNUSED,
 		return -1;
 	}
 
-	if (thr_type == ODP_THREAD_CONTROL) {
-		/* if this cpu is already having a affined to a portal for this application,
-		better  to use the same portal for control threads.
-		Typically control threads, will not be conflicting or doing i/o accesses.*/
-
-		if (control_dpio[odp_cpu_id()].dpio_dev) {
-			thread_io_info.dpio_dev
-				= control_dpio[odp_cpu_id()].dpio_dev;
-			control_dpio[odp_cpu_id()].ref_count++;
-			goto skip_portal_affine;
-		}
-	}
-
 	ret = dpaa2_thread_affine_io_context(DPAA2_IO_PORTAL_ANY_FREE);
 	if (ret) {
 		ODP_ERR("dpaa2_thread_affine_io_context failed.\n");
 		return -1;
 	}
 
-	if (thr_type == ODP_THREAD_CONTROL) {
-		/* store the dpio_dev in the per cpu variable */
-		control_dpio[odp_cpu_id()].dpio_dev = thread_io_info.dpio_dev;
-		control_dpio[odp_cpu_id()].ref_count = 1;
-	}
-
-skip_portal_affine:
 	if (odp_pktio_init_local()) {
 		ODP_ERR("ODP pktio local init failed.\n");
 		return -1;
@@ -517,18 +489,8 @@ int odp_term_local(void)
 		rc = -1;
 	}
 
-	if (odp_thread_type() == ODP_THREAD_CONTROL) {
-		control_dpio[odp_cpu_id()].ref_count--;
-		thread_io_info.dpio_dev = NULL;
-		if (control_dpio[odp_cpu_id()].ref_count)
-			goto skip_portal_deaffine;
-
-		control_dpio[odp_cpu_id()].dpio_dev = NULL;
-	}
-
 	dpaa2_thread_deaffine_io_context();
 
-skip_portal_deaffine:
 	rc_thd = odp_thread_term_local();
 	if (rc_thd < 0) {
 		ODP_ERR("ODP thread local term failed.\n");
