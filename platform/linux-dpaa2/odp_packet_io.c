@@ -66,6 +66,21 @@ static void unlock_entry(pktio_entry_t *entry)
 	odp_spinlock_unlock(&entry->s.lock);
 }
 
+static int is_free(pktio_entry_t *entry)
+{
+	return (entry->s.taken == 0);
+}
+
+static void set_free(pktio_entry_t *entry)
+{
+	entry->s.taken = 0;
+}
+
+static void set_taken(pktio_entry_t *entry)
+{
+	entry->s.taken = 1;
+}
+
 int odp_pktio_init_global(void)
 {
 	pktio_entry_t *pktio_entry;
@@ -116,9 +131,9 @@ int odp_pktio_term_global(void)
 	for (id = 1; id <= ODP_CONFIG_PKTIO_ENTRIES; ++id) {
 
 		pktio_entry = &pktio_tbl->entries[id - 1];
-		pktio = (odp_pktio_t) (uintptr_t) id;
-		ndev = pktio_entry->s.pkt_dpaa2.dev;
-		if (ndev) {
+		if (!is_free(pktio_entry)) {
+			pktio = (odp_pktio_t)(uintptr_t)id;
+			ndev = pktio_entry->s.pkt_dpaa2.dev;
 			odp_queue_t queue;
 			odp_pktout_mode_t outmode;
 			odp_pktin_mode_t inmode;
@@ -172,21 +187,6 @@ int odp_pktio_term_global(void)
 int odp_pktio_init_local(void)
 {
 	return 0;
-}
-
-static int is_free(pktio_entry_t *entry)
-{
-	return (entry->s.taken == 0);
-}
-
-static void set_free(pktio_entry_t *entry)
-{
-	entry->s.taken = 0;
-}
-
-static void set_taken(pktio_entry_t *entry)
-{
-	entry->s.taken = 1;
 }
 
 static void lock_entry_classifier(pktio_entry_t *entry)
