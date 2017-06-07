@@ -183,17 +183,17 @@ get_dpni_parameters() {
 	fi
 	if [[ -z "$DPNI_OPTIONS" ]]
 	then
-		DPNI_OPTIONS="DPNI_OPT_HAS_OPR"
+		dpni_options="DPNI_OPT_HAS_OPR"
 		if [[ $OPR_ENABLE == "0" ]]
 		then
-			DPNI_OPTIONS=""
+			dpni_options=""
 		fi
 		DPNI_ALLOC_PFDR_IN_PEB="0x80000000"
 		if [[ $PFDR_IN_DDR_ENABLE == "1" ]]
 		then
 			DPNI_ALLOC_PFDR_IN_PEB=""
 		fi
-		DPNI_OPTIONS=$DPNI_OPTIONS,$DPNI_ALLOC_PFDR_IN_PEB
+		dpni_options=$dpni_options,$DPNI_ALLOC_PFDR_IN_PEB
 		if [[ -z "$BOARD_TYPE" ]]
 		then
 			if [ -e /sys/firmware/devicetree/base/compatible ]
@@ -214,14 +214,16 @@ get_dpni_parameters() {
 		fi
 		if [[ $board_type == "1088" ]]
 		then
-			DPNI_OPTIONS=$DPNI_OPTIONS
+			dpni_options=$dpni_options
 		elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" || $board_type == "2160" ]]
 		then
-			DPNI_OPTIONS="$DPNI_OPTIONS,DPNI_OPT_HAS_KEY_MASKING"
+			dpni_options="$dpni_options,DPNI_OPT_HAS_KEY_MASKING"
 		else
 			echo "Invalid board type: $board_type"
 			return 1;
 		fi
+	else
+		dpni_options=$DPNI_OPTIONS
 	fi
 	if [[ -z "$MAX_DIST_KEY_SIZE" ]]
 	then
@@ -235,7 +237,7 @@ get_dpni_parameters() {
 	echo  "DPNI parameters :-->" >> dynamic_dpl_logs
 	echo -e "\tMAX_QUEUES = "$MAX_QUEUES >> dynamic_dpl_logs
 	echo -e "\tMAX_TCS = "$MAX_TCS >> dynamic_dpl_logs
-	echo -e "\tDPNI_OPTIONS = "$DPNI_OPTIONS >> dynamic_dpl_logs
+	echo -e "\tDPNI_OPTIONS = "$dpni_options >> dynamic_dpl_logs
 	echo >> dynamic_dpl_logs
 	echo >> dynamic_dpl_logs
 
@@ -473,7 +475,7 @@ then
 			else
 				ACTUAL_MAC="00:00:00:00:02:"$num
 			fi
-			OBJ=$(restool -s dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES --fs-entries=$FS_ENTRIES --container=$DPRC)
+			OBJ=$(restool -s dpni create --options=$dpni_options --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES --fs-entries=$FS_ENTRIES --container=$DPRC)
 			restool dprc sync
 			restool dpni update $OBJ --mac-addr=$ACTUAL_MAC
 			echo $OBJ "created with MAC addr = "$ACTUAL_MAC >> dynamic_dpl_logs
@@ -502,7 +504,7 @@ then
 		else
 			ACTUAL_MAC="00:00:00:00:"$MAC_OCTET2":"$MAC_OCTET1
 		fi
-		DPNI=$(restool -s dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES --fs-entries=$FS_ENTRIES --container=$DPRC)
+		DPNI=$(restool -s dpni create --options=$dpni_options --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES --fs-entries=$FS_ENTRIES --container=$DPRC)
 		restool dprc sync
 		restool dpni update $DPNI --mac-addr=$ACTUAL_MAC
 		echo -e '\t'$DPNI "created with MAC addr = "$ACTUAL_MAC >> dynamic_dpl_logs
@@ -601,7 +603,7 @@ then
 
 	restool dprc sync
 	#/* Creating a loop device */
-	LOOP_IF=$(restool -s dpni create --options=$DPNI_OPTIONS --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES --fs-entries=$FS_ENTRIES --container=$DPRC)
+	LOOP_IF=$(restool -s dpni create --options=$dpni_options --num-tcs=$MAX_TCS --num-queues=$MAX_QUEUES --fs-entries=$FS_ENTRIES --container=$DPRC)
 	restool dprc sync
 	restool dpni update $LOOP_IF --mac-addr=00:00:00:11:11:11
 	restool dprc sync
