@@ -265,6 +265,7 @@ int dpaa2_attach_frameq_to_conc(
 		return DPAA2_FAILURE;
 	}
 
+	dpaa2_hwq->state = FRAMEQ_STATE_ATTACHED;
 	return DPAA2_SUCCESS;
 }
 
