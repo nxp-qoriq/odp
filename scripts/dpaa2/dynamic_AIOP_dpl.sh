@@ -242,7 +242,13 @@ create_app_container()
 	ACTUAL_MAC="00:00:00:00:00:08"
 	MAX_QUEUES=8
 	#/* Supported boards and options*/
-	board_type=$(uname -n | cut -c3-6)
+        if [ -e /sys/firmware/devicetree/base/compatible ]
+        then
+		board_type=`grep -ao '1088\|2088\|2080\|2085\|2160' /sys/firmware/devicetree/base/compatible | head -1`
+        elif [ -e /sys/firmware/devicetree/base/model ]
+        then
+		board_type=`grep -ao '1088\|2088\|2080\|2085\|2160' /sys/firmware/devicetree/base/model | head -1`
+        fi
 	if [[ $board_type == "1088" ]]
 	then
 		export DPNI_OPTIONS=""
