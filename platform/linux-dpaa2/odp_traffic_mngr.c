@@ -126,16 +126,18 @@ void odp_tm_egress_init(odp_tm_egress_t *egress)
 int odp_tm_capabilities(odp_tm_capabilities_t capabilities[],
 			uint32_t              capabilities_size)
 {
+#define MIN(a, b) ((a < b) ? a : b)
 	odp_tm_level_capabilities_t *per_level_cap;
 	odp_tm_capabilities_t       *cap_ptr;
 	odp_packet_color_t           color;
-	uint32_t                     level_idx;
+	uint32_t                     level_idx, capa_count;
 	int32_t		tm_system;
 
 	if (capabilities_size == 0)
 		return -1;
 
-	for (tm_system = 0; tm_system < ODP_TM_MAX_NUM_SYSTEMS; tm_system++) {
+	capa_count = MIN(capabilities_size, ODP_TM_MAX_NUM_SYSTEMS);
+	for (tm_system = 0; tm_system < capa_count; tm_system++) {
 		cap_ptr = &capabilities[tm_system];
 		memset(cap_ptr, 0, sizeof(odp_tm_capabilities_t));
 	
