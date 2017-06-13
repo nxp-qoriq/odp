@@ -56,6 +56,7 @@ struct pktio_entry {
 	odp_pktio_param_t param; /*PKTIO params*/
 	int pktio_headroom;		/* Pktio Headroom */
 	odp_bool_t promisc;		/**< promiscuous mode state */
+	odp_bool_t hash_enable;		/**<Hash distribution enabled */
 	void	*priv;
 };
 
