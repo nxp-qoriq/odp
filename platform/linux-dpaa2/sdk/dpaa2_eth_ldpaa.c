@@ -822,7 +822,7 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 		loop = 0;
 
 		while (retry_count && (loop < frames_to_send)) {
-			ret = qbman_swp_enqueue_multiple(swp, &eqdesc[loop],
+			ret = qbman_swp_enqueue_multiple_desc(swp, &eqdesc[loop],
 							 &fd_arr[loop],
 							 frames_to_send - loop);
 			if (!ret)

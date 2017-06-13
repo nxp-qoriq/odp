@@ -8,14 +8,14 @@ Signed-off-by: Sunil Kumar Kori <Sunil.Kori@nxp.com>
  include/drivers/fsl_qbman_portal.h | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/include/drivers/fsl_qbman_portal.h b/include/drivers/fsl_qbman_portal.h
+diff --git a/include/fsl_qbman_portal.h b/include/fsl_qbman_portal.h
 index 3559da7..868afe4 100644
---- a/include/drivers/fsl_qbman_portal.h
-+++ b/include/drivers/fsl_qbman_portal.h
+--- a/include/fsl_qbman_portal.h
++++ b/include/fsl_qbman_portal.h
 @@ -26,6 +26,7 @@
  #define _FSL_QBMAN_PORTAL_H
  
- #include <drivers/fsl_qbman_base.h>
+ #include <fsl_qbman_base.h>
 +#include <linux/types.h>
  
  /**
