@@ -46,9 +46,6 @@ int received_sigint;
 static int odp_init = FALSE;
 char *vfio_container;
 
-/*Environment variable to enable HASH based distribution*/
-uint32_t enable_hash = FALSE;
-
 /*===== sigproc =====*/
 /**
 handles SIGINT signal(When the app is stopped using Ctrl C the IPC is removed)

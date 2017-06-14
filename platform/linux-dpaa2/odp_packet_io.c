@@ -1210,21 +1210,21 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 		} else
 			pktio_entry->s.conf_rx_queues = 0;
 
-		if (enable_hash) {
+		if (pktio_entry->s.hash_enable) {
 			struct queues_config *q_config;
 
 			q_config = dpaa2_eth_get_queues_config(ndev);
 			for (i = 0; i < q_config->num_tcs; i++)
 				dpaa2_eth_remove_flow_distribution(ndev, i);
 
-			enable_hash = FALSE;
+			pktio_entry->s.hash_enable = FALSE;
 		}
 	}
 
 
 	/* enable hash distribution */
 	if (q_param.hash_enable && q_param.num_queues > 1) {
-		enable_hash = TRUE;
+		pktio_entry->s.hash_enable = TRUE;
 		odp_hash_dist(pktio, &q_param);
 	}
 
@@ -1282,14 +1282,14 @@ failure:
 		}
 	}
 
-	if (enable_hash) {
+	if (pktio_entry->s.hash_enable) {
 		struct queues_config *q_config;
 
 		q_config = dpaa2_eth_get_queues_config(ndev);
 		for (i = 0; i < q_config->num_tcs; i++)
 			dpaa2_eth_remove_flow_distribution(ndev, i);
 
-		enable_hash = FALSE;
+		pktio_entry->s.hash_enable = FALSE;
 	}
 	unlock_entry(pktio_entry);
 	return -1;

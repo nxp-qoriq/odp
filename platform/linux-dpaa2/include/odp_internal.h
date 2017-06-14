@@ -69,8 +69,6 @@ enum init_stage {
 
 extern struct odp_global_data_s odp_global_data;
 
-extern uint32_t enable_hash;
-
 int _odp_term_global(enum init_stage stage);
 int _odp_term_local(enum init_stage stage);
 
