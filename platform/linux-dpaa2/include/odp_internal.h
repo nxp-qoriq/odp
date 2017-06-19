@@ -128,7 +128,7 @@ int odp_platform_debug_init(void);
 #define DPAA2_MAX_CI_DEV		128
 
 /* Enable QBMan Short Circuit Mode with ISOL CPU for benchmarking purpose */
-#define  ODPFSL_DRIVER_LB		0
+#define  ODPFSL_DRIVER_LB		1
 #define  ODPFSL_MAX_PLATFORM_CORE	8
 
 /************DATA STRUCTURE*******************/
