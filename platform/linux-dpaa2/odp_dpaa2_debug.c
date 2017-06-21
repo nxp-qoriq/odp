@@ -33,7 +33,7 @@
 #include <fsl_dpseci.h>
 
 #include <fsl_qbman_portal.h>
-#include <qbman_debug.h>
+#include <fsl_qbman_debug.h>
 
 #define BUFLEN 64
 #define DEFAULT_PLAT_DEBUG_PORT 10000
@@ -512,8 +512,8 @@ static void event_handler(void *msg)
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
-				struct qbman_attr a;
-				uint32_t cgrid;
+				struct qbman_fq_query_rslt a;
+				uint16_t cgrid;
 				uint32_t fqid;
 				struct dpaa2_vq *eth_vq;
 
@@ -523,8 +523,8 @@ static void event_handler(void *msg)
 					if (fqid > 0) {
 						str = str + nbytes;
 						qbman_fq_query(s, fqid, &a);
-						qbman_fq_attr_get_cgrid(&a, &cgrid);
-						nbytes = sprintf(str, "\t\t\tCongestion group ID\t: %u\t"
+						cgrid = qbman_fq_attr_get_cgrid(&a);
+						nbytes = sprintf(str, "\t\t\tCongestion group ID\t: %hu\t"
 								"for RX FQID: %u\n", cgrid, fqid);
 					}
 				}
@@ -535,8 +535,8 @@ static void event_handler(void *msg)
 					if (fqid > 0) {
 						str = str + nbytes;
 						qbman_fq_query(s, fqid, &a);
-						qbman_fq_attr_get_cgrid(&a, &cgrid);
-						nbytes = sprintf(str, "\t\t\tCongestion group ID\t: %u\t"
+						cgrid = qbman_fq_attr_get_cgrid(&a);
+						nbytes = sprintf(str, "\t\t\tCongestion group ID\t: %hu\t"
 								"for TX FQID: %u\n", cgrid, fqid);
 					}
 				}
@@ -565,8 +565,8 @@ static void event_handler(void *msg)
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
-				struct qbman_attr a;
-				uint32_t destwq;
+				struct qbman_fq_query_rslt a;
+				uint16_t destwq;
 				uint32_t fqid;
 				struct dpaa2_vq *eth_vq;
 
@@ -576,8 +576,8 @@ static void event_handler(void *msg)
 					if (fqid > 0) {
 						str = str + nbytes;
 						qbman_fq_query(s, fqid, &a);
-						qbman_fq_attr_get_destwq(&a, &destwq);
-						nbytes = sprintf(str, "\t\t\tScheduling Priority\t: %u\t"
+						destwq = qbman_fq_attr_get_destwq(&a);
+						nbytes = sprintf(str, "\t\t\tScheduling Priority\t: %hu\t"
 								"for RX FQID: %u\n", destwq, fqid);
 					}
 				}
@@ -588,8 +588,8 @@ static void event_handler(void *msg)
 					if (fqid > 0) {
 						str = str + nbytes;
 						qbman_fq_query(s, fqid, &a);
-						qbman_fq_attr_get_destwq(&a, &destwq);
-						nbytes = sprintf(str, "\t\t\tScheduling Priority\t: %u\t"
+						destwq = qbman_fq_attr_get_destwq(&a);
+						nbytes = sprintf(str, "\t\t\tScheduling Priority\t: %hu\t"
 								"for TX FQID: %u\n", destwq, fqid);
 					}
 				}
@@ -619,8 +619,8 @@ static void event_handler(void *msg)
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
-				struct qbman_attr a;
-				uint32_t tdthresh;
+				struct qbman_fq_query_rslt a;
+				uint16_t tdthresh;
 				uint32_t fqid;
 				struct dpaa2_vq *eth_vq;
 
@@ -630,8 +630,8 @@ static void event_handler(void *msg)
 					if (fqid > 0) {
 						str = str + nbytes;
 						qbman_fq_query(s, fqid, &a);
-						qbman_fq_attr_get_tdthresh(&a, &tdthresh);
-						nbytes = sprintf(str, "\t\t\tTail drop threashold\t: %u\t"
+						tdthresh = qbman_fq_attr_get_tdthresh(&a);
+						nbytes = sprintf(str, "\t\t\tTail drop threashold\t: %hu\t"
 								"for RX FQID: %u\n", tdthresh, fqid);
 					}
 				}
@@ -642,8 +642,8 @@ static void event_handler(void *msg)
 					if (fqid > 0) {
 						str = str + nbytes;
 						qbman_fq_query(s, fqid, &a);
-						qbman_fq_attr_get_tdthresh(&a, &tdthresh);
-						nbytes = sprintf(str, "\t\t\tTail drop threashold\t: %u\t"
+						tdthresh = qbman_fq_attr_get_tdthresh(&a);
+						nbytes = sprintf(str, "\t\t\tTail drop threashold\t: %hu\t"
 								"for TX FQID: %u\n", tdthresh, fqid);
 					}
 				}
@@ -653,6 +653,7 @@ static void event_handler(void *msg)
 			}
 			break;
 		}
+#if 0
 	case DPAA2_DEBUG_QBMAN_FQ_ATTR_CTX:
 		{
 			struct dpaa2_dev *dev;
@@ -710,6 +711,7 @@ static void event_handler(void *msg)
 			}
 			break;
 		}
+#endif
 	case DPAA2_DEBUG_QBMAN_FQ_STATE_SCHEDSTATE:
 		{
 			struct dpaa2_dev *dev;
@@ -729,7 +731,7 @@ static void event_handler(void *msg)
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
-				struct qbman_attr state;
+				struct qbman_fq_query_np_rslt state;
 				uint32_t fqid;
 				uint32_t schd_st;
 				struct dpaa2_vq *eth_vq;
@@ -786,7 +788,7 @@ static void event_handler(void *msg)
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
-				struct qbman_attr state;
+				struct qbman_fq_query_np_rslt state;
 				uint32_t fqid;
 				uint32_t frame_cnt;
 				struct dpaa2_vq *eth_vq;
@@ -843,7 +845,7 @@ static void event_handler(void *msg)
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
-				struct qbman_attr state;
+				struct qbman_fq_query_np_rslt state;
 				uint32_t fqid;
 				uint32_t byte_cnt;
 				struct dpaa2_vq *eth_vq;
@@ -889,11 +891,11 @@ static void event_handler(void *msg)
 			}
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
-				struct qbman_attr a;
+				struct qbman_bp_query_rslt a;
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
 
 				qbman_bp_query(s, bpid, &a);
-				if (qbman_bp_info_has_free_bufs(&a))
+				if (qbman_bp_has_free_bufs(&a))
 					sprintf(str, "QBMAN buffers available for %s\t\t\t\t\t\t:"
 							" YES\n\n\n", name);
 				else
@@ -915,11 +917,11 @@ static void event_handler(void *msg)
 			}
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
-				struct qbman_attr a;
+				struct qbman_bp_query_rslt a;
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
 
 				qbman_bp_query(s, bpid, &a);
-				if (!qbman_bp_info_is_depleted(&a))
+				if (!qbman_bp_is_depleted(&a))
 					sprintf(str, "QBMAN buffer pools depleted for %s\t\t\t\t\t\t:"
 							" NO\n\n\n", name);
 				else
@@ -942,11 +944,11 @@ static void event_handler(void *msg)
 
 			if ((event_msg->cmd) == DPAA2_DEBUG_CMD_GET) {
 				uint32_t num_buf;
-				struct qbman_attr a;
+				struct qbman_bp_query_rslt a;
 				struct qbman_swp *s = thread_io_info.dpio_dev->sw_portal;
 
 				qbman_bp_query(s, bpid, &a);
-				num_buf = qbman_bp_info_num_free_bufs(&a);
+				num_buf = qbman_bp_num_free_bufs(&a);
 				sprintf(str, "Number of free QBMAN buffers for"
 						" %s\t\t\t\t\t\t: %u\n\n\n", name, num_buf);
 			} else {
