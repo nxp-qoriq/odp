@@ -103,19 +103,14 @@ AC_SUBST(PKGCONFIG_VERSION)
 ##########################################################################
 AC_ARG_WITH([platform],
     [AS_HELP_STRING([--with-platform=platform],
-        [select platform to be used (linux-dpaa1|linux-dpaa2)])]
+        [select platform to be used (linux-dpaa2)])]
     )
 
 AC_SUBST([with_platform])
 AC_SUBST([platform_with_platform], ["platform/${with_platform}"])
 AC_SUBST([platform_with_platform_test], ["platform/${with_platform}/test"])
 AM_CONDITIONAL([BUILD_DPAA2], [test x${with_platform} = x"linux-dpaa2" ])
-AM_CONDITIONAL([BUILD_DPAA1], [test x${with_platform} = x"linux-dpaa1" ])
 
-if test "${with_platform}" == "linux-dpaa1";
-then
-AC_SUBST([platform_with_platform_test], [""])
-fi
 #########################################################################
 # Flag to allow option for SSL usage. Currently this flag is not supported.
 #########################################################################
@@ -132,9 +127,6 @@ then
 elif test "${with_platform}" == "linux-dpaa2";
 then
     m4_include([./platform/linux-dpaa2/m4/configure.m4])
-elif test "${with_platform}" == "linux-dpaa1";
-then
-    m4_include([./platform/linux-dpaa1/m4/configure.m4])
 else
     echo "UNSUPPORTED PLATFORM: ${with_platform}"
     exit 1
@@ -254,26 +246,11 @@ AC_ARG_ENABLE([build_type],
   *)  build_type=LS2085;;
 esac],[build_type=LS2085])
 fi
-if test "${with_platform}" == "linux-dpaa1";
-then
-AC_ARG_ENABLE([build_type],
-[  --build-type    Specify build type as LS1046, LS1043, P4080, T1040, T4240, T2080],
-[case "${enableval}" in
-  ls1043) build_type=LS1043 ;;
-  ls1046) build_type=LS1046 ;;
-  *)  build_type=LS1043;;
-esac],[build_type=LS1043])
-fi
 AM_CONDITIONAL([BUILD_LS2080], [test x$build_type = xLS2080 ])
 AM_CONDITIONAL([BUILD_LS2085], [test x$build_type = xLS2085 ])
 AM_CONDITIONAL([BUILD_LS2088], [test x$build_type = xLS2088 ])
 AM_CONDITIONAL([BUILD_LS1088], [test x$build_type = xLS1088 ])
 AM_CONDITIONAL([BUILD_LX2160], [test x$build_type = xLX2160 ])
-AM_CONDITIONAL([BUILD_LS1043], [test x$build_type = xLS1043 ])
-AM_CONDITIONAL([BUILD_LS1046], [test x$build_type = xLS1046 ])
-AM_CONDITIONAL([P4_SOC], [test "x${SOC}" = "xP4080"])
-AM_CONDITIONAL([T1_SOC], [test "x${SOC}" = "xT1040"])
-AM_CONDITIONAL([T4_SOC], [test "x${SOC}" = "xT4240"])
 
 ##########################################################################
 # Default warning setup
