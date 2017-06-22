@@ -124,9 +124,7 @@ static void __exit
 kni_exit(void)
 {
 	/* TBD - cleanups */
-	if (misc_deregister(&kni_misc) != 0) {
-		KNI_ERR("Misc unregister failed \n");
-	}
+	misc_deregister(&kni_misc);
 	KNI_PRINT("####### ODPFSL kni module unloaded  #######\n");
 }
 
