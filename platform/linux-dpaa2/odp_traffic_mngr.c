@@ -794,7 +794,9 @@ int odp_tm_queue_sched_config(odp_tm_node_t tm_node,
 	dpni = dev_priv->hw;
 
 	odp_ticketlock_lock(&tm_profile_lock);
-	weight = (sched_params->inverted_weights[prio] * 10000) / 255;
+	if (sched_params->inverted_weights[prio] >= ODP_TM_MAX_SCHED_WEIGHT)
+		sched_params->inverted_weights[prio] = ODP_TM_MAX_SCHED_WEIGHT;
+	weight = sched_params->inverted_weights[prio] * 100;
 	tx_prio_cfg.tc_sched[prio].mode = DPNI_TX_SCHED_WEIGHTED;
 	tx_prio_cfg.tc_sched[prio].delta_bandwidth = weight;
 	retcode =  dpni_set_tx_priorities(dpni, CMD_PRI_LOW, dev_priv->token, &tx_prio_cfg);
