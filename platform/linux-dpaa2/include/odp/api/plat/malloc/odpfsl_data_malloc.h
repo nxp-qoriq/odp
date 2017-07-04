@@ -1,6 +1,6 @@
 /* Copyright (c) 2015 Freescale Semiconductor, Inc.
+ * Copyright(c) 2010-2014 Intel Corporation.
  * All rights reserved.
- *
  * SPDX-License-Identifier:     BSD-3-Clause
  */
 

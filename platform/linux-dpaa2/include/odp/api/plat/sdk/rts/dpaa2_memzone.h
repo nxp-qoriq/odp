@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2015 - 2016 Freescale Semiconductor, Inc
  *   Derived from DPDK's rte_memzone.h
  *   BSD LICENSE
  *
