@@ -77,7 +77,7 @@
  */
 #define DPAA2_KNI_NAMESIZE 32 /*!< Size of KNI device name */
 
-#define KNI_FIFO_COUNT_MAX	64 /*!< Maximum number of ring entries */
+#define KNI_FIFO_COUNT_MAX	256 /*!< Maximum number of ring entries */
 #define KNI_FIFO_SIZE	(KNI_FIFO_COUNT_MAX * sizeof(void *) + sizeof(struct odpfsl_kni_fifo)) /*!< Size of the FIFO ring. */
 
 

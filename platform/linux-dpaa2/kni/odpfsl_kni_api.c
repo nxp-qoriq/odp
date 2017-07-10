@@ -55,8 +55,10 @@
 /** @def DEF_KNI_PKTMBUF_NUM
  * @brief Default number of buffers (packet mbuf) for KNI Interface
  * DEF_KNI_NUM_PKTBUF * DEF_KNI_BUF_SZ = space allocated for KNI buffer
+ * DEF_KNI_PKTMBUF_NUM = KNI_FIFO_COUNT_MAX * total number of queues on
+ * kni device.
  */
-#define DEF_KNI_PKTMBUF_NUM		512
+#define DEF_KNI_PKTMBUF_NUM		KNI_FIFO_COUNT_MAX * 4
 
 
 /* @def DEF_KNI_DEFAULT_CORE_ID
