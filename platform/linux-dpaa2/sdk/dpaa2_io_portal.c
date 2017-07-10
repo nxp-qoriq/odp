@@ -412,10 +412,13 @@ void dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id)
 void dpaa2_write_all_intr_fd(void)
 {
 	struct dpaa2_dpio_dev *dpio_dev = NULL;
+	ssize_t nbytes;
 
 	TAILQ_FOREACH(dpio_dev, dpio_dev_list, next) {
 		uint64_t  i = 1;
-		write(dpio_dev->intr_handle[0].fd, &i, sizeof(uint64_t));
+		nbytes = write(dpio_dev->intr_handle[0].fd, &i, sizeof(uint64_t));
+		if (!nbytes)
+			DPAA2_WARN(NOTIFIER, "No info is written to INTR FD\n ");
 	}
 }
 

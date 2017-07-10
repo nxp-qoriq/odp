@@ -41,6 +41,7 @@
 #include <dpaa2_common.h>
 #include <odp/api/atomic.h>
 #include <dpaa2_queue.h>
+#include <dpaa2.h>
 #include <dpaa2_lock.h>
 #include <odp/api/spinlock.h>
 #include <dpaa2_time.h>
@@ -611,4 +612,9 @@ void dpaa2_timer_dump_stats(FILE *f)
 #else
 	fprintf(f, "No timer statistics, DPAA2_LIBDPAA2_TIMER_DEBUG is disabled\n");
 #endif
+}
+
+void dpaa2_thread_cleanup_callback(void *args ODP_UNUSED)
+{
+        dpaa2_thread_deaffine_io_context();
 }

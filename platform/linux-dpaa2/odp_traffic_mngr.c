@@ -126,12 +126,11 @@ void odp_tm_egress_init(odp_tm_egress_t *egress)
 int odp_tm_capabilities(odp_tm_capabilities_t capabilities[],
 			uint32_t              capabilities_size)
 {
-#define MIN(a, b) ((a < b) ? a : b)
 	odp_tm_level_capabilities_t *per_level_cap;
 	odp_tm_capabilities_t       *cap_ptr;
 	odp_packet_color_t           color;
 	uint32_t                     level_idx, capa_count;
-	int32_t		tm_system;
+	uint32_t		tm_system;
 
 	if (capabilities_size == 0)
 		return -1;
