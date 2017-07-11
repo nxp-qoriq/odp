@@ -9,12 +9,8 @@ The Options are:
 	-a			Auto mode		Enabling the Auto mode. Default is manual
 							mode.
 
-	-c			Cunit			Enabling Cunit testing.
-
 	-p=\"num\"		Ping packets numbers	'num' is number of ping packets which will be used
 							for sanity testing. Default is 10.
-
-	--cunit-path=\"path\"	Cunit binaries path	'path' is absolute path of cunit applications.
 
 	-d			Developer help		This option is only for developers. It will
 							print the help for developers, which describes
@@ -25,36 +21,12 @@ The Options are:
 Example:
 	. ./loopback_sanity_test.sh -a        OR     source ./loopback_sanity_test.sh -a
 
-Options and Sanity script running behaviour:
-
-	OPTIONS					SCRIPT BEHAVIOUR
-
-	* Both -a and -c			If both options -a and -c are given, then script will
-						run all the test cases automatically including Cunit
-						test cases.
-
-	* only -a				If only this option specified, then script will run
-						all the ODP example applications automatically and at the
-						end an option will be given to the user which specify whether
-						to test the Cunit or not. If user press 'y' then script will
-						run all the Cunit test cases automatically also.
-
-	* only -c				If only this option specified, then script will run only
-						Cunit test cases. An option will be given to the user
-						which will describes that whether to run the script in auto mode
-						or not.
-
-	* neither -c nor -a			If none of these options is there, then script will run in manual
-						mode even for Cunit test cases.
-
-
 Assumptions:
 	* dynamic_dpl.sh, kernel-ni.sh and loopback_sanity_test.sh all these three scripts
-	  are present in the 'usr/odp/scripts' directory.
-	* All ODP example binaries are present in the '/usr/odp/bin' directory.
-	* All ODP Performance binaries are present in the '/usr/odp/test/performance' directory.
-	* All ODP Cunit binaries are present in the '/usr/odp/test/validation' directory.
-	* odpfsl_kni.ko is present in any of the child directory of '/lib/' for odp_kni_demo testing.
+	  are present in the '/usr/local/odp/<board>/scripts' directory.
+	* All ODP example binaries are present in the '/usr/local/odp/<board>/bin' directory.
+	* All ODP Performance binaries are present in the '/usr/local/odp/<board>/test/performance' directory.
+	* odpfsl_kni.ko is present in any of the child directory of '/' for odp_kni_demo testing.
 	* There are sufficient resources available to create two ODP conatiners and 3 kernel interfaces.
 	* There is sufficient memory to run two odp applications concurrently. Script is verified with
 	  following bootargs:
@@ -190,24 +162,6 @@ Example:
 	run_command PKTIO \"./odp_pktio -c 8 -m 0 -i \$FDPNI0\"
 
 	All these commands should be added only in run_odp() function.
-
-
-ODP CUNIT APPLICATIONS: Method to add an Cunit application as test case:
-
-Test case command syntax:
-	run_cunit_command <argument>
-
-	Where argument is actual command to run.
-	SDPRC will be used for CUNIT testing
-
-Example:
-
-	run_cunit_command \"./init_main_ok\"
-
-	This command should only be added in run_cunit() function.
-
-Results:
-	Cunit results will be based on the failed test_suites/test_cases showing in the application logs
 	"
 }
 
@@ -244,12 +198,7 @@ check_resources () {
 
 #creating the required resources
 get_resources() {
-	if [ -e /sys/firmware/devicetree/base/compatible ]
-	then
-		board=`grep -o '1088\|2088\|2080\|2085\|2160' /sys/firmware/devicetree/base/compatible | head -1`
-	fi
-
-	if [[ $board != "2160" ]]
+	if [[ $board != "lx2160" ]]
 	then
 		export DPIO_COUNT=10
 	fi
@@ -1027,7 +976,7 @@ then
 	echo -e " #$test_no)\t$1\t\tcommand ($2) " >> sanity_log
 	echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) " >> sanity_tested_apps
 	append_newline 1
-	KNI_MODULE=`find /lib -name odpfsl_kni.ko`
+	KNI_MODULE=`find / -name odpfsl_kni.ko`
 	if [[ -z $KNI_MODULE ]]
 	then
 		echo -e $RED"\tUnable to find odpfsl_kni.ko"$NC
@@ -1185,7 +1134,7 @@ echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) "
 echo
 eval $PRINT_MSG
 $READ
-if [[ "$input" == "y" && -x /usr/odp/test/performance/odp_l2fwd ]]
+if [[ "$input" == "y" && -x $ODP_PATH/test/performance/odp_l2fwd ]]
 then
 	echo -e " #$test_no)\t$1\t\tcommand ($2) " >> sanity_log
 	echo -e " #$test_no)\tTest case:$1\t\t\tCommand:($2) " >> sanity_tested_apps
@@ -1218,7 +1167,7 @@ then
 	echo
 	echo >> sanity_tested_apps
 else
-	if [[ "$input" == "y" && ! -x /usr/odp/test/performance/odp_l2fwd ]]
+	if [[ "$input" == "y" && ! -x $ODP_PATH/test/performance/odp_l2fwd ]]
 		then
 		echo -e "\tCan not test L2FWD, executable not found." | tee -a sanity_log
 	fi
@@ -1421,128 +1370,11 @@ run_odp() {
 
 	#/* ODP_L2FWD (ODP_PKTIN_MODE_QUEUE) (PKTOUT_MODE_QUEUE)
 	# */
-	run_command L2FWD "/usr/odp/test/performance/odp_l2fwd -i $FDPNI0,$FDPNI2 -d 1 -r 00:00:00:00:08:01,00:00:00:00:08:02 -m 4 -o 1"
+	run_command L2FWD "$ODP_PATH/test/performance/odp_l2fwd -i $FDPNI0,$FDPNI2 -d 1 -r 00:00:00:00:08:01,00:00:00:00:08:02 -m 4 -o 1"
 
 	#/* ODP_L2FWD (PKTIN_MODE_SCHED + SCHED_SYNC_ATOMIC) (PKTOUT_MODE_DIRECT)
 	# */
-	run_command L2FWD "/usr/odp/test/performance/odp_l2fwd -i $FDPNI0,$FDPNI2 -d 1 -r 00:00:00:00:08:01,00:00:00:00:08:02 -m 2 -o 0"
-}
-
-run_cunit_command() {
-	MODULE=`echo "$1" | grep -o "\w*_\w*"| sed -e 's/_main//g'`
-	echo -e " #$cunit_test_no)\tTest case:$MODULE\t\tCommand:($1)"
-	echo
-	eval $PRINT_MSG
-	$READ
-	echo
-	if [[ "$input" == "y" ]]
-	then
-		echo -e " #$cunit_test_no)\tTest case:$MODULE\t\tCommand:($1)" >> cunit_log
-		if [[ ! -e "$1" ]]
-		then
-			echo -e " #$cunit_test_no)\tTest case:$MODULE\t\tCommand:($1)" >> cunit_untested_app
-			echo -e "\t$1 File doesn't exist" | tee -a cunit_log
-			echo -e $RED"\tNot tested"$NC
-			echo -e "\t[NT] Not tested" >> cunit_untested_app
-			cunit_untested=`expr $cunit_untested + 1`
-			cunit_test_no=`expr $cunit_test_no + 1`
-			echo >> cunit_untested_app
-			echo >> cunit_untested_app
-			echo >> cunit_log
-			echo >> cunit_log
-			echo
-			echo
-			return;
-		fi
-		eval "$1 > log 2>&1 &"
-		if [[ $MODULE == "time" ||
-			$MODULE == "system" ]]
-		then
-			sleep 40
-		else
-			sleep 10
-		fi
-		killall -s SIGKILL $1 > /dev/null 2>&1
-		echo
-		echo -e " #$cunit_test_no)\tTest case:$MODULE\t\tCommand:($1)" >> cunit_tested_app
-		echo >> cunit_tested_app
-		sed -n '/^Run Summary/,/^Elapsed/p' log | tee temp_log
-		suite_failed_no=`awk '{$2=$2};1' temp_log | cut -f5 -d ' ' | tr -s '\n' ' ' |  cut -f2 -d ' '`
-		test_failed_no=`awk '{$2=$2};1' temp_log | cut -f5 -d ' ' | tr -s '\n' ' ' |  cut -f3 -d ' '`
-		echo >> cunit_tested_app
-		if [[ (! $suite_failed_no) && (! $test_failed_no) ]]
-		then
-			echo -e "\t[UR] Unknown result" >> cunit_tested_app
-			echo -e $RED"\tUnknown result " $NC
-			cunit_na=`expr $cunit_na + 1`
-		elif [[ $suite_failed_no != 0 || $test_failed_no != 0 ]]
-		then
-			if [[ $test_failed_no != 0 ]]
-			then
-				echo -e "\t[FAILED] Number of FAILED tests = "$test_failed_no >> cunit_tested_app
-				echo -e $RED"\tNumber of FAILED tests= "$test_failed_no $NC
-			else
-				echo -e "\t[FAILED] Number of FAILED suites = "$suite_failed_no >> cunit_tested_app
-				echo -e $RED"\tNumber of FAILED suites = "$suite_failed_no $NC
-			fi
-			cunit_failed=`expr $cunit_failed + 1`
-		else
-			echo -e "\t[PASSED] CUNIT test module '$MODULE' is PASSED " >> cunit_tested_app
-			echo -e $GREEN"\tCUNIT test module '$MODULE' is PASSED " $NC
-			cunit_passed=`expr $cunit_passed + 1`
-		fi
-
-		echo >> cunit_tested_app
-		echo >> cunit_tested_app
-		cat log >> cunit_log
-		echo >> cunit_log
-		echo >> cunit_log
-		echo
-		echo
-		rm log
-		rm temp_log
-	else
-		echo -e " #$cunit_test_no)\tTest case:$MODULE\t\tCommand:($1)" >> cunit_untested_app
-		echo -e "\tNot tested" >> cunit_untested_app
-		echo -e $RED"\tNot tested" $NC
-		cunit_untested=`expr $cunit_untested + 1`
-		echo >> cunit_untested_app
-		echo >> cunit_untested_app
-		echo
-		echo
-	fi
-	cunit_test_no=`expr $cunit_test_no + 1`
-}
-
-
-#function to run CUNIT
-run_cunit() {
-	run_cunit_command "./init_main_ok"
-	run_cunit_command "./init_main_log"
-	run_cunit_command "./init_main_abort"
-	run_cunit_command "./queue_main"
-	run_cunit_command "./buffer_main"
-	run_cunit_command "./classification_main"
-	run_cunit_command "./cpumask_main"
-	run_cunit_command "./crypto_main"
-	run_cunit_command "./proto_main"
-	run_cunit_command "./errno_main"
-	run_cunit_command "./packet_main"
-	run_cunit_command "./pktio_main"
-	run_cunit_command "./pool_main"
-	run_cunit_command "./random_main"
-	run_cunit_command "./scheduler_main"
-	run_cunit_command "./shmem_main"
-	run_cunit_command "./system_main"
-	run_cunit_command "./thread_main"
-	run_cunit_command "./time_main"
-	run_cunit_command "./timer_main"
-	run_cunit_command "./atomic_main"
-	run_cunit_command "./barrier_main"
-	run_cunit_command "./hash_main"
-	run_cunit_command "./lock_main"
-	run_cunit_command "./std_clib_main"
-	run_cunit_command "./traffic_mngr_main"
+	run_command L2FWD "$ODP_PATH/test/performance/odp_l2fwd -i $FDPNI0,$FDPNI2 -d 1 -r 00:00:00:00:08:01,00:00:00:00:08:02 -m 2 -o 0"
 }
 
 #/* configuring the interfaces*/
@@ -1564,7 +1396,7 @@ configure_ethif() {
 	ip netns exec sanity_ipsec_ns ifconfig $NI3 hw ether 00:00:00:00:08:03
 	ip netns exec sanity_ipsec_ns ip route add 192.168.111.0/24 via 192.168.222.1
 	ip netns exec sanity_ipsec_ns arp -s 192.168.222.1 000000000502
-	cd /usr/odp/bin/
+	cd $ODP_PATH/bin/
 	echo
 	echo
 	echo
@@ -1578,101 +1410,29 @@ unconfigure_ethif() {
 }
 
 main() {
-	if [[ ! ($CUNIT == 1 && $input != y) ]]
-	then
-		export DPRC=$FDPRC
-		export APPL_MEM_SIZE=32
-		echo "############################################## TEST CASES ###############################################" >> sanity_tested_apps
-		echo >> sanity_tested_apps
-		run_odp
-	fi
-	eval $CUNIT_MSG
-	$READ_CUNIT_INPUT
-	eval $CUNIT_AUTO_MSG
-	$READ_CUNIT_AUTO_INPUT
-	echo
-	if [[ $CUNIT_INPUT == y ]]
-	then
-		#once the issue QODP-705 resolved change this to PUSH mode.
-		export ODP_SCH_PULL_MODE=1
-		cd - > /dev/null
-		cd $CUNIT_PATH
-		if [[ $CUNIT_AUTO_INPUT != y ]]
-		then
-			PRINT_MSG="echo -e \"\tEnter 'y' to execute the test case\""
-			READ="read input"
-		else
-			PRINT_MSG=
-			READ=
-			input=y
-		fi
-		export DPRC=$SDPRC
-		run_cunit
-		unset ODP_SCH_PULL_MODE
-	else
-		SHOW_ONLY_EXAMPLE_OUTPUT=1
-	fi
+	export DPRC=$FDPRC
+	export APPL_MEM_SIZE=32
+	echo "############################################## TEST CASES ###############################################" >> sanity_tested_apps
+	echo >> sanity_tested_apps
+	run_odp
 
 	echo "############################################## TEST REPORT ################################################" >> result
 	echo >> result
 	echo >> result
-	if [[ ! $SHOW_ONLY_CUNIT_OUTPUT ]]
+	echo -e "\tODP EXAMPLE APPLICATIONS:" >> result
+	echo >> result
+	echo -e "\tNo. of passed ODP examples test cases                \t\t= $passed" >> result
+	echo -e "\tNo. of failed ODP examples test cases                \t\t= $failed" >> result
+	echo -e "\tNo. of partial passed ODP examples test cases        \t\t= $partial" >> result
+	echo -e "\tNo. of ODP examples test cases with unknown results  \t\t= $na" >> result
+	echo -e "\tNo. of untested ODP examples test cases              \t\t= $not_tested" >> result
+	echo -e "\tTotal number of ODP example test cases	              \t\t= `expr $test_no - 1`" >> result
+	echo >> result
+	mv $ODP_PATH/bin/sanity_log $ODP_PATH/scripts/sanity_log
+	mv $ODP_PATH/bin/sanity_tested_apps $ODP_PATH/scripts/sanity_tested_apps
+	if [[ -e "$ODP_PATH/bin/sanity_untested_apps " ]]
 	then
-		echo -e "\tODP EXAMPLE APPLICATIONS:" >> result
-		echo >> result
-		echo -e "\tNo. of passed ODP examples test cases                \t\t= $passed" >> result
-		echo -e "\tNo. of failed ODP examples test cases                \t\t= $failed" >> result
-		echo -e "\tNo. of partial passed ODP examples test cases        \t\t= $partial" >> result
-		echo -e "\tNo. of ODP examples test cases with unknown results  \t\t= $na" >> result
-		echo -e "\tNo. of untested ODP examples test cases              \t\t= $not_tested" >> result
-		echo -e "\tTotal number of ODP example test cases	              \t\t= `expr $test_no - 1`" >> result
-		echo >> result
-		mv /usr/odp/bin/sanity_log /usr/odp/scripts/sanity_log
-		mv /usr/odp/bin/sanity_tested_apps /usr/odp/scripts/sanity_tested_apps
-		if [[ -e "/usr/odp/bin/sanity_untested_apps " ]]
-		then
-			mv /usr/odp/bin/sanity_untested_apps /usr/odp/scripts/sanity_untested_apps
-		fi
-	fi
-	if [[ ! $SHOW_ONLY_EXAMPLE_OUTPUT ]]
-	then
-		echo -e "\tCUNIT:" >> result
-		echo >> result
-		echo -e "\tNo. of passed CUNIT test modules		\t\t= $cunit_passed" >> result
-		echo -e "\tNo. of failed CUNIT test modules		\t\t= $cunit_failed" >> result
-		echo -e "\tNo. of untested CUNIT test modules		\t\t= $cunit_untested" >> result
-		echo -e "\tNo. of CUNIT test modules with unknown results	\t\t= $cunit_na" >> result
-		echo -e "\tTotal number CUNIT test modules			\t\t= `expr $cunit_test_no - 1`" >> result
-		echo >> result
-		mv $CUNIT_PATH/cunit_log /usr/odp/scripts/cunit_log
-		echo >> /usr/odp/scripts/sanity_log
-		echo "#################################################### CUNIT ##############################################" >> /usr/odp/scripts/sanity_log
-		echo >> /usr/odp/scripts/sanity_log
-		cat /usr/odp/scripts/cunit_log >> /usr/odp/scripts/sanity_log
-		rm /usr/odp/scripts/cunit_log
-		if [[ -e "$CUNIT_PATH/cunit_tested_app" ]]
-		then
-			mv $CUNIT_PATH/cunit_tested_app /usr/odp/scripts/cunit_tested_app
-			echo >> /usr/odp/scripts/sanity_tested_apps
-			echo "#################################################### CUNIT ##############################################" >> /usr/odp/scripts/sanity_tested_apps
-			echo >> /usr/odp/scripts/sanity_tested_apps
-			cat /usr/odp/scripts/cunit_tested_app >> /usr/odp/scripts/sanity_tested_apps
-			rm /usr/odp/scripts/cunit_tested_app
-		fi
-		if [[ -e "$CUNIT_PATH/cunit_untested_app" ]]
-		then
-			mv $CUNIT_PATH/cunit_untested_app /usr/odp/scripts/cunit_untested_app
-			echo >> /usr/odp/scripts/sanity_untested_apps
-			echo "#################################################### CUNIT ##############################################" >> /usr/odp/scripts/sanity_untested_apps
-			echo >> /usr/odp/scripts/sanity_untested_apps
-			cat /usr/odp/scripts/cunit_untested_app >> /usr/odp/scripts/sanity_untested_apps
-			rm /usr/odp/scripts/cunit_untested_app
-		fi
-	fi
-	if [[ (! $SHOW_ONLY_CUNIT_OUTPUT) && (! $SHOW_ONLY_EXAMPLE_OUTPUT) ]]
-	then
-		echo -e "\tTotal number test cases		                \t\t= `expr $cunit_test_no + $test_no - 2`" >> result
-		echo >> sanity_tested_apps
+		mv $ODP_PATH/bin/sanity_untested_apps $ODP_PATH/scripts/sanity_untested_apps
 	fi
 	echo
 	cat result
@@ -1681,17 +1441,17 @@ main() {
 	echo -e "NOTE:  Test results are based on applications logs, If there is change in any application log, results may go wrong.
 \tSo it is always better to see console log and sanity_log to verify the results." >> result
 	echo >> result
-	cat result > /usr/odp/scripts/sanity_test_report
+	cat result > $ODP_PATH/scripts/sanity_test_report
 	rm result
 	echo
 	echo
-	echo -e " COMPLETE LOG			=> $GREEN/usr/odp/scripts/sanity_log $NC"
+	echo -e " COMPLETE LOG			=> $GREEN $ODP_PATH/scripts/sanity_log $NC"
 	echo
-	echo -e " SANITY TESTED APPS REPORT	=> "$GREEN"/usr/odp/scripts/sanity_tested_apps"$NC
+	echo -e " SANITY TESTED APPS REPORT	=> "$GREEN"$ODP_PATH/scripts/sanity_tested_apps"$NC
 	echo
-	echo -e " SANITY UNTESTED APPS		=> "$GREEN"/usr/odp/scripts/sanity_untested_apps"$NC
+	echo -e " SANITY UNTESTED APPS		=> "$GREEN"$ODP_PATH/scripts/sanity_untested_apps"$NC
 	echo
-	echo -e " SANITY REPORT			=> "$GREEN"/usr/odp/scripts/sanity_test_report"$NC
+	echo -e " SANITY REPORT			=> "$GREEN"$ODP_PATH/scripts/sanity_test_report"$NC
 	echo
 	echo " Sanity testing is Done."
 	echo
@@ -1700,6 +1460,12 @@ main() {
 
 # script's starting point
 set -m
+
+if [ -e /sys/firmware/devicetree/base/compatible ]
+then
+	board=`grep -ao 'ls1088\|ls2088\|ls2080\|ls2085\|lx2160' /sys/firmware/devicetree/base/compatible | head -1`
+fi
+
 test_no=1
 ping_packets=10
 not_tested=0
@@ -1708,13 +1474,10 @@ failed=0
 partial=0
 na=0
 input=
-cunit_test_no=1
-cunit_passed=0
-cunit_failed=0
-cunit_na=0
-cunit_untested=0
-CUNIT=0
-CUNIT_PATH="/usr/odp/test/validation"
+if [[ -z $ODP_PATH ]]
+then
+        ODP_PATH="/usr/local/odp/$board"
+fi
 
 #/*
 # * Parsing the arguments.
@@ -1740,12 +1503,6 @@ then
 				READ=
 				input=y
 				;;
-			-c)
-				CUNIT=1
-				;;
-			--cunit-path=*)
-				CUNIT_PATH="${i#*=}"
-				;;
 			*)
 				echo "Invalid option $i"
 				help
@@ -1761,54 +1518,24 @@ then
 	READ="read input"
 fi
 
-if [[ -e "/usr/odp/scripts/sanity_log" ]]
+if [[ -e "$ODP_PATH/scripts/sanity_log" ]]
 then
-	rm /usr/odp/scripts/sanity_log
+	rm $ODP_PATH/scripts/sanity_log
 fi
 
-if [[ -e "/usr/odp/scripts/sanity_tested_apps" ]]
+if [[ -e "$ODP_PATH/scripts/sanity_tested_apps" ]]
 then
-	rm /usr/odp/scripts/sanity_tested_apps
+	rm $ODP_PATH/scripts/sanity_tested_apps
 fi
 
-if [[ -e "/usr/odp/scripts/sanity_untested_apps" ]]
+if [[ -e "$ODP_PATH/scripts/sanity_untested_apps" ]]
 then
-	rm /usr/odp/scripts/sanity_untested_apps
+	rm $ODP_PATH/scripts/sanity_untested_apps
 fi
 
-if [[ -e "/usr/odp/scripts/sanity_test_report" ]]
+if [[ -e "$ODP_PATH/scripts/sanity_test_report" ]]
 then
-	rm /usr/odp/scripts/sanity_test_report
-fi
-
-#Handling cunit testing
-CUNIT_AUTO_MSG=
-CUNIT_AUTO_INPUT=
-CUNIT_MSG=
-CUNIT_INPUT=
-READ_CUNIT_INPUT=
-READ_CUNIT_AUTO_INPUT=
-SHOW_ONLY_CUNIT_OUTPUT=
-SHOW_ONLY_EXAMPLE_OUTPUT=
-
-if [[ $CUNIT == 1 && $input == y ]]
-then
-	CUNIT_AUTO_INPUT=y
-	CUNIT_INPUT=y
-elif [[ $CUNIT == 1 ]]
-then
-	SHOW_ONLY_CUNIT_OUTPUT=1
-	CUNIT_AUTO_MSG="echo -e \"Do you want to run all CUNIT applications automatically? (y/n)\""
-	READ_CUNIT_AUTO_INPUT="read CUNIT_AUTO_INPUT"
-	CUNIT_INPUT=y
-elif [[ $input == y ]]
-then
-	CUNIT_MSG="echo -e \"Do you want to run the CUNIT applications also? (y/n)\""
-	READ_CUNIT_INPUT="read CUNIT_INPUT"
-	CUNIT_AUTO_INPUT=y
-else
-	CUNIT_MSG="echo -e \"Do you want to run the CUNIT applications also? (y/n)\""
-	READ_CUNIT_INPUT="read CUNIT_INPUT"
+	rm $ODP_PATH/scripts/sanity_test_report
 fi
 
 
