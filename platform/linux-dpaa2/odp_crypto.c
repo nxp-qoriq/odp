@@ -997,7 +997,7 @@ init_fail:
 static inline int build_eq_desc(struct qbman_eq_desc *eqdesc,
 		struct dpaa2_vq *sec_tx_vq)
 {
-	uint64_t eq_storage_phys = NULL;
+	uint64_t eq_storage_phys = 0;
 
 	/*Prepare enqueue descriptor*/
 	qbman_eq_desc_clear(eqdesc);

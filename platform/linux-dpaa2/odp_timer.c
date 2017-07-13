@@ -434,7 +434,7 @@ static void *manage(void *ptr)
 
 	/*Register the deaffine API to pthread library that will be called
 	  during timer_free, when pthread_cancel will be called for this thread.*/
-	pthread_cleanup_push(dpaa2_thread_deaffine_io_context, NULL);
+	pthread_cleanup_push(dpaa2_thread_cleanup_callback, NULL);
 
 	ret = dpaa2_thread_affine_io_context(DPAA2_IO_PORTAL_ANY_FREE);
 	if (ret) {

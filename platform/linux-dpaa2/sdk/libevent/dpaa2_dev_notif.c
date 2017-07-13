@@ -33,6 +33,7 @@ int dpaa2_dev_process_notifications(int timeout)
 	struct epoll_event events[1];
 	int nfds = 0;
 	uint32_t status;
+	ssize_t nbytes;
 
 	DPAA2_TRACE(NOTIFIER);
 
@@ -51,8 +52,10 @@ int dpaa2_dev_process_notifications(int timeout)
 		return DPAA2_FAILURE;
 
 	/* Overloading user_context to read dummy value */
-	read(notif_dpio->intr_handle[VFIO_DPIO_DATA_IRQ_INDEX].fd,
+	nbytes = read(notif_dpio->intr_handle[VFIO_DPIO_DATA_IRQ_INDEX].fd,
 		&user_context, sizeof(uint64_t));
+	if (!nbytes)
+		return DPAA2_FAILURE;
 
 	/* Recieve the Notifications */
 	while (TRUE) {
@@ -72,11 +75,14 @@ int dpaa2_dev_process_notifications(int timeout)
 		notifier_context = (struct notif_cnxt *)
 				qbman_result_SCN_ctx(dqrr_entry);
 		user_context = notifier_context->user_cnxt;
-		if (notifier_context->cb)
+		if (notifier_context->cb) {
 			notifier_context->cb(user_context);
-		else
-			write(notifier_context->eventfd,
+		} else {
+			nbytes = write(notifier_context->eventfd,
 				&user_context, sizeof(uint64_t));
+			if (!nbytes)
+				DPAA2_WARN(NOTIFIER, "No Info is written to event FD\n ");
+		}
 
 		/* Consume the entry. */
 		qbman_swp_dqrr_consume(swp, dqrr_entry);

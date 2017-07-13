@@ -395,6 +395,8 @@ void dpaa2_timer_manage(void);
  */
 void dpaa2_timer_dump_stats(FILE *f);
 
+void dpaa2_thread_cleanup_callback(void *args);
+
 #ifdef __cplusplus
 }
 #endif

@@ -446,7 +446,7 @@ static void odp_process_and_send_packet(odp_packet_t pkt_tbl[],
 {
 	odp_packet_t	pkt = ODP_PACKET_INVALID;
 	uint32_t		tx_pkts = 0;
-	int32_t		loop, ret;
+	uint32_t		loop, ret;
 	uint32_t gwaddr;
 	struct neigh_t neighbor;
 	odph_ipv4hdr_t *ip_hdr;

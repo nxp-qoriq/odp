@@ -97,7 +97,7 @@ int32_t ip_send_multi(odp_packet_t pkt[],
 	}
 
 	ll_cache = neigh->ll_cache;
-	if (odp_likely(ll_cache)) {
+	if (odp_likely((long)ll_cache)) {
 		struct ether_hdr *ll_hdr;
 
 		if (odp_pktout_queue(neigh->pktio, &pktout, 1) != 1) {

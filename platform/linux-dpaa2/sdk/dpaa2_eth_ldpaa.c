@@ -764,7 +764,7 @@ int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 	int32_t ret;
 	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
 	uint32_t frames_to_send;
-	struct qbman_eq_desc eqdesc[MAX_TX_RING_SLOTS] = {{{0}}};
+	struct qbman_eq_desc eqdesc[MAX_TX_RING_SLOTS] = {{{{0}}}};
 	struct dpaa2_dev_priv *dev_priv =
 				(struct dpaa2_dev_priv *)dev->priv;
 	struct qbman_swp *swp;
@@ -852,7 +852,7 @@ int32_t dpaa2_eth_xmit_fqid(void *vq,
 	int32_t ret;
 	struct qbman_fd fd;
 	struct qbman_eq_desc eqdesc;
-	uint64_t eq_storage_phys = NULL;
+	uint64_t eq_storage_phys = 0;
 	struct qbman_swp *swp;
 	struct dpaa2_vq *eth_tx_vq = (struct dpaa2_vq *)vq;
 
