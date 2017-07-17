@@ -303,7 +303,7 @@ int32_t dpaa2_eth_recv(struct dpaa2_dev *dev,
  */
 int32_t dpaa2_eth_xmit(struct dpaa2_dev *dev,
 			void *vq,
-			uint32_t num,
+			int32_t num,
 			const dpaa2_mbuf_pt buf[]);
 
 /*!
