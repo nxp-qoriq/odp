@@ -1390,6 +1390,7 @@ int odp_pktout_queue_config(odp_pktio_t pktio,
 
 			qentry->s.enqueue = pktout_enqueue;
 			qentry->s.enqueue_multi = pktout_enq_multi;
+			qentry->s.status = QUEUE_STATUS_READY;
 			queue_unlock(qentry);
 		}
 
