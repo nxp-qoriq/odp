@@ -13,32 +13,59 @@
 
 #/* DPNI related parameters*/
 #/* Supported boards and options*/
-board_type=$(uname -n | cut -c3-6)
-if [[ $board_type == "1088" ]]
-then
-	export DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE"
-elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" ]]
-then
-	export DPNI_OPTIONS="DPNI_OPT_TX_FRM_RELEASE,DPNI_OPT_HAS_KEY_MASKING"
-else
-	echo "Invalid board type $board_type"
-	exit
-fi
+
+#/* Enable/disable Ordered Point Restoration*/
+export OPR_ENABLE=1
+#/* PEB or DDR*/
+export PFDR_IN_DDR_ENABLE=0
+
 #/* Number of Queues*/
 export MAX_QUEUES=8
 #/* Number of traffic classes*/
 export MAX_TCS=1
+#/* Number of flow steering entries*/
+export FS_ENTRIES=16
+
+
+#/* Script creating DPNI_OPTIONS based on exported variables*/
+if [ -e /sys/firmware/devicetree/base/compatible ]
+then
+	board_type=`grep -ao '1088\|2088\|2080\|2085\|2160' /sys/firmware/devicetree/base/compatible | head -1`
+fi
+
+unset DPNI_OPTIONS
+if [[ $OPR_ENABLE == "1" ]]
+then
+	DPNI_OPTIONS="DPNI_OPT_HAS_OPR"
+fi
+if [[ $PFDR_IN_DDR_ENABLE == "0" ]]
+then
+	DPNI_OPTIONS="$DPNI_OPTIONS,0x80000000"
+fi
+if [[ $board_type == "1088" ]]
+then
+	export DPNI_OPTIONS="$DPNI_OPTIONS"
+elif [[ $board_type == "2080" || $board_type == "2085" || $board_type == "2088" ]]
+then
+	export DPNI_OPTIONS="$DPNI_OPTIONS,DPNI_OPT_HAS_KEY_MASKING"
+else
+	echo "Invalid board type $board_type"
+	exit
+fi
+
 #/* DPCONC related parameters*/
 #/* DPCONC object counts*/
-export DPCON_COUNT=5
+export DPCON_COUNT=11
 #/* Number of priorities*/
 export DPCON_PRIORITIES=2
 
 #/* DPBP related parameters*/
 #/* DPBP object counts*/
-export DPBP_COUNT=4
+export DPBP_COUNT=10
 
 #/* DPseci related parameters*/
+#/* DPseci object counts*/
+export DPSECI_COUNT=1
 #/* Number of rx/tx queues*/
 export DPSECI_QUEUES=8
 #/* Number of priorities*/
@@ -46,13 +73,13 @@ export DPSECI_PRIORITIES="2,2,2,2,2,2,2,2"
 
 #/* DPIO related parameters*/
 #/* DPIO object counts*/
-export DPIO_COUNT=10
+export DPIO_COUNT=22
 #/* Number of priorities*/
 export DPIO_PRIORITIES=2
 
 #/* DPIO related parameters*/
 #/* DPCI object counts*/
-export DPCI_COUNT=12
+export DPCI_COUNT=20
 
 
 ################## APPLICATION RELATED VARIABLES ################
