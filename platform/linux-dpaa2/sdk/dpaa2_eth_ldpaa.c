@@ -135,7 +135,10 @@ int32_t dpaa2_eth_probe(struct dpaa2_dev *dev,
 		/*Check alignment for buffer layouts first*/
 		tot_size = dpaa2_mbuf_sw_annotation + DPAA2_MBUF_HW_ANNOTATION +
 							dpaa2_mbuf_head_room;
-		tot_size = ODP_ALIGN_ROUNDUP(tot_size, ODP_PACKET_LAYOUT_ALIGN);
+		if ((mc_plat_info.svr & 0xffff0000) == SVR_LS2080A)
+			tot_size = ODP_ALIGN_ROUNDUP(tot_size, 256);
+		else
+			tot_size = ODP_ALIGN_ROUNDUP(tot_size, 64);
 		dpaa2_mbuf_head_room = tot_size - (dpaa2_mbuf_sw_annotation +
 						DPAA2_MBUF_HW_ANNOTATION);
 	}
@@ -1064,13 +1067,12 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 		}
 		eth_rx_vq->sync = vq_cfg->sync;
 	}
-
-#if !defined(BUILD_LS2080) && !defined(BUILD_LS2085)
-	options |= DPNI_QUEUE_OPT_FLC;
-	cfg.flc.stash_control = true;
-	cfg.flc.value &= 0xFFFFFFFFFFFFFFC0;
-	cfg.flc.value |= LDPAA_ETH_DEV_STASH_SIZE;
-#endif
+	if ((mc_plat_info.svr & 0xffff0000) != SVR_LS2080A) {
+		options |= DPNI_QUEUE_OPT_FLC;
+		cfg.flc.stash_control = true;
+		cfg.flc.value &= 0xFFFFFFFFFFFFFFC0;
+		cfg.flc.value |= LDPAA_ETH_DEV_STASH_SIZE;
+	}
 	options |= DPNI_QUEUE_OPT_USER_CTX;
 	cfg.user_context = (uint64_t)(eth_rx_vq);
 	retcode = dpni_set_queue(dpni, CMD_PRI_LOW, dev_priv->token,

@@ -436,14 +436,14 @@ static int dpaa2_ipsec_init(ipsec_sa_entry_t *sa, odp_ipsec_sa_param_t *param)
 	} else
 		goto out;
 	flc->word1_sdl = (uint8_t)bufsize;
-#if !defined(BUILD_LS2080) && !defined(BUILD_LS2085)
-	/*Enable the stashing control bit*/
-	DPAA2_SET_FLC_RSC(flc);
-	flc->word2_rflc_31_0 = lower_32_bits(
-			(uint64_t)sec_dev->rx_vq[ipsec_vq->vq_id] | 0x14);
-	flc->word3_rflc_63_32 = upper_32_bits(
-			(uint64_t)sec_dev->rx_vq[ipsec_vq->vq_id]);
-#endif
+	if ((mc_plat_info.svr & 0xffff0000) != SVR_LS2080A) {
+		/*Enable the stashing control bit*/
+		DPAA2_SET_FLC_RSC(flc);
+		flc->word2_rflc_31_0 = lower_32_bits(
+				(uint64_t)sec_dev->rx_vq[ipsec_vq->vq_id] | 0x14);
+		flc->word3_rflc_63_32 = upper_32_bits(
+				(uint64_t)sec_dev->rx_vq[ipsec_vq->vq_id]);
+	}
 	/* Set EWS bit i.e. enable write-safe */
 	DPAA2_SET_FLC_EWS(flc);
 	/* Set BS = 1 i.e reuse input buffers as output buffers */

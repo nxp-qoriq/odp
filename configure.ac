@@ -230,29 +230,6 @@ AC_ARG_ENABLE([debug],
     fi])
 ODP_CFLAGS="$ODP_CFLAGS -DODP_DEBUG=$ODP_DEBUG -DDPAA2_LOGLIB_DISABLE -DQODP_344"
 
-##########################################################################
-# Check for Build type (for platforms - DPAA1, DPAA2)
-##########################################################################
-if test "${with_platform}" == "linux-dpaa2";
-then
-AC_ARG_ENABLE([build_type],
-[  --build-type    Specify build type as LS2080/LS2085/LS2088],
-[case "${enableval}" in
-  ls2080) build_type=LS2080 ;;
-  ls2085) build_type=LS2085 ;;
-  ls2088) build_type=LS2088 ;;
-  ls1088) build_type=LS1088 ;;
-  lx2160) build_type=LX2160 ;;
-  *)  build_type=LS2085;;
-esac],[build_type=LS2085])
-fi
-AM_CONDITIONAL([BUILD_LS2080], [test x$build_type = xLS2080 ])
-AM_CONDITIONAL([BUILD_LS2085], [test x$build_type = xLS2085 ])
-AM_CONDITIONAL([BUILD_LS2088], [test x$build_type = xLS2088 ])
-AM_CONDITIONAL([BUILD_LS1088], [test x$build_type = xLS1088 ])
-AM_CONDITIONAL([BUILD_LX2160], [test x$build_type = xLX2160 ])
-
-##########################################################################
 # Default warning setup
 ##########################################################################
 ODP_CFLAGS="$ODP_CFLAGS -W -Wall -Wstrict-prototypes -Wmissing-prototypes"

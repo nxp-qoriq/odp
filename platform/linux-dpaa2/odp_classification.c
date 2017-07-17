@@ -1361,7 +1361,10 @@ int odp_pktio_headroom_set(odp_pktio_t pktio_in, uint32_t headroom)
 	/*Check alignment for buffer layouts first*/
 	tot_size = dpaa2_mbuf_sw_annotation + DPAA2_MBUF_HW_ANNOTATION +
 			 headroom;
-	tot_size = ODP_ALIGN_ROUNDUP(tot_size, ODP_PACKET_LAYOUT_ALIGN);
+	if ((mc_plat_info.svr & 0xffff0000) == SVR_LS2080A)
+		tot_size = ODP_ALIGN_ROUNDUP(tot_size, 256);
+	else
+		tot_size = ODP_ALIGN_ROUNDUP(tot_size, 64);
 	headroom = tot_size - (dpaa2_mbuf_sw_annotation +
 					DPAA2_MBUF_HW_ANNOTATION);
 

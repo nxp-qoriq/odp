@@ -138,16 +138,6 @@ extern "C" {
  */
 #define ODP_VAL_IS_POWER_2(x) ((((x)-1) & (x)) == 0)
 
-#if defined(BUILD_LS2085) || defined(BUILD_LS2080)
-/**
-  * The value of this Macro should be 256 for ls2080 board
-  * Please refer ERR009354 or MC-941
-  */
-#define ODP_PACKET_LAYOUT_ALIGN 256
-#else
-#define ODP_PACKET_LAYOUT_ALIGN 64
-#endif
-
 /**
  * @}
  */
