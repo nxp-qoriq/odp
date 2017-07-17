@@ -35,12 +35,6 @@
  */
 #define SHM_PKT_POOL_SIZE      (2048 * SHM_PKT_POOL_BUF_SIZE)
 
-/** @def SHM_ORDERED_PKT_POOL_BUFFERS
- * @brief Size of the shared memory block
- * TODO: Due to HW ORL limitation of 512, limiting buffers to 512
- */
-#define SHM_ORDERED_PKT_POOL_BUFFERS      512
-
 /* ODP application data memory size include packet buffers */
 #define ODPAPP_DATA_MEM_SIZE  ((uint64_t)256 * 1024 * 1024) /*256 MB*/
 
@@ -517,10 +511,7 @@ int main(int argc, char *argv[])
 	odp_pool_param_init(&params);
 	params.pkt.seg_len = args->appl.buf_size;
 	params.pkt.len     = args->appl.buf_size;
-	if (args->appl.queue_type == ODP_SCHED_SYNC_ORDERED)
-		params.pkt.num     = SHM_ORDERED_PKT_POOL_BUFFERS / args->appl.if_count;
-	else
-		params.pkt.num     = SHM_PKT_POOL_SIZE / args->appl.buf_size;
+	params.pkt.num     = SHM_PKT_POOL_SIZE / args->appl.buf_size;
 
 	params.type        = ODP_POOL_PACKET;
 

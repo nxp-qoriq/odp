@@ -1041,63 +1041,12 @@ int32_t dpaa2_eth_setup_rx_vq(struct dpaa2_dev *dev,
 		if (vq_cfg->sync & ODP_SCHED_SYNC_ATOMIC) {
 			options |= DPNI_QUEUE_OPT_HOLD_ACTIVE;
 			cfg.destination.hold_active     = TRUE;
-		}
-		if (vq_cfg->sync & ODP_SCHED_SYNC_ORDERED) {
+		} else if (vq_cfg->sync & ODP_SCHED_SYNC_ORDERED) {
 			struct opr_cfg cfg;
-			pool_entry_t *pool;
-			pktio_entry_t *pktio_entry;
-			struct qbman_swp *swp;
-			uint64_t bufs[DPAA2_MBUF_MAX_ACQ_REL];
-			int ret = 0, count;
-			uint32_t prev_bufs;
 
-			/*FIXME Limiting the buffers in buffer pool upto 512
-				for ordered queue. This shoud be fixed after
-				the resolution of issues MC-2171 and MC-2172*/
-			pktio_entry = get_pktio_entry((odp_pktio_t)dev->pktio);
-			if (!pktio_entry) {
-				ODP_ERR("pktio entry not found\n");
-				return DPAA2_FAILURE;
-			}
-			pool = odp_pool_to_entry(pktio_entry->s.pkt_dpaa2.pool);
-			if (!pool) {
-				ODP_ERR("pool not found\n");
-				return DPAA2_FAILURE;
-			}
-			swp = thread_io_info.dpio_dev->sw_portal;
-			POOL_LOCK(&pool->s.lock);
-			prev_bufs = pool->s.params.pkt.num;
-			count = prev_bufs - 512;
-			while(count > 0) {
-				if (count > DPAA2_MBUF_MAX_ACQ_REL) {
-					/*TODO Buffers acquired by the below API should be
-						freed using memzone free API for re-use. Currently,
-						memzones free support is not available in the
-						system, so leaving the code as it*/
-
-					ret = qbman_swp_acquire(swp, pool->s.bpid, bufs,
-						DPAA2_MBUF_MAX_ACQ_REL);
-					if (ret == DPAA2_MBUF_MAX_ACQ_REL) {
-						count -= ret;
-						pool->s.params.pkt.num -= ret;
-					}
-				} else {
-					ret = qbman_swp_acquire(swp, pool->s.bpid, bufs, count);
-					if (ret > 0) {
-						count -= ret;
-						pool->s.params.pkt.num -= ret;
-					}
-				}
-			}
-
-			if (prev_bufs != pool->s.params.pkt.num)
-				ODP_PRINT("Available buffers in pool \"%s\""
-						" is limited to %d\n", pool->s.name, pool->s.params.pkt.num);
-			POOL_UNLOCK(&pool->s.lock);
-
-			cfg.oprrws = 5;	/*Restoration window size = 1024 frames*/
-			cfg.oa = 0;	/*Auto advance NESN window disabled*/
-			cfg.olws = 2;	/*Late arrival window size = 1024 frames*/
+			cfg.oprrws = 3;	/*Restoration window size = 256 frames*/
+			cfg.oa = 1;	/*Auto advance NESN window enabled*/
+			cfg.olws = 2;	/*Late arrival window size = 256 frames*/
 			cfg.oeane = 0;	/*ORL resource exhaustaion advance NESN disabled*/
 			cfg.oloe = 0;	/*Loose ordering disabled*/
 			retcode = dpni_set_opr(dpni, CMD_PRI_LOW, dev_priv->token,
