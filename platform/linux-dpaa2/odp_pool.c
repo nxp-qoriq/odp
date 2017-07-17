@@ -27,7 +27,10 @@
 /* for DPAA2 */
 #include <dpaa2_mbuf.h>
 #include <dpaa2_mbuf_priv.h>
+#include <dpaa2_io_portal_priv.h>
 #include <odp_packet_dpaa2.h>
+
+
 extern int dpaa2_mbuf_pool_get_bpid(void *bplist);
 
 #if ODP_CONFIG_POOLS > ODP_BUFFER_MAX_POOLS
@@ -194,9 +197,10 @@ odp_pool_t odp_pool_create(const char *name, odp_pool_param_t *params)
 
 		/*todo - w.r.t WRIOP 256 byte alignment requirement
 		making the buffer in multiple of 256 */
-		blk_size = ODP_ALIGN_ROUNDUP(
-				blk_size,
-				ODP_PACKET_LAYOUT_ALIGN);
+		if ((mc_plat_info.svr & 0xffff0000) == SVR_LS2080A)
+			blk_size = ODP_ALIGN_ROUNDUP(blk_size, 256);
+		else
+			blk_size = ODP_ALIGN_ROUNDUP(blk_size, 64);
 
 		break;
 	case ODP_POOL_TIMEOUT:
@@ -229,10 +233,12 @@ odp_pool_t odp_pool_create(const char *name, odp_pool_param_t *params)
 		bp_list_cfg.num_buf_pools = 1;
 		bp_list_cfg.buf_pool[0].num = buf_num;
 		bp_list_cfg.buf_pool[0].size = blk_size;
-		bp_list_cfg.buf_pool[0].meta_data_size =
-			ODP_ALIGN_ROUNDUP(sizeof(odp_packet_hdr_t)
-			+ params->pkt.uarea_size, ODP_PACKET_LAYOUT_ALIGN);
-
+		if ((mc_plat_info.svr & 0xffff0000) == SVR_LS2080A)
+			bp_list_cfg.buf_pool[0].meta_data_size = ODP_ALIGN_ROUNDUP(sizeof(odp_packet_hdr_t)
+								+ params->pkt.uarea_size, 256);
+		else
+			bp_list_cfg.buf_pool[0].meta_data_size = ODP_ALIGN_ROUNDUP(sizeof(odp_packet_hdr_t)
+								+ params->pkt.uarea_size, 64);
 		bp_list_cfg.buf_pool[0].odp_user_area = params->pkt.uarea_size;
 		h_bp_list = dpaa2_mbuf_pool_list_init(&bp_list_cfg);
 		if (!h_bp_list) {

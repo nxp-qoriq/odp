@@ -33,6 +33,7 @@
 #include <fsl_dpio.h>
 #include <fsl_dpio_cmd.h>
 #include <fsl_mc_sys.h>
+#include <fsl_dpmng.h>
 /*QBMAN header files*/
 #include <fsl_qbman_portal.h>
 
@@ -44,6 +45,11 @@ extern "C" {
 #define LDPAA_IO_P_MAJ_NUM	DPIO_VER_MAJOR
 #define LDPAA_IO_P_MIN_NUM	DPIO_VER_MINOR
 #define LDPAA_IO_P_NAME		"ldpaa-dpio"
+
+#define SVR_LS1080A             0x87030000
+#define SVR_LS2080A             0x87010000
+#define SVR_LS2088A             0x87090000
+#define SVR_LX2160A             0x87360000
 
 /*QBMAN Version*/
 #define QBMAN_REV_4100   0x04010000
@@ -61,69 +67,6 @@ extern "C" {
 #define VFIO_DPIO_DATA_IRQ_INDEX 0
 /* Invalid DPIO Channel index */
 #define DPAA2_INVALID_CHANNEL_IDX	((uint8_t)(-1))
-
-/*Stashing Macros*/
-#if defined(BUILD_LS1088)
-/* For LS108X platforms */
-#define DPAA2_CORE_CLUSTER_BASE		0x02
-#define DPAA2_CORE_CLUSTER_FIRST	(DPAA2_CORE_CLUSTER_BASE + 0)
-#define DPAA2_CORE_CLUSTER_SECOND	(DPAA2_CORE_CLUSTER_BASE + 1)
-/* For LS108X platform There are two clusters with following mapping:
- * Cluster 1 (ID = x02) : CPU0, CPU1, CPU2, CPU3;
- * Cluster 2 (ID = x03) : CPU4, CPU5, CPU6, CPU7;
- */
-#define DPAA2_CORE_CLUSTER_GET(sdest, cpu_id) \
-do { \
-	if (cpu_id <= 3) \
-		sdest = DPAA2_CORE_CLUSTER_FIRST; \
-	else \
-		sdest = DPAA2_CORE_CLUSTER_SECOND; \
-} while (0)
-
-#elif defined(BUILD_LS2080) || defined(BUILD_LS2085) || defined(BUILD_LS2088)
-/* For LS208X platforms */
-#define DPAA2_CORE_CLUSTER_BASE		0x04
-#define DPAA2_CORE_CLUSTER_FIRST	(DPAA2_CORE_CLUSTER_BASE + 0)
-#define DPAA2_CORE_CLUSTER_SECOND	(DPAA2_CORE_CLUSTER_BASE + 1)
-#define DPAA2_CORE_CLUSTER_THIRD	(DPAA2_CORE_CLUSTER_BASE + 2)
-#define DPAA2_CORE_CLUSTER_FOURTH	(DPAA2_CORE_CLUSTER_BASE + 3)
-
-/* For LS208X platform There are four clusters with following mapping:
- * Cluster 1 (ID = x04) : CPU0, CPU1;
- * Cluster 2 (ID = x05) : CPU2, CPU3;
- * Cluster 3 (ID = x06) : CPU4, CPU5;
- * Cluster 4 (ID = x07) : CPU6, CPU7;
- */
-#define DPAA2_CORE_CLUSTER_GET(sdest, cpu_id) \
-do { \
-	if (cpu_id == 0 || cpu_id == 1) \
-		sdest = DPAA2_CORE_CLUSTER_FIRST; \
-	else if (cpu_id == 2 || cpu_id == 3) \
-		sdest = DPAA2_CORE_CLUSTER_SECOND; \
-	else if (cpu_id == 4 || cpu_id == 5) \
-		sdest = DPAA2_CORE_CLUSTER_THIRD; \
-	else \
-		sdest = DPAA2_CORE_CLUSTER_FOURTH; \
-} while (0)
-
-#elif defined(BUILD_LX2160)
-#define DPAA2_CORE_CLUSTER_BASE		0x00
-/* For LX2160 platform There are eight clusters with following mapping:
- * Cluster 1 (ID = x00) : CPU0, CPU1;
- * Cluster 2 (ID = x01) : CPU2, CPU3;
- * Cluster 3 (ID = x02) : CPU4, CPU5;
- * Cluster 4 (ID = x03) : CPU6, CPU7;
- * Cluster 5 (ID = x04) : CPU8, CPU9;
- * Cluster 6 (ID = x05) : CPU10, CPU11;
- * Cluster 7 (ID = x06) : CPU12, CPU13;
- * Cluster 8 (ID = x07) : CPU14, CPU15;
- */
-#define DPAA2_CORE_CLUSTER_GET(sdest, cpu_id) \
-	sdest = DPAA2_CORE_CLUSTER_BASE + (cpu_id / 2);
-
-#else
-#warning "SDEST is not configured. Unsupported platform."
-#endif
 
 /*
  * Structure to represent hold dqrr entry.
@@ -193,7 +136,8 @@ extern __thread struct thread_io_info_t thread_io_info;
 extern struct dpaa2_dpio_dev *notif_dpio;
 /* The epoll fd to be used for epolling on the notifier DPIO */
 extern int notif_dpio_epollfd;
-
+/* Global struct for soc version */
+extern struct mc_soc_version mc_plat_info;
 /* Helper Macro to acquire lock for IO Portal */
 #define	SWP_LOCK(dpio_dev)	({					\
 		if (odp_atomic_read_u16(&dpio_dev->ref_count) > 1)	\

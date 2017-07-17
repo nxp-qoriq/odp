@@ -21,13 +21,6 @@
 
 #include <odp/api/cpu.h>
 
-#if defined(BUILD_LS2085) || defined(BUILD_LS2080) || \
-	defined(BUILD_LS2088) || defined(BUILD_LS1088)
-#define NUM_HOST_CPUS 8
-#elif defined(BUILD_LX2160)
-#define NUM_HOST_CPUS 16
-#endif
-
 #define NUM_DPIO_REGIONS	2
 /* DPIO devices list */
 struct dpaa2_dpio_device_list *dpio_dev_list; /*!< DPIO device list */
@@ -38,6 +31,7 @@ struct dpaa2_dpio_dev *notif_dpio;
 /* The epoll fd to be used for epolling on the notifier DPIO */
 int notif_dpio_epollfd;
 
+struct mc_soc_version mc_plat_info = {0};
 /*!< I/O handle for this thread, for the use of DPAA2 framework.
  * This is duplicated as will be used frequently
  */
@@ -182,17 +176,6 @@ int32_t dpaa2_io_portal_probe(ODP_UNUSED struct dpaa2_dev *dev,
 				PROT_WRITE | PROT_READ, MAP_SHARED,
 				dpio_dev->vfio_fd, reg_info.offset);
 
-#if defined(BUILD_LS2085) || defined(BUILD_LS2080)
-	/* Create Mapping for QBMan Cache Enabled area. This is a fix for
-	   SMMU fault for DQRR statshing transaction. */
-	if (vfio_dmamap_mem_region(dpio_dev->qbman_portal_ce_paddr,
-				reg_info.offset,
-				reg_info.size)) {
-		DPAA2_ERR(FW, "DMAMAP for Portal CE area failed.\n");
-		goto free_dpio;
-	}
-#endif
-
 	reg_info.index = 1;
 	if (ioctl(dpio_dev->vfio_fd, VFIO_DEVICE_GET_REGION_INFO,
 					&reg_info)) {
@@ -230,6 +213,22 @@ int32_t dpaa2_io_portal_probe(ODP_UNUSED struct dpaa2_dev *dev,
 		DPAA2_ERR(FW, "DPIO failed to Enable\n");
 		dpio_close(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token);
 		goto free_res;
+	}
+	if (mc_get_soc_version(dpio_dev->dpio, CMD_PRI_LOW, &mc_plat_info)) {
+		DPAA2_ERR(FW, "\tmc_get_soc_version failed\n");
+		dpio_disable(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token);
+		dpio_close(dpio_dev->dpio, CMD_PRI_LOW,  dpio_dev->token);
+		goto free_res;
+	}
+	if ((mc_plat_info.svr & 0xffff0000) == SVR_LS2080A) {
+		/* Create Mapping for QBMan Cache Enabled area. This is a fix for
+		   SMMU fault for DQRR statshing transaction. */
+		if (vfio_dmamap_mem_region(dpio_dev->qbman_portal_ce_paddr,
+					reg_info.offset,
+					reg_info.size)) {
+			DPAA2_ERR(FW, "DMAMAP for Portal CE area failed.\n");
+			goto free_dpio;
+		}
 	}
 	if (dpio_get_attributes(dpio_dev->dpio, CMD_PRI_LOW,
 			dpio_dev->token, &attr)) {
@@ -511,7 +510,7 @@ int32_t dpaa2_thread_affine_io_context(uint32_t io_index)
 static int32_t dpaa2_configure_stashing(void)
 {
 	int8_t sdest;
-	int32_t cpu_id, ret;
+	int32_t cpu_id, ret, num_host_cpus;
 	struct dpaa2_dpio_dev *dpio_dev = NULL;
 
 	dpio_dev = thread_io_info.dpio_dev;
@@ -527,14 +526,20 @@ static int32_t dpaa2_configure_stashing(void)
 		return DPAA2_FAILURE;
 	}
 
+	if ((mc_plat_info.svr & 0xffff0000) == SVR_LX2160A)
+		num_host_cpus = 16;
+	else
+		num_host_cpus = 8;
+
 	/* In case of running ODP on the Virtual Machine the Stashing
 	 * Destination gets set in the H/W w.r.t. the Virtual CPU ID's.
 	 * As a W.A. environment variable HOST_START_CPU tells which the
 	 * offset of the host start core of the Virtual Machine threads.
 	 */
+
 	if (getenv("HOST_START_CPU")) {
 		cpu_id += atoi(getenv("HOST_START_CPU"));
-		cpu_id = cpu_id % NUM_HOST_CPUS;
+		cpu_id = cpu_id % num_host_cpus;
 	}
 
 	/* Set the STASH Destination depending on Current CPU ID.
@@ -542,7 +547,26 @@ static int32_t dpaa2_configure_stashing(void)
 	   CPU 0-1 will have SDEST 4
 	   CPU 2-3 will have SDEST 5.....and so on.
 	*/
-	DPAA2_CORE_CLUSTER_GET(sdest, cpu_id);
+	if ((mc_plat_info.svr & 0xffff0000) == SVR_LX2160A)
+		sdest = cpu_id / 2;
+	else if ((mc_plat_info.svr & 0xffff0000) == SVR_LS1080A) {
+		if (cpu_id <= 3)
+			sdest = 0x02;
+		else
+			sdest = 0x03;
+	} else if ((mc_plat_info.svr & 0xffff0000) == SVR_LS2080A || (mc_plat_info.svr & 0xffff0000) == SVR_LS2088A) {
+		if (cpu_id == 0 || cpu_id == 1)
+			sdest = 0x04;
+		else if (cpu_id == 2 || cpu_id == 3)
+			sdest = 0x05;
+		else if (cpu_id == 4 || cpu_id == 5)
+			sdest = 0x06;
+		else
+			sdest = 0x07;
+	} else {
+		DPAA2_ERR(FW, "SDEST is not configured. Unsupported platform.");
+		return DPAA2_FAILURE;
+	}
 	DPAA2_INFO(FW, "%s: Portal= %d  CPU= %u SDEST= %d\n",
 			__func__, dpio_dev->index, cpu_id, sdest);
 

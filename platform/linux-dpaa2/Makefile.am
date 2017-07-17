@@ -24,22 +24,6 @@ AM_CFLAGS +=  -I$(top_srcdir)/helper/include
 LIBS += $(DPAA2_LIBS)
 AM_LDFLAGS += -L$(top_srcdir)/lib
 
-if BUILD_LS2085
-DPAA2_CFLAGS += -DBUILD_LS2085
-endif
-if BUILD_LS2080
-DPAA2_CFLAGS += -DBUILD_LS2080
-endif
-if BUILD_LS2088
-DPAA2_CFLAGS += -DBUILD_LS2088
-endif
-if BUILD_LS1088
-DPAA2_CFLAGS += -DBUILD_LS1088
-endif
-if BUILD_LX2160
-DPAA2_CFLAGS += -DBUILD_LX2160
-endif
-
 SUBDIRS = flib .
 
 include_HEADERS = \
