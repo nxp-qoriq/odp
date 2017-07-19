@@ -1,9 +1,6 @@
 #! /bin/sh
 echo "Update submodules"
 git submodule update --init
-cd platform/linux-dpaa2/flib/qbman/.
-git am ../workaround_patches/0001-Removing-Compilation-error.patch
-cd -
 
 set -x
 aclocal -I config -I m4
