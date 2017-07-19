@@ -245,6 +245,8 @@ get_resources() {
 		NI3=`grep -o "interface: eth\w*" linux_iflog | sed -e 's/interface: //g'`
 	fi
 
+	#/*FIXME Workaround for ODP Library path and should be removed once issue ODP-1148 fixed */
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/
 	rm linux_iflog
 }
 
