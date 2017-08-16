@@ -1032,6 +1032,7 @@ int odp_pktio_stats(odp_pktio_t pktio,
 	dpni = (struct fsl_mc_io *)(dev_priv->hw);
 
 	if (stats) {
+		memset(stats, 0, sizeof(odp_pktio_stats_t));
 		/*Get Counters from page_0*/
 		retcode = dpni_get_statistics(dpni, CMD_PRI_LOW,
 					      dev_priv->token,
@@ -1056,6 +1057,12 @@ int odp_pktio_stats(odp_pktio_t pktio,
 			goto error;
 		/* Egress bytes count*/
 		stats->out_octets = value.page_1.egress_all_bytes;
+		/*total pkt received */
+		stats->out_ucast_pkts = value.page_1.egress_all_frames;
+		/* less the multicast pkts*/
+		stats->out_ucast_pkts -= value.page_1.egress_multicast_frames;
+		/* less the broadcast pkts*/
+		stats->out_ucast_pkts -= value.page_1.egress_broadcast_frames;
 
 		/*Get Counters from page_2*/
 		retcode =  dpni_get_statistics(dpni, CMD_PRI_LOW,
@@ -1063,14 +1070,12 @@ int odp_pktio_stats(odp_pktio_t pktio,
 					       page2, &value);
 		if (retcode)
 			goto error;
-		/* Ingress drop frame count due to confiured rules*/
-		stats->in_discards = value.page_2.ingress_filtered_frames;
-		/* Ingress drop frame count due to error*/
-		stats->in_discards += value.page_2.ingress_discarded_frames;
-		/* Egress drop frame count due to error*/
-		stats->out_errors = value.page_2.egress_discarded_frames;
-		stats->out_discards = 0;
-		stats->out_ucast_pkts = 0;
+		/* Ingress drop frame count*/
+		stats->in_discards = value.page_2.ingress_nobuffer_discards;
+		/* Ingress error frame count*/
+		stats->in_errors = value.page_2.ingress_discarded_frames;
+		/* Egress drop frame count*/
+		stats->out_discards = value.page_2.egress_discarded_frames;
 	}
 	return retcode;
 error:
