@@ -8,6 +8,8 @@
  * DEBUG FRAMEWORK
  */
 
+#include <fsl_qbman_debug.h>
+
 #include <odp/api/init.h>
 #include <odp_internal.h>
 #include <odp_packet_internal.h>
@@ -33,8 +35,6 @@
 #include <fsl_dpseci.h>
 
 #include <fsl_qbman_portal.h>
-#include <fsl_qbman_debug.h>
-
 #define BUFLEN 64
 #define DEFAULT_PLAT_DEBUG_PORT 10000
 #define MAXLENGTH 10000

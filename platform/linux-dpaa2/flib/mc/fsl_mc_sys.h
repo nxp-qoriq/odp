@@ -58,9 +58,9 @@ struct fsl_mc_io {
 #include <linux/byteorder/little_endian.h>
 
 
-#define dmb()	__asm__ __volatile__ ("" : : : "memory")
-#define __iormb()	dmb()
-#define __iowmb()	dmb()
+#define mcdmb()	__asm__ __volatile__ ("" : : : "memory")
+#define __iormb()	mcdmb()
+#define __iowmb()	mcdmb()
 #define __arch_getq(a)	(*(volatile unsigned long *)(a))
 #define __arch_putq(v, a)	(*(volatile unsigned long *)(a) = (v))
 #define __arch_putq32(v, a)	(*(volatile unsigned int *)(a) = (v))

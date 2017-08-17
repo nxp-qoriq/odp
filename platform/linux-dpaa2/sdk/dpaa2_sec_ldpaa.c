@@ -21,12 +21,12 @@
 #include <dpaa2_vq.h>
 #include <dpaa2_eth_ldpaa_qbman.h>
 #include <dpaa2_malloc.h>
-#include <flib/rta.h>
-#include <flib/desc.h>
-#include <flib/desc/jobdesc.h>
 #include <fsl_dpseci.h>
 #include <fsl_dpseci_cmd.h>
 #include <fsl_mc_cmd.h>
+#include <flib/desc/jobdesc.h>
+#include <flib/desc.h>
+#include <flib/rta.h>
 #include <odp/api/byteorder.h>
 #include <dpaa2_queue.h>
 #include <dpaa2_time.h>
