@@ -97,6 +97,7 @@ static void get_dpni_stats(char *dev_name)
 	union dpni_statistics value;
 	char *str = pr_buf;
 	uint8_t page0 = 0, page1 = 1, page2 = 2;
+	uint8_t param = 0;
 
 	memset(&value, 0, sizeof(union dpni_statistics));
 
@@ -116,7 +117,7 @@ static void get_dpni_stats(char *dev_name)
 
 	/*Get Counters from page_0*/
 	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, dev_priv->token,
-				      page0, &value);
+				      page0, param, &value);
 	if (retcode)
 		goto error;
 
@@ -143,7 +144,7 @@ static void get_dpni_stats(char *dev_name)
 
 	/*Get Counters from page_1*/
 	retcode =  dpni_get_statistics(dpni, CMD_PRI_LOW, dev_priv->token,
-				       page1, &value);
+				       page1, param, &value);
 	if (retcode)
 		goto error;
 
@@ -159,7 +160,7 @@ static void get_dpni_stats(char *dev_name)
 
 	/*Get Counters from page_2*/
 	retcode =  dpni_get_statistics(dpni, CMD_PRI_LOW, dev_priv->token,
-				       page2, &value);
+				       page2, param, &value);
 	if (retcode)
 		goto error;
 
@@ -271,7 +272,8 @@ static void event_handler(void *msg)
 						"\t\t\tDPNI minor version \t\t\t\t\t: %hu\n"
 						"\t\t\tMaximum number of Rx Queues per TC\t\t\t: %u\n"
 						"\t\t\tMaximum number of Tx Queues \t\t\t: %u\n"
-						"\t\t\tMaximum number of traffic classes (for both Tx and Rx)  : %u\n"
+						"\t\t\tMaximum number of RX traffic classes \t: %u\n"
+						"\t\t\tMaximum number of TX traffic classes \t: %u\n"
 						"\t\t\tMaximum number of MAC filters \t\t\t: %u\n"
 						"\t\t\tMaximum number of VLAN filters	\t\t\t: %u\n"
 						"\t\t\tMaximum entries in QoS table \t\t\t\t: %u\n"
@@ -280,7 +282,8 @@ static void event_handler(void *msg)
 						"\t\t\tMaximum key size for the distribution look-up \t\t: %u\n",
 						name,
 						major, minor, attr->num_queues,
-						attr->num_queues, attr->num_tcs,
+						attr->num_queues, attr->num_rx_tcs,
+						attr->num_tx_tcs,
 						attr->mac_filter_entries,
 						attr->vlan_filter_entries,
 						attr->qos_entries,

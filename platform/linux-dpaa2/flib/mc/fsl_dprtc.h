@@ -85,6 +85,23 @@ int dprtc_destroy(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
 		  uint32_t object_id);
 
+int dprtc_enable(struct fsl_mc_io *mc_io,
+		 uint32_t cmd_flags,
+		 uint16_t token);
+
+int dprtc_disable(struct fsl_mc_io *mc_io,
+		  uint32_t cmd_flags,
+		  uint16_t token);
+
+int dprtc_is_enabled(struct fsl_mc_io *mc_io,
+		     uint32_t cmd_flags,
+		     uint16_t token,
+		     int *en);
+
+int dprtc_reset(struct fsl_mc_io *mc_io,
+		uint32_t cmd_flags,
+		uint16_t token);
+
 int dprtc_set_clock_offset(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
 			   uint16_t token,

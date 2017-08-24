@@ -57,7 +57,7 @@ struct fsl_mc_io {
 #include <sys/uio.h>
 #include <linux/byteorder/little_endian.h>
 
-#define cpu_to_le64(x) __cpu_to_le64(x)
+
 #define dmb()	__asm__ __volatile__ ("" : : : "memory")
 #define __iormb()	dmb()
 #define __iowmb()	dmb()

@@ -317,7 +317,7 @@ static void odp_hash_dist(odp_pktio_t pktio,
 	* Separate configurations to be provided for ipv4 and ipv6
 	* protocols when support is added in MC.
 	* */
-	for (i = 0; i < q_config->num_tcs; i++) {
+	for (i = 0; i < q_config->num_rx_tcs; i++) {
 		if (q_param->hash_proto.all_bits == ALL_BITS) {
 			/* All hash protocols are to be enabled */
 			dist_tuple = dist_tuple |
@@ -1004,6 +1004,7 @@ int odp_pktio_stats(odp_pktio_t pktio,
 	int32_t  retcode = -1;
 	union dpni_statistics value;
 	uint8_t	page0 = 0, page1 = 1, page2 = 2;
+	uint8_t param = 0;
 
 	entry = get_pktio_entry(pktio);
 	if (entry == NULL) {
@@ -1036,7 +1037,7 @@ int odp_pktio_stats(odp_pktio_t pktio,
 		/*Get Counters from page_0*/
 		retcode = dpni_get_statistics(dpni, CMD_PRI_LOW,
 					      dev_priv->token,
-					      page0, &value);
+					      page0, param, &value);
 		if (retcode)
 			goto error;
 
@@ -1052,7 +1053,7 @@ int odp_pktio_stats(odp_pktio_t pktio,
 		/*Get Counters from page_1*/
 		retcode =  dpni_get_statistics(dpni, CMD_PRI_LOW,
 					       dev_priv->token,
-					       page1, &value);
+					       page1, param, &value);
 		if (retcode)
 			goto error;
 		/* Egress bytes count*/
@@ -1067,7 +1068,7 @@ int odp_pktio_stats(odp_pktio_t pktio,
 		/*Get Counters from page_2*/
 		retcode =  dpni_get_statistics(dpni, CMD_PRI_LOW,
 					       dev_priv->token,
-					       page2, &value);
+					       page2, param, &value);
 		if (retcode)
 			goto error;
 		/* Ingress drop frame count*/
@@ -1219,7 +1220,7 @@ int odp_pktin_queue_config(odp_pktio_t pktio,
 			struct queues_config *q_config;
 
 			q_config = dpaa2_eth_get_queues_config(ndev);
-			for (i = 0; i < q_config->num_tcs; i++)
+			for (i = 0; i < q_config->num_rx_tcs; i++)
 				dpaa2_eth_remove_flow_distribution(ndev, i);
 
 			pktio_entry->s.hash_enable = FALSE;
@@ -1291,7 +1292,7 @@ failure:
 		struct queues_config *q_config;
 
 		q_config = dpaa2_eth_get_queues_config(ndev);
-		for (i = 0; i < q_config->num_tcs; i++)
+		for (i = 0; i < q_config->num_rx_tcs; i++)
 			dpaa2_eth_remove_flow_distribution(ndev, i);
 
 		pktio_entry->s.hash_enable = FALSE;

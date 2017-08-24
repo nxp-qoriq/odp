@@ -300,6 +300,7 @@ int dpdmux_if_set_accepted_frames(struct fsl_mc_io *mc_io,
 struct dpdmux_if_attr {
 	uint32_t rate;
 	int enabled;
+	int is_default;
 	enum dpdmux_accepted_frames_type accept_frame_type;
 };
 

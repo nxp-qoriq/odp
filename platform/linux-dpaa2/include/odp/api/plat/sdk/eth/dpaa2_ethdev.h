@@ -78,7 +78,8 @@ struct tc_config {
 
 /*! Queues configuration for a particular Ethernet device. */
 struct queues_config {
-	uint32_t num_tcs;	 /*!< Number of traffic classes */
+	uint32_t num_rx_tcs;	 /*!< Number of RX traffic classes */
+	uint32_t num_tx_tcs;	 /*!< Number of TX traffic classes */
 	struct tc_config tc_config[MAX_TCS]; /*!< Traffic class
 					    * configuration */
 	/* TODO: Add senders if required */

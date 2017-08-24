@@ -608,7 +608,8 @@ int dpni_get_attributes(struct fsl_mc_io *mc_io,
 	rsp_params = (struct dpni_rsp_get_attr *)cmd.params;
 	attr->options = le32_to_cpu(rsp_params->options);
 	attr->num_queues = rsp_params->num_queues;
-	attr->num_tcs = rsp_params->num_tcs;
+	attr->num_rx_tcs = rsp_params->num_rx_tcs;
+	attr->num_tx_tcs = rsp_params->num_tx_tcs;
 	attr->mac_filter_entries = rsp_params->mac_filter_entries;
 	attr->vlan_filter_entries = rsp_params->vlan_filter_entries;
 	attr->qos_entries = rsp_params->qos_entries;
@@ -1555,12 +1556,26 @@ int dpni_set_tx_priorities(struct fsl_mc_io *mc_io,
 					  cmd_flags,
 					  token);
 	cmd_params = (struct dpni_cmd_set_tx_priorities *)cmd.params;
-	for (i = 0; i < DPNI_MAX_TC; i++) {
-		dpni_set_field(cmd_params->tc_cfg[i].mode,
-			       MODE,
+	dpni_set_field(cmd_params->flags,
+				SEPARATE_GRP,
+				cfg->separate_groups);
+	cmd_params->prio_group_A =
+				cfg->prio_group_A;
+	cmd_params->prio_group_B =
+				cfg->prio_group_B;
+	
+	for (i = 0; i + 1 < DPNI_MAX_TC; i = i + 2) {
+		dpni_set_field(cmd_params->modes[i / 2],
+			       MODE_1,
 			       cfg->tc_sched[i].mode);
-		cmd_params->tc_cfg[i].delta_bandwidth =
-			cpu_to_le16(cfg->tc_sched[i].delta_bandwidth);
+		dpni_set_field(cmd_params->modes[i / 2],
+				   MODE_2,
+				   cfg->tc_sched[i + 1].mode);
+	}
+	
+	for (i = 0; i < DPNI_MAX_TC; i++) {
+		cmd_params->delta_bandwidth[i] =
+					cpu_to_le16(cfg->tc_sched[i].delta_bandwidth);
 	}
 
 	/* send command to mc*/
@@ -1626,8 +1641,8 @@ int dpni_set_rx_tc_dist(struct fsl_mc_io *mc_io,
  * of previous settings; Note that in this case, Tx error frames are still
  * enqueued to the general transmit errors queue.
  * Calling this function with 'mode' set to DPNI_CONF_SINGLE switches all
- * Tx confirmations to a shared Tx conf queue.  The ID of the queue when
- * calling dpni_set/get_queue is -1.
+ * Tx confirmations to a shared Tx conf queue. 'index' field in dpni_get_queue
+ * command will be ignored.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
@@ -2022,9 +2037,8 @@ void dpni_prepare_early_drop(const struct dpni_early_drop_cfg *cfg,
 
 	ext_params = (struct dpni_early_drop *)early_drop_buf;
 
-	dpni_set_field(ext_params->flags, DROP_MODE, cfg->mode);
+	dpni_set_field(ext_params->flags, DROP_ENABLE, cfg->enable);
 	dpni_set_field(ext_params->flags, DROP_UNITS, cfg->units);
-	ext_params->tail_drop_threshold = cpu_to_le32(cfg->tail_drop_threshold);
 	ext_params->green_drop_probability = cfg->green.drop_probability;
 	ext_params->green_max_threshold = cpu_to_le64(cfg->green.max_threshold);
 	ext_params->green_min_threshold = cpu_to_le64(cfg->green.min_threshold);
@@ -2048,11 +2062,12 @@ void dpni_prepare_early_drop(const struct dpni_early_drop_cfg *cfg,
 void dpni_extract_early_drop(struct dpni_early_drop_cfg *cfg,
 			     const uint8_t *early_drop_buf)
 {
-	struct dpni_early_drop *ext_params;
+	const struct dpni_early_drop *ext_params;
 
-	ext_params = (struct dpni_early_drop *)early_drop_buf;
+	ext_params = (const struct dpni_early_drop *)early_drop_buf;
 
-	cfg->tail_drop_threshold = le32_to_cpu(ext_params->tail_drop_threshold);
+	cfg->enable = dpni_get_field(ext_params->flags, DROP_ENABLE);
+	cfg->units = dpni_get_field(ext_params->flags, DROP_UNITS);
 	cfg->green.drop_probability = ext_params->green_drop_probability;
 	cfg->green.max_threshold = le64_to_cpu(ext_params->green_max_threshold);
 	cfg->green.min_threshold = le64_to_cpu(ext_params->green_min_threshold);
@@ -2388,6 +2403,8 @@ int dpni_get_queue(struct fsl_mc_io *mc_io,
  * @token:	Token of DPNI object
  * @page:	Selects the statistics page to retrieve, see
  *		DPNI_GET_STATISTICS output. Pages are numbered 0 to 2.
+ * @param:  Custom parameter for some pages used to select
+ * 		 a certain statistic source, for example the TC.
  * @stat:	Structure containing the statistics
  *
  * Return:	'0' on Success; Error code otherwise.
@@ -2396,6 +2413,7 @@ int dpni_get_statistics(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
 			uint8_t page,
+			uint8_t param,
 			union dpni_statistics *stat)
 {
 	struct mc_command cmd = { 0 };
@@ -2409,6 +2427,7 @@ int dpni_get_statistics(struct fsl_mc_io *mc_io,
 					  token);
 	cmd_params = (struct dpni_cmd_get_statistics *)cmd.params;
 	cmd_params->page_number = page;
+	cmd_params->param = param;
 
 	/* send command to mc */
 	err = mc_send_command(mc_io, &cmd);
@@ -2714,4 +2733,72 @@ int dpni_enable_sw_sequence(struct fsl_mc_io *mc_io,
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_get_sw_sequence_layout() - Get the soft sequence layout
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @src:	Source of the layout (WRIOP Rx or Tx)
+ * @ss_layout_iova:  I/O virtual address of 264 bytes DMA-able memory
+ *
+ * warning: After calling this function, call dpni_extract_sw_sequence_layout() to
+ *	get the layout
+ *
+ * Return:	'0' on Success; error code otherwise.
+ */
+int dpni_get_sw_sequence_layout(struct fsl_mc_io *mc_io,
+	      uint32_t cmd_flags,
+	      uint16_t token,
+		  enum dpni_soft_sequence_dest src,
+		  uint64_t ss_layout_iova)
+{
+	struct dpni_get_sw_sequence_layout *cmd_params;
+	struct mc_command cmd = { 0 };
+	
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_GET_SW_SEQUENCE_LAYOUT,
+					  cmd_flags,
+					  token);
+	
+	cmd_params = (struct dpni_get_sw_sequence_layout *)cmd.params;
+	cmd_params->src = src;
+	cmd_params->layout_iova = cpu_to_le64(ss_layout_iova);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_extract_sw_sequence_layout() - extract the software sequence layout
+ * @layout:		software sequence layout
+ * @sw_sequence_layout_buf:	Zeroed 264 bytes of memory before mapping it to DMA
+ *
+ * This function has to be called after dpni_get_sw_sequence_layout
+ *
+ */
+void dpni_extract_sw_sequence_layout(struct dpni_sw_sequence_layout *layout,
+			     const uint8_t *sw_sequence_layout_buf)
+{
+	const struct dpni_sw_sequence_layout_entry *ext_params;
+	int i;
+	uint16_t ss_size, ss_offset;
+
+	ext_params = (const struct dpni_sw_sequence_layout_entry *)sw_sequence_layout_buf;
+
+	for (i = 0; i < DPNI_SW_SEQUENCE_LAYOUT_SIZE; i++) {
+		ss_offset = le16_to_cpu(ext_params[i].ss_offset);
+		ss_size = le16_to_cpu(ext_params[i].ss_size);
+		
+		if (ss_offset == 0 && ss_size == 0) {
+			layout->num_ss = i;
+			return;
+		}
+		
+		layout->ss[i].ss_offset = ss_offset;
+		layout->ss[i].ss_size = ss_size;
+		layout->ss[i].param_offset = ext_params[i].param_offset;
+		layout->ss[i].param_size = ext_params[i].param_size;
+	}
 }

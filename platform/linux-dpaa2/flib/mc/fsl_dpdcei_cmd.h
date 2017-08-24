@@ -34,12 +34,15 @@
 
 /* DPDCEI Version */
 #define DPDCEI_VER_MAJOR		2
-#define DPDCEI_VER_MINOR		2
+#define DPDCEI_VER_MINOR		3
 
 #define DPDCEI_CMD_BASE_VERSION		1
+#define DPDCEI_CMD_VERSION_2		2
 #define DPDCEI_CMD_ID_OFFSET		4
 
 #define DPDCEI_CMD(id)	((id << DPDCEI_CMD_ID_OFFSET) | DPDCEI_CMD_BASE_VERSION)
+#define DPDCEI_CMD_V2(id) \
+			(((id) << DPDCEI_CMD_ID_OFFSET) | DPDCEI_CMD_VERSION_2)
 
 /* Command IDs */
 #define DPDCEI_CMDID_CLOSE		DPDCEI_CMD(0x800)
@@ -50,7 +53,7 @@
 
 #define DPDCEI_CMDID_ENABLE		DPDCEI_CMD(0x002)
 #define DPDCEI_CMDID_DISABLE		DPDCEI_CMD(0x003)
-#define DPDCEI_CMDID_GET_ATTR		DPDCEI_CMD(0x004)
+#define DPDCEI_CMDID_GET_ATTR		DPDCEI_CMD_V2(0x004)
 #define DPDCEI_CMDID_RESET		DPDCEI_CMD(0x005)
 #define DPDCEI_CMDID_IS_ENABLED		DPDCEI_CMD(0x006)
 
@@ -138,6 +141,8 @@ struct dpdcei_rsp_get_irq_status {
 struct dpdcei_rsp_get_attr {
 	uint32_t id;
 	uint8_t dpdcei_engine;
+	uint8_t pad[3];
+	uint64_t dce_version;
 };
 
 #define DPDCEI_DEST_TYPE_SHIFT	0

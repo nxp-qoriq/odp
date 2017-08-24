@@ -183,6 +183,14 @@ int dprtc_destroy(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
+/**
+ * dprtc_enable() - Enable the DPRTC.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPRTC object
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
 int dprtc_enable(struct fsl_mc_io *mc_io,
 		 uint32_t cmd_flags,
 		 uint16_t token)
@@ -197,6 +205,14 @@ int dprtc_enable(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
+/**
+ * dprtc_disable() - Disable the DPRTC.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPRTC object
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
 int dprtc_disable(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
 		  uint16_t token)
@@ -212,6 +228,15 @@ int dprtc_disable(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
+/**
+ * dprtc_is_enabled() - Check if the DPRTC is enabled.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPRTC object
+ * @en:		Returns '1' if object is enabled; '0' otherwise
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
 int dprtc_is_enabled(struct fsl_mc_io *mc_io,
 		     uint32_t cmd_flags,
 		     uint16_t token,
@@ -237,6 +262,14 @@ int dprtc_is_enabled(struct fsl_mc_io *mc_io,
 	return 0;
 }
 
+/**
+ * dprtc_reset() - Reset the DPRTC, returns the object to initial state.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPRTC object
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
 int dprtc_reset(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
 		uint16_t token)

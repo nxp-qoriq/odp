@@ -113,6 +113,8 @@ struct dpdmux_cmd_destroy {
 
 #define DPDMUX_ENABLE_SHIFT	0
 #define DPDMUX_ENABLE_SIZE	1
+#define DPDMUX_IS_DEFAULT_SHIFT		1
+#define DPDMUX_IS_DEFAULT_SIZE		1
 
 struct dpdmux_rsp_is_enabled {
 	uint8_t en;

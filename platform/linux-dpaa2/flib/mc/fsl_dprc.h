@@ -33,7 +33,7 @@
 #ifndef _FSL_DPRC_H
 #define _FSL_DPRC_H
 
-//#include "fsl_mc_cmd.h"
+#include "fsl_mc_cmd.h"
 
 /*
  * Data Path Resource Container API

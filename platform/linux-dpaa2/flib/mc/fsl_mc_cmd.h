@@ -33,6 +33,8 @@
 #define __FSL_MC_CMD_H
 
 #include <linux/byteorder/little_endian.h>
+#include "stdint.h"
+#include "fsl_mc_sys.h"
 
 #define MC_CMD_NUM_OF_PARAMS	7
 

@@ -552,6 +552,7 @@ int dpdcei_get_attributes(struct fsl_mc_io *mc_io,
 	rsp_params = (struct dpdcei_rsp_get_attr *)cmd.params;
 	attr->id = le32_to_cpu(rsp_params->id);
 	attr->engine = rsp_params->dpdcei_engine;
+	attr->dce_version = le64_to_cpu(rsp_params->dce_version);
 
 	return 0;
 }

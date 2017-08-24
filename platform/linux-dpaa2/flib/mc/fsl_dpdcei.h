@@ -145,6 +145,7 @@ int dpdcei_clear_irq_status(struct fsl_mc_io *mc_io,
 struct dpdcei_attr {
 	int id;
 	enum dpdcei_engine engine;
+	uint64_t dce_version;
 };
 
 int dpdcei_get_attributes(struct fsl_mc_io *mc_io,

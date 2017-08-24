@@ -508,7 +508,7 @@ odp_tm_node_t odp_tm_node_create(odp_tm_t             odp_tm,
 
 		result = (struct qbman_result *)dev->notification_mem;
 		q_config = dpaa2_eth_get_queues_config(dev);
-		for (tc_index = 0; tc_index < q_config->num_tcs; tc_index++) {
+		for (tc_index = 0; tc_index < q_config->num_tx_tcs; tc_index++) {
 			if (threshold_profile_obj->enable_max_pkts) {
 				cong_notif_cfg.units =
 						DPNI_CONGESTION_UNIT_FRAMES;
@@ -603,7 +603,7 @@ int odp_tm_node_destroy(odp_tm_node_t tm_node)
 	/*Reset taildrop*/
 	memset(&cong_notif_cfg, 0,
 	       sizeof(struct dpni_congestion_notification_cfg));
-	for (tc_index = 0; tc_index < q_config->num_tcs; tc_index++) {
+	for (tc_index = 0; tc_index < q_config->num_tx_tcs; tc_index++) {
 		retcode = dpni_set_congestion_notification(dpni,
 							   CMD_PRI_LOW,
 						dev_priv->token, DPNI_QUEUE_TX,
@@ -617,7 +617,7 @@ int odp_tm_node_destroy(odp_tm_node_t tm_node)
 	}
 	/*Configure Scheduling profile to default i.e. Strict Priority*/
 	memset(&tx_sched, 0, sizeof(struct dpni_tx_priorities_cfg));
-	for (tc_index = 0; tc_index < q_config->num_tcs; tc_index++)
+	for (tc_index = 0; tc_index < q_config->num_tx_tcs; tc_index++)
 		tx_sched.tc_sched[tc_index].mode = DPNI_TX_SCHED_STRICT_PRIORITY;
 	retcode =  dpni_set_tx_priorities(dpni, CMD_PRI_LOW, dev_priv->token,
 								&tx_sched);
@@ -796,7 +796,7 @@ int odp_tm_queue_sched_config(odp_tm_node_t tm_node,
 	if (sched_params->inverted_weights[prio] >= ODP_TM_MAX_SCHED_WEIGHT)
 		sched_params->inverted_weights[prio] = ODP_TM_MAX_SCHED_WEIGHT;
 	weight = sched_params->inverted_weights[prio] * 100;
-	tx_prio_cfg.tc_sched[prio].mode = DPNI_TX_SCHED_WEIGHTED;
+	tx_prio_cfg.tc_sched[prio].mode = DPNI_TX_SCHED_WEIGHTED_A;
 	tx_prio_cfg.tc_sched[prio].delta_bandwidth = weight;
 	retcode =  dpni_set_tx_priorities(dpni, CMD_PRI_LOW, dev_priv->token, &tx_prio_cfg);
 	if (retcode < 0) {

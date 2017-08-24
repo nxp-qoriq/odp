@@ -762,6 +762,7 @@ int dpdmux_if_get_attributes(struct fsl_mc_io *mc_io,
 	rsp_params = (struct dpdmux_rsp_if_get_attr *)cmd.params;
 	attr->rate = le32_to_cpu(rsp_params->rate);
 	attr->enabled = dpdmux_get_field(rsp_params->enabled, ENABLE);
+	attr->is_default = dpdmux_get_field(rsp_params->enabled, IS_DEFAULT);
 	attr->accept_frame_type = dpdmux_get_field(rsp_params->accepted_frames_type,
 						   ACCEPTED_FRAMES_TYPE);
 
@@ -1069,7 +1070,7 @@ int dpdmux_remove_custom_cls_entry(struct fsl_mc_io *mc_io,
 	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_REMOVE_CUSTOM_CLS_ENTRY,
 					  cmd_flags,
 					  token);
-	cmd_params = (struct dpdmux_cmd_add_custom_cls_entry *)cmd.params;
+	cmd_params = (struct dpdmux_cmd_remove_custom_cls_entry *)cmd.params;
 	cmd_params->key_size = rule->key_size;
 	cmd_params->key_iova = cpu_to_le64(rule->key_iova);
 	cmd_params->mask_iova = cpu_to_le64(rule->mask_iova);

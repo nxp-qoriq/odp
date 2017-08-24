@@ -230,13 +230,10 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 		goto get_attr_failure;
 	}
 	q_config = &(eth_priv->q_config);
-	q_config->num_tcs = attr.num_tcs;
-	/* dev->num_tx_vqueues = attr.num_tcs; */
-	/**
-	TODO:Using hard coded value for number of TX queues due to dependency
-	on MC. Once fix will will available in MC, Change needs to be reverted
-	*/
-	dev->num_tx_vqueues = 8;
+	q_config->num_rx_tcs = attr.num_rx_tcs;
+	q_config->num_tx_tcs = attr.num_tx_tcs;
+
+	dev->num_tx_vqueues = attr.num_tx_tcs;
 
 	dev->num_rx_vqueues = 0;
 
@@ -249,7 +246,7 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 	}
 
 	j = 0;
-	for (i = 0; i < attr.num_tcs; i++) {
+	for (i = 0; i < attr.num_rx_tcs; i++) {
 		q_config->tc_config[i].num_dist = attr.num_queues;
 		for (flow_id = 0; j < q_config->tc_config[i].num_dist; j++) {
 			eth_rx_vq = dev->rx_vq[j];
@@ -388,7 +385,7 @@ int32_t dpaa2_eth_open(struct dpaa2_dev *dev)
 
 	/*Configure TX priorities for each TC*/
 	memset(&tx_prio_cfg, 0, sizeof(struct dpni_tx_priorities_cfg));
-	for (i = 0; i < attr.num_tcs; i++)
+	for (i = 0; i < attr.num_tx_tcs; i++)
 		tx_prio_cfg.tc_sched[i].mode = DPNI_TX_SCHED_STRICT_PRIORITY;
 
 	retcode = dpni_set_tx_priorities(dpni_dev, CMD_PRI_LOW,
@@ -478,8 +475,8 @@ int32_t dpaa2_eth_start(struct dpaa2_dev *dev)
 	}
 
 	q_config = &(eth_priv->q_config);
-	/*Save the RX/TX flow information in DPAA2 device structure*/
-	for (tc_idx = 0; tc_idx < q_config->num_tcs; tc_idx++) {
+	/*Save the RX flow information in DPAA2 device structure*/
+	for (tc_idx = 0; tc_idx < q_config->num_rx_tcs; tc_idx++) {
 		if (q_config->tc_config[tc_idx].dist_type == DPAA2_ETH_FLOW_DIST)
 			num_flows = q_config->tc_config[tc_idx].num_dist_used;
 		else
