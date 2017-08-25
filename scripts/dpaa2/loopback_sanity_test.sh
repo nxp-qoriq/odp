@@ -23,9 +23,9 @@ Example:
 
 Assumptions:
 	* dynamic_dpl.sh, kernel-ni.sh and loopback_sanity_test.sh all these three scripts
-	  are present in the '/usr/local/odp/<board>/scripts' directory.
-	* All ODP example binaries are present in the '/usr/local/odp/<board>/bin' directory.
-	* All ODP Performance binaries are present in the '/usr/local/odp/<board>/test/performance' directory.
+	  are present in the '/usr/local/odp/scripts' directory.
+	* All ODP example binaries are present in the '/usr/local/odp/bin' directory.
+	* All ODP Performance binaries are present in the '/usr/local/odp/test/performance' directory.
 	* odpfsl_kni.ko is present in any of the child directory of '/' for odp_kni_demo testing.
 	* There are sufficient resources available to create two ODP conatiners and 3 kernel interfaces.
 	* There is sufficient memory to run two odp applications concurrently. Script is verified with
@@ -1362,11 +1362,11 @@ run_odp() {
 
 	#/* ODP_TM
 	# */
-	run_command TM "./odp_tm -i $FDPNI0,$FDPNI2 -d 192.168.222.0/24:$FDPNI2:00.00.00.00.08.02 -d 192.168.111.0/24:$FDPNI0:00.00.00.00.08.01 -m 1 -w q1:10,q2:20,q3:30,q4:40,q5:50,q6:60,q7:70,q8:80 -s 1 -r 500 -b 32"
+	run_command TM "./odp_tm -i $FDPNI0,$FDPNI2 -d 192.168.222.0/24:$FDPNI2:00.00.00.00.08.02 -d 192.168.111.0/24:$FDPNI0:00.00.00.00.08.01 -m 1 -w q1:10,q2:20,q3:30,q4:40 -s 1 -r 500 -b 32"
 
 	#/* ODP_TM
 	# */
-	run_command TM "./odp_tm -i $FDPNI0,$FDPNI2 -d 192.168.222.0/24:$FDPNI2:00.00.00.00.08.02 -d 192.168.111.0/24:$FDPNI0:00.00.00.00.08.01 -m 1 -w q1:10,q2:10,q3:10,q4:10,q5:10,q6:10,q7:10,q8:10 -s 1 -r 500 -b 32"
+	run_command TM "./odp_tm -i $FDPNI0,$FDPNI2 -d 192.168.222.0/24:$FDPNI2:00.00.00.00.08.02 -d 192.168.111.0/24:$FDPNI0:00.00.00.00.08.01 -m 1 -w q1:10,q2:10,q3:10,q4:10 -s 1 -r 500 -b 32"
 
 	#/* ODP_L2FWD (ODP_PKTIN_MODE_QUEUE) (PKTOUT_MODE_QUEUE)
 	# */
@@ -1476,7 +1476,7 @@ na=0
 input=
 if [[ -z $ODP_PATH ]]
 then
-        ODP_PATH="/usr/local/odp/$board"
+        ODP_PATH="/usr/local/odp"
 fi
 
 #/*

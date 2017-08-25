@@ -20,8 +20,7 @@ $ git clone ssh://git@sw-stash.freescale.net/gitam/odp.git
 $ cd <odp-dir>
 $ git checkout -b fsl_odp_v16.07_qoriq remotes/origin/fsl_odp_v16.07_qoriq
 $ ./bootstrap
-$ ./configure CC=${CROSS_COMPILE}gcc --host=aarch64-linux-gnu --with-platform=linux-dpaa2 --with-openssl-path=<OpenSSL library path> --enable-cunit-support --with-cunit-path=<Cunit Library path> --enable-debug-print="yes" --enable-ipsec-debug="yes" --enable-build-type=<build_type>
-# Where <build_type> can be one of the "ls1088/ls2088/ls2085/ls2080/lx2160".
+$ ./configure CC=${CROSS_COMPILE}gcc --host=aarch64-linux-gnu --with-platform=linux-dpaa2 --with-openssl-path=<OpenSSL library path> --enable-cunit-support --with-cunit-path=<Cunit Library path> --enable-debug-print="yes" --enable-ipsec-debug="yes"
 $ make
 
 Note: "with-cunit-path", "enable-ipsec-debug" and "enable-debug-print" are optional parameters. Cunit configuration is required only if validation suite is to be tested and debug print configuration is required only if debug messages need to be print. By default

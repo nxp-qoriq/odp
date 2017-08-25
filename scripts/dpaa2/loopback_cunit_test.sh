@@ -23,8 +23,8 @@ Example:
 
 Assumptions:
 	* dynamic_dpl.sh and loopback_cunit_test.sh all these scripts are present in the
-	  '/usr/local/odp/<board>/scripts' directory.
-	* All ODP Cunit binaries are present in the '/usr/local/odp/<board>/test/validation' directory.
+	  '/usr/local/odp/scripts' directory.
+	* All ODP Cunit binaries are present in the '/usr/local/odp/test/validation' directory.
 
 Note:	Minimum running time of script for all test cases is 10 mins.
 	"
@@ -319,7 +319,7 @@ cunit_untested=0
 CUNIT=0
 if [[ -z $ODP_PATH ]]
 then
-	ODP_PATH="/usr/local/odp/$board"
+	ODP_PATH="/usr/local/odp"
 fi
 if [[ -z $CUNIT_PATH ]]
 then
