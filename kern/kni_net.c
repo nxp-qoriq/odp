@@ -469,8 +469,6 @@ kni_net_tx(struct sk_buff *skb, struct net_device *dev)
 	struct odpfsl_kni_mbuf *pkt_va = NULL;
 
 
-	dev->trans_start = jiffies; /* save the timestamp */
-
 	/* Check if the length of skb is less than kbuf size */
 	if (skb->len > kni->kbuf_size)
 		goto drop;
@@ -543,9 +541,6 @@ static void
 kni_net_tx_timeout (struct net_device *dev)
 {
 	struct kni_dev *kni = netdev_priv(dev);
-
-	KNI_DBG("Transmit timeout at %ld, latency %ld\n", jiffies,
-			jiffies - dev->trans_start);
 
 	kni->stats.tx_errors++;
 	netif_wake_queue(dev);
