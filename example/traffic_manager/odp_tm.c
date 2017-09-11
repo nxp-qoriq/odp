@@ -673,8 +673,8 @@ static void odp_process_and_send_packet(odp_packet_t pkt_tbl[],
 				} else {
 #if ODP_TM_DEBUG
 					EXAMPLE_DBG("No flow match found. Packet is dropped.\n");
-					goto drop_packet;
 #endif
+					goto drop_packet;
 				}
 			}
 		} else {
