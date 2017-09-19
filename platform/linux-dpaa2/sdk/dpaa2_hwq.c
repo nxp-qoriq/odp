@@ -430,9 +430,12 @@ int dpaa2_hwq_xmit(void *h_dpaa2_hwq,
 			qbman_eq_desc_set_dca(&eqdesc, 1,
 				GET_HOLD_DQRR_IDX(buf_list[loop]->index), 0);
 			MARK_HOLD_DQRR_PTR_INVALID(buf_list[loop]->index);
+			buf_list[loop]->atomic_cntxt = INVALID_CNTXT_PTR;
 		} else if (buf_list[loop]->opr.orpid != INVALID_ORPID) {
 			qbman_eq_desc_set_orp(&eqdesc, 0, buf_list[loop]->opr.orpid,
 					buf_list[loop]->opr.seqnum, 0);
+			/* orpid + seqnum and atomic_cntxt  are in a union*/
+			buf_list[loop]->atomic_cntxt = INVALID_CNTXT_PTR;
 		}
 
 		/* Enqueue a packet to the QBMAN */

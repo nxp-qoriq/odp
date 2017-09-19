@@ -1666,9 +1666,12 @@ odp_crypto_operation(odp_crypto_op_params_t *params,
 		qbman_eq_desc_set_dca(&eqdesc, 1,
 					GET_HOLD_DQRR_IDX(mbuf->index), 0);
 		MARK_HOLD_DQRR_PTR_INVALID(mbuf->index);
+		mbuf->atomic_cntxt = INVALID_CNTXT_PTR;
 	} else if (mbuf->opr.orpid != INVALID_ORPID) {
 		qbman_eq_desc_set_orp(&eqdesc, 0, mbuf->opr.orpid,
 					mbuf->opr.seqnum, 0);
+		/* orpid + seqnum and atomic_cntxt  are in a union*/
+		mbuf->atomic_cntxt = INVALID_CNTXT_PTR;
 	}
 
 	_odp_buffer_type_set(mbuf, ODP_EVENT_CRYPTO_COMPL);

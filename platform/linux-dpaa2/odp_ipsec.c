@@ -904,9 +904,12 @@ int odp_ipsec_in_enq(const odp_ipsec_op_param_t *input)
 						GET_HOLD_DQRR_IDX(mbuf->index),
 						0);
 			MARK_HOLD_DQRR_PTR_INVALID(mbuf->index);
+			mbuf->atomic_cntxt = INVALID_CNTXT_PTR;
 		} else if (mbuf->opr.orpid != INVALID_ORPID) {
 			qbman_eq_desc_set_orp(&eqdesc, 0, mbuf->opr.orpid,
 						mbuf->opr.seqnum, 0);
+			/* orpid + seqnum and atomic_cntxt  are in a union*/
+			mbuf->atomic_cntxt = INVALID_CNTXT_PTR;
 		}
 
 		mbuf->drv_priv_resv[0] = odp_packet_l3_offset((odp_packet_t)mbuf);
@@ -1002,9 +1005,12 @@ int odp_ipsec_out_enq(const odp_ipsec_op_param_t *input)
 						GET_HOLD_DQRR_IDX(mbuf->index),
 						0);
 			MARK_HOLD_DQRR_PTR_INVALID(mbuf->index);
+			mbuf->atomic_cntxt = INVALID_CNTXT_PTR;
 		} else if (mbuf->opr.orpid != INVALID_ORPID) {
 			qbman_eq_desc_set_orp(&eqdesc, 0, mbuf->opr.orpid,
 						mbuf->opr.seqnum, 0);
+			/* orpid + seqnum and atomic_cntxt  are in a union*/
+			mbuf->atomic_cntxt = INVALID_CNTXT_PTR;
 		}
 
 		mbuf->drv_priv_resv[0] = odp_packet_l3_offset((odp_packet_t)mbuf);
