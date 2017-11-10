@@ -1,6 +1,6 @@
 [submodule "platform/linux-dpaa2/flib/qbman"]
 	path = platform/linux-dpaa2/flib/qbman
-	url = http://sw-stash.freescale.net/scm/dpaa2/qbman_userspace.git
+	url = http://bitbucket.sw.nxp.com/scm/dpaa2/qbman_userspace.git
 [submodule "platform/linux-dpaa2/flib/rta"]
 	path = platform/linux-dpaa2/flib/rta
-	url = http://sw-stash.freescale.net/scm/sdk/flib.git
+	url = http://bitbucket.sw.nxp.com/scm/sdk/flib.git
