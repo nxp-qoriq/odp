@@ -499,6 +499,7 @@ int32_t dpaa2_thread_affine_io_context(uint32_t io_index)
 		DPAA2_ERR(FW, "dpaa2_configure_stashing failed");
 		return DPAA2_FAILURE;
 	}
+	qbman_swp_invalidate(dpio_dev->sw_portal);
 	DPAA2_DBG(FW, "io_index %d affined with dpio index %d - dpio =%p",
 			io_index, dpio_dev->index, thread_io_info.dpio_dev);
 	if ((dpio_dev->intr_handle[VFIO_DPIO_DATA_IRQ_INDEX].flags) & DPAA2_INTR_ENABLED)
