@@ -1,6 +1,6 @@
 [submodule "platform/linux-dpaa2/flib/qbman"]
 	path = platform/linux-dpaa2/flib/qbman
-	url = http://bitbucket.sw.nxp.com/scm/dpaa2/qbman_userspace.git
+	url = https://source.codeaurora.org/external/qoriq/qoriq-components/qbman_userspace.git
 [submodule "platform/linux-dpaa2/flib/rta"]
 	path = platform/linux-dpaa2/flib/rta
-	url = http://bitbucket.sw.nxp.com/scm/sdk/flib.git
+	url = https://source.codeaurora.org/external/qoriq/qoriq-components/flib.git
