@@ -1,0 +1,25 @@
+<map id="cpumask.h" name="cpumask.h">
+<area shape="rect" id="node1" title=" " alt="" coords="351,5,444,32"/>
+<area shape="rect" id="node2" href="$arch_2arm32-linux_2odp_2api_2abi_2cpumask_8h_source.html" title=" " alt="" coords="57,80,151,107"/>
+<area shape="rect" id="node3" href="$arch_2arm64-linux_2odp_2api_2abi_2cpumask_8h_source.html" title=" " alt="" coords="175,80,268,107"/>
+<area shape="rect" id="node4" href="$arch_2default-linux_2odp_2api_2abi_2cpumask_8h_source.html" title=" " alt="" coords="292,80,385,107"/>
+<area shape="rect" id="node5" href="$arch_2power64-linux_2odp_2api_2abi_2cpumask_8h_source.html" title=" " alt="" coords="409,80,503,107"/>
+<area shape="rect" id="node6" href="$arch_2x86__32-linux_2odp_2api_2abi_2cpumask_8h_source.html" title=" " alt="" coords="527,80,620,107"/>
+<area shape="rect" id="node7" href="$arch_2x86__64-linux_2odp_2api_2abi_2cpumask_8h_source.html" title=" " alt="" coords="644,80,737,107"/>
+<area shape="rect" id="node8" href="$api_2cpumask_8h.html" title=" " alt="" coords="644,155,737,181"/>
+<area shape="rect" id="node9" href="$api_2abi-default_2thrmask_8h.html" title=" " alt="" coords="341,229,429,256"/>
+<area shape="rect" id="node19" href="$odp__api_8h.html" title=" " alt="" coords="648,603,733,629"/>
+<area shape="rect" id="node20" href="$api_2spec_2init_8h.html" title=" " alt="" coords="729,229,783,256"/>
+<area shape="rect" id="node10" href="$arch_2arm32-linux_2odp_2api_2abi_2thrmask_8h_source.html" title=" " alt="" coords="5,304,93,331"/>
+<area shape="rect" id="node11" href="$arch_2arm64-linux_2odp_2api_2abi_2thrmask_8h_source.html" title=" " alt="" coords="117,304,205,331"/>
+<area shape="rect" id="node12" href="$arch_2default-linux_2odp_2api_2abi_2thrmask_8h_source.html" title=" " alt="" coords="229,304,317,331"/>
+<area shape="rect" id="node13" href="$arch_2power64-linux_2odp_2api_2abi_2thrmask_8h_source.html" title=" " alt="" coords="341,304,429,331"/>
+<area shape="rect" id="node14" href="$arch_2x86__32-linux_2odp_2api_2abi_2thrmask_8h_source.html" title=" " alt="" coords="453,304,541,331"/>
+<area shape="rect" id="node15" href="$arch_2x86__64-linux_2odp_2api_2abi_2thrmask_8h_source.html" title=" " alt="" coords="565,304,653,331"/>
+<area shape="rect" id="node16" href="$api_2thrmask_8h.html" title=" " alt="" coords="565,379,653,405"/>
+<area shape="rect" id="node17" href="$api_2spec_2schedule_8h.html" title=" " alt="" coords="510,453,602,480"/>
+<area shape="rect" id="node18" href="$api_2schedule_8h.html" title=" " alt="" coords="510,528,602,555"/>
+<area shape="rect" id="node21" href="$api_2init_8h.html" title=" " alt="" coords="729,379,783,405"/>
+<area shape="rect" id="node22" href="$api_2spec_2shared__memory_8h.html" title=" " alt="" coords="779,453,917,480"/>
+<area shape="rect" id="node23" href="$api_2shared__memory_8h.html" title=" " alt="" coords="779,528,917,555"/>
+</map>

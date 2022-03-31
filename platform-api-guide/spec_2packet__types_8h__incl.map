@@ -1,0 +1,21 @@
+<map id="packet_types.h" name="packet_types.h">
+<area shape="rect" id="node1" title=" " alt="" coords="209,5,329,32"/>
+<area shape="rect" id="node2" title=" " alt="" coords="246,721,407,748"/>
+<area shape="rect" id="node3" href="$proto__stats__types_8h.html" title=" " alt="" coords="67,244,213,285"/>
+<area shape="rect" id="node13" title=" " alt="" coords="799,721,948,748"/>
+<area shape="rect" id="node14" href="$queue__types_8h.html" title=" " alt="" coords="381,80,550,107"/>
+<area shape="rect" id="node4" title=" " alt="" coords="43,333,213,375"/>
+<area shape="rect" id="node5" href="$spec_2proto__stats__types_8h.html" title=" " alt="" coords="289,333,431,375"/>
+<area shape="rect" id="node6" href="$std__types_8h.html" title=" " alt="" coords="624,423,773,449"/>
+<area shape="rect" id="node7" title=" " alt="" coords="419,497,592,524"/>
+<area shape="rect" id="node8" href="$spec_2std__types_8h.html" title=" " alt="" coords="617,497,799,524"/>
+<area shape="rect" id="node9" title=" " alt="" coords="681,572,751,599"/>
+<area shape="rect" id="node10" href="$align_8h.html" title=" " alt="" coords="538,572,657,599"/>
+<area shape="rect" id="node11" title=" " alt="" coords="617,647,759,673"/>
+<area shape="rect" id="node12" href="$spec_2align_8h.html" title=" " alt="" coords="440,647,592,673"/>
+<area shape="rect" id="node15" title=" " alt="" coords="563,162,757,189"/>
+<area shape="rect" id="node16" href="$spec_2queue__types_8h.html" title=" " alt="" coords="391,155,539,196"/>
+<area shape="rect" id="node17" href="$schedule__types_8h.html" title=" " alt="" coords="440,251,627,278"/>
+<area shape="rect" id="node18" title=" " alt="" coords="455,333,611,375"/>
+<area shape="rect" id="node19" href="$spec_2schedule__types_8h.html" title=" " alt="" coords="635,333,802,375"/>
+</map>

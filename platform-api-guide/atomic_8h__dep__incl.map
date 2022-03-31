@@ -1,0 +1,8 @@
+<map id="atomic.h" name="atomic.h">
+<area shape="rect" id="node1" title=" " alt="" coords="217,5,296,32"/>
+<area shape="rect" id="node2" href="$abi-default_2barrier_8h.html" title=" " alt="" coords="5,80,81,107"/>
+<area shape="rect" id="node3" href="$abi-default_2rwlock_8h.html" title=" " alt="" coords="106,80,183,107"/>
+<area shape="rect" id="node4" href="$abi-default_2ticketlock_8h.html" title=" " alt="" coords="208,80,305,107"/>
+<area shape="rect" id="node5" href="$barrier_8h.html" title=" " alt="" coords="329,80,405,107"/>
+<area shape="rect" id="node6" href="$ticketlock__inlines_8h_source.html" title=" " alt="" coords="430,80,577,107"/>
+</map>

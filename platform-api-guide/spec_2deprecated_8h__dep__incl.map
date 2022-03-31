@@ -1,0 +1,21 @@
+<map id="deprecated.h" name="deprecated.h">
+<area shape="rect" id="node1" title=" " alt="" coords="230,5,337,32"/>
+<area shape="rect" id="node2" href="$deprecated_8h.html" title=" " alt="" coords="230,80,337,107"/>
+<area shape="rect" id="node3" href="$abi-default_2schedule__types_8h.html" title=" " alt="" coords="5,155,140,181"/>
+<area shape="rect" id="node4" href="$spec_2crypto_8h.html" title=" " alt="" coords="575,155,650,181"/>
+<area shape="rect" id="node8" href="$spec_2packet__io_8h.html" title=" " alt="" coords="206,603,302,629"/>
+<area shape="rect" id="node10" href="$spec_2packet__io__stats_8h.html" title=" " alt="" coords="216,155,351,181"/>
+<area shape="rect" id="node12" href="$spec_2packet__io__types_8h.html" title=" " alt="" coords="319,304,458,331"/>
+<area shape="rect" id="node5" href="$crypto_8h.html" title=" " alt="" coords="687,304,762,331"/>
+<area shape="rect" id="node6" href="$spec_2ipsec_8h.html" title=" " alt="" coords="588,603,656,629"/>
+<area shape="rect" id="node7" href="$ipsec_8h.html" title=" " alt="" coords="588,677,656,704"/>
+<area shape="rect" id="node9" href="$packet__io_8h.html" title=" " alt="" coords="206,677,302,704"/>
+<area shape="rect" id="node11" href="$packet__io__stats_8h.html" title=" " alt="" coords="216,229,351,256"/>
+<area shape="rect" id="node13" href="$packet__io__types_8h.html" title=" " alt="" coords="363,379,502,405"/>
+<area shape="rect" id="node14" href="$spec_2classification_8h.html" title=" " alt="" coords="419,453,537,480"/>
+<area shape="rect" id="node16" href="$spec_2packet_8h.html" title=" " alt="" coords="317,453,394,480"/>
+<area shape="rect" id="node18" href="$spec_2traffic__mngr_8h.html" title=" " alt="" coords="613,453,725,480"/>
+<area shape="rect" id="node15" href="$classification_8h.html" title=" " alt="" coords="419,528,537,555"/>
+<area shape="rect" id="node17" href="$packet_8h.html" title=" " alt="" coords="317,528,394,555"/>
+<area shape="rect" id="node19" href="$traffic__mngr_8h.html" title=" " alt="" coords="613,528,725,555"/>
+</map>

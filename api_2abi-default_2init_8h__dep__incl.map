@@ -1,0 +1,13 @@
+<map id="init.h" name="init.h">
+<area shape="rect" id="node1" title=" " alt="" coords="201,5,256,32"/>
+<area shape="rect" id="node2" href="$arch_2arm32-linux_2odp_2api_2abi_2init_8h_source.html" title=" " alt="" coords="5,80,60,107"/>
+<area shape="rect" id="node3" href="$arch_2arm64-linux_2odp_2api_2abi_2init_8h_source.html" title=" " alt="" coords="84,80,139,107"/>
+<area shape="rect" id="node4" href="$arch_2default-linux_2odp_2api_2abi_2init_8h_source.html" title=" " alt="" coords="163,80,217,107"/>
+<area shape="rect" id="node5" href="$arch_2power64-linux_2odp_2api_2abi_2init_8h_source.html" title=" " alt="" coords="241,80,296,107"/>
+<area shape="rect" id="node6" href="$arch_2x86__32-linux_2odp_2api_2abi_2init_8h_source.html" title=" " alt="" coords="320,80,375,107"/>
+<area shape="rect" id="node7" href="$arch_2x86__64-linux_2odp_2api_2abi_2init_8h_source.html" title=" " alt="" coords="399,80,453,107"/>
+<area shape="rect" id="node8" href="$api_2init_8h.html" title=" " alt="" coords="399,155,453,181"/>
+<area shape="rect" id="node9" href="$api_2spec_2shared__memory_8h.html" title=" " alt="" coords="303,229,442,256"/>
+<area shape="rect" id="node11" href="$odp__api_8h.html" title=" " alt="" coords="383,379,469,405"/>
+<area shape="rect" id="node10" href="$api_2shared__memory_8h.html" title=" " alt="" coords="303,304,442,331"/>
+</map>

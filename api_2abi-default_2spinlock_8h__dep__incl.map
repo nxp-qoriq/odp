@@ -1,0 +1,19 @@
+<map id="spinlock.h" name="spinlock.h">
+<area shape="rect" id="node1" title=" " alt="" coords="531,5,619,32"/>
+<area shape="rect" id="node2" href="$arch_2arm32-linux_2odp_2api_2abi_2spinlock_8h_source.html" title=" " alt="" coords="251,80,339,107"/>
+<area shape="rect" id="node3" href="$arch_2arm64-linux_2odp_2api_2abi_2spinlock_8h_source.html" title=" " alt="" coords="363,80,451,107"/>
+<area shape="rect" id="node4" href="$arch_2default-linux_2odp_2api_2abi_2spinlock_8h_source.html" title=" " alt="" coords="475,80,563,107"/>
+<area shape="rect" id="node5" href="$arch_2power64-linux_2odp_2api_2abi_2spinlock_8h_source.html" title=" " alt="" coords="587,80,675,107"/>
+<area shape="rect" id="node6" href="$arch_2x86__32-linux_2odp_2api_2abi_2spinlock_8h_source.html" title=" " alt="" coords="699,80,787,107"/>
+<area shape="rect" id="node7" href="$arch_2x86__64-linux_2odp_2api_2abi_2spinlock_8h_source.html" title=" " alt="" coords="811,80,899,107"/>
+<area shape="rect" id="node8" href="$api_2spinlock_8h.html" title=" " alt="" coords="811,155,899,181"/>
+<area shape="rect" id="node9" href="$api_2abi-default_2spinlock__recursive_8h.html" title=" " alt="" coords="541,229,696,256"/>
+<area shape="rect" id="node17" href="$odp__api_8h.html" title=" " alt="" coords="991,453,1076,480"/>
+<area shape="rect" id="node10" href="$arch_2arm32-linux_2odp_2api_2abi_2spinlock__recursive_8h_source.html" title=" " alt="" coords="5,304,160,331"/>
+<area shape="rect" id="node11" href="$arch_2arm64-linux_2odp_2api_2abi_2spinlock__recursive_8h_source.html" title=" " alt="" coords="184,304,339,331"/>
+<area shape="rect" id="node12" href="$arch_2default-linux_2odp_2api_2abi_2spinlock__recursive_8h_source.html" title=" " alt="" coords="363,304,517,331"/>
+<area shape="rect" id="node13" href="$arch_2power64-linux_2odp_2api_2abi_2spinlock__recursive_8h_source.html" title=" " alt="" coords="541,304,696,331"/>
+<area shape="rect" id="node14" href="$arch_2x86__32-linux_2odp_2api_2abi_2spinlock__recursive_8h_source.html" title=" " alt="" coords="720,304,875,331"/>
+<area shape="rect" id="node15" href="$arch_2x86__64-linux_2odp_2api_2abi_2spinlock__recursive_8h_source.html" title=" " alt="" coords="899,304,1053,331"/>
+<area shape="rect" id="node16" href="$api_2spinlock__recursive_8h.html" title=" " alt="" coords="899,379,1053,405"/>
+</map>

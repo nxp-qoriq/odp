@@ -1,0 +1,24 @@
+<map id="schedule.h" name="schedule.h">
+<area shape="rect" id="node1" title=" " alt="" coords="499,5,591,32"/>
+<area shape="rect" id="node2" href="$visibility__begin_8h_source.html" title=" " alt="" coords="77,721,238,748"/>
+<area shape="rect" id="node3" href="$api_2std__types_8h.html" title=" " alt="" coords="377,408,527,435"/>
+<area shape="rect" id="node10" href="$visibility__end_8h_source.html" title=" " alt="" coords="689,721,839,748"/>
+<area shape="rect" id="node11" href="$api_2event__types_8h.html" title=" " alt="" coords="963,557,1130,584"/>
+<area shape="rect" id="node14" href="$api_2queue__types_8h.html" title=" " alt="" coords="595,80,765,107"/>
+<area shape="rect" id="node17" href="$api_2schedule__types_8h.html" title=" " alt="" coords="571,244,757,271"/>
+<area shape="rect" id="node20" href="$api_2thrmask_8h.html" title=" " alt="" coords="262,244,402,271"/>
+<area shape="rect" id="node4" title=" " alt="" coords="496,483,669,509"/>
+<area shape="rect" id="node5" href="$api_2spec_2std__types_8h.html" title=" " alt="" coords="238,483,421,509"/>
+<area shape="rect" id="node6" title=" " alt="" coords="213,557,283,584"/>
+<area shape="rect" id="node7" href="$api_2align_8h.html" title=" " alt="" coords="307,557,426,584"/>
+<area shape="rect" id="node8" title=" " alt="" coords="195,639,338,666"/>
+<area shape="rect" id="node9" href="$api_2spec_2align_8h.html" title=" " alt="" coords="363,639,515,666"/>
+<area shape="rect" id="node12" title=" " alt="" coords="963,639,1154,666"/>
+<area shape="rect" id="node13" href="$api_2spec_2event__types_8h.html" title=" " alt="" coords="691,632,837,673"/>
+<area shape="rect" id="node15" title=" " alt="" coords="583,162,777,189"/>
+<area shape="rect" id="node16" href="$api_2spec_2queue__types_8h.html" title=" " alt="" coords="801,155,949,196"/>
+<area shape="rect" id="node18" title=" " alt="" coords="681,319,837,360"/>
+<area shape="rect" id="node19" href="$api_2spec_2schedule__types_8h.html" title=" " alt="" coords="490,319,657,360"/>
+<area shape="rect" id="node21" title=" " alt="" coords="250,326,414,353"/>
+<area shape="rect" id="node22" href="$api_2spec_2thrmask_8h.html" title=" " alt="" coords="51,326,226,353"/>
+</map>
